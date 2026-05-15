@@ -624,7 +624,7 @@ Must feel:
 
 Anchor line:
 
-> The system should hold the project state, not Edward.
+> The system should hold the project state, not the person.
 
 Must feel:
 
