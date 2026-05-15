@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   cognitionSlides,
@@ -7,10 +7,18 @@ import {
 import {
   clampSlideIndex,
   getProgressPercent,
-  getStateForSection,
+  getVisualStateForSlide,
 } from '../../lib/cognitionState';
+import type { CognitionSlide } from '../../types/cognition';
 import '../../styles/cognition.css';
 import { CognitionBackground } from './CognitionBackground';
+
+const SLIDE_TRANSITION_MS = 420;
+
+interface RenderedSlide {
+  slide: CognitionSlide;
+  phase: 'current' | 'enter' | 'exit';
+}
 
 function formatSlideNumber(index: number): string {
   return String(index + 1).padStart(2, '0');
@@ -34,11 +42,16 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 
 export function CognitionDeck() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [renderedSlides, setRenderedSlides] = useState<RenderedSlide[]>([
+    { slide: cognitionSlides[0], phase: 'current' },
+  ]);
   const totalSlides = cognitionSlides.length;
+  const previousIndexRef = useRef(0);
+  const transitionTimeoutRef = useRef<number | null>(null);
 
   const currentSlide = cognitionSlides[currentIndex];
   const progress = getProgressPercent(currentIndex, totalSlides);
-  const visualState = getStateForSection(currentSlide.section);
+  const visualState = getVisualStateForSlide(currentSlide);
 
   const counterText = useMemo(() => {
     return `${formatSlideNumber(currentIndex)} / ${formatSlideNumber(totalSlides - 1)}`;
@@ -73,8 +86,52 @@ export function CognitionDeck() {
     };
   }, [totalSlides]);
 
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current !== null) {
+        window.clearTimeout(transitionTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (previousIndexRef.current === currentIndex) {
+      return;
+    }
+
+    previousIndexRef.current = currentIndex;
+
+    const nextSlide = cognitionSlides[currentIndex];
+
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current);
+    }
+
+    setRenderedSlides((slides) => {
+      const activeSlide = slides[slides.length - 1]?.slide ?? nextSlide;
+
+      if (activeSlide.id === nextSlide.id) {
+        return [{ slide: nextSlide, phase: 'current' }];
+      }
+
+      return [
+        { slide: activeSlide, phase: 'exit' },
+        { slide: nextSlide, phase: 'enter' },
+      ];
+    });
+
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      setRenderedSlides([{ slide: nextSlide, phase: 'current' }]);
+      transitionTimeoutRef.current = null;
+    }, SLIDE_TRANSITION_MS);
+  }, [currentIndex]);
+
   return (
-    <main className="cognition-deck" aria-label="Cognition deck">
+    <main
+      className="cognition-deck"
+      aria-label="Cognition deck"
+      data-state={visualState}
+    >
       <CognitionBackground state={visualState} />
 
       <div className="cognition-deck__chrome">
@@ -109,12 +166,20 @@ export function CognitionDeck() {
       </div>
 
       <section className="cognition-deck__stage" aria-live="polite">
-        <p className="cognition-deck__eyebrow">{currentSlide.eyebrow}</p>
-        <h1>{currentSlide.title}</h1>
-        <p className="cognition-deck__body">{currentSlide.body}</p>
-        {currentSlide.kicker ? (
-          <p className="cognition-deck__kicker">{currentSlide.kicker}</p>
-        ) : null}
+        {renderedSlides.map(({ slide, phase }) => (
+          <article
+            key={slide.id}
+            aria-hidden={phase === 'exit'}
+            className={`cognition-deck__slide cognition-deck__slide--${phase}`}
+          >
+            <p className="cognition-deck__eyebrow">{slide.eyebrow}</p>
+            <h1>{slide.title}</h1>
+            <p className="cognition-deck__body">{slide.body}</p>
+            {slide.kicker ? (
+              <p className="cognition-deck__kicker">{slide.kicker}</p>
+            ) : null}
+          </article>
+        ))}
       </section>
 
       <footer className="cognition-deck__footer">

@@ -15,6 +15,7 @@ export type CognitiveVisualState =
 export interface CognitionSlide {
   id: string;
   section: DeckSection;
+  visualState: CognitiveVisualState;
   eyebrow: string;
   title: string;
   body: string;

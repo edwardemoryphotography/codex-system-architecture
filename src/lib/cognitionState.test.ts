@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
+import { cognitionSlides } from '../content/cognitionDeck';
 import {
   clampSlideIndex,
   getProgressPercent,
-  getStateForSection,
+  getVisualStateForSlide,
 } from './cognitionState';
 
-describe('getStateForSection', () => {
-  it('maps sections to visual states', () => {
-    expect(getStateForSection('recognition')).toBe('signal');
-    expect(getStateForSection('mismatch')).toBe('fragmentation');
-    expect(getStateForSection('translation')).toBe('stabilization');
-    expect(getStateForSection('invitation')).toBe('proof');
+describe('getVisualStateForSlide', () => {
+  it('returns the visual state declared in slide metadata', () => {
+    expect(getVisualStateForSlide(cognitionSlides[0])).toBe('signal');
+    expect(getVisualStateForSlide(cognitionSlides[2])).toBe('throughput');
+    expect(getVisualStateForSlide(cognitionSlides[13])).toBe('recursion');
+    expect(getVisualStateForSlide(cognitionSlides[15])).toBe('proof');
   });
 });
 

@@ -1,16 +1,9 @@
-import type { CognitiveVisualState, DeckSection } from '../types/cognition';
+import type { CognitiveVisualState, CognitionSlide } from '../types/cognition';
 
-const SECTION_STATE_MAP: Record<DeckSection, CognitiveVisualState> = {
-  recognition: 'signal',
-  mismatch: 'fragmentation',
-  translation: 'stabilization',
-  invitation: 'proof',
-};
-
-export function getStateForSection(
-  section: DeckSection,
+export function getVisualStateForSlide(
+  slide: CognitionSlide,
 ): CognitiveVisualState {
-  return SECTION_STATE_MAP[section];
+  return slide.visualState;
 }
 
 export function clampSlideIndex(index: number, total: number): number {

@@ -77,6 +77,81 @@ describe('CognitionDeck', () => {
     ).toBeInTheDocument();
   });
 
+  it('exposes section visual state on the main shell', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<CognitionDeck />);
+
+    const shell = container.querySelector('main');
+    const nextButton = screen.getByRole('button', { name: /next slide/i });
+
+    expect(shell).not.toBeNull();
+    expect(shell).toHaveAttribute('data-state', 'signal');
+
+    for (let index = 0; index < 4; index += 1) {
+      await user.click(nextButton);
+    }
+
+    expect(
+      screen.getByRole('heading', {
+        name: /our systems mismatch the work we ask minds to do/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shell).toHaveAttribute('data-state', 'fragmentation');
+  });
+
+  it('keeps the signal state while advancing within the recognition act', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<CognitionDeck />);
+
+    const shell = container.querySelector('main');
+
+    await user.click(screen.getByRole('button', { name: /next slide/i }));
+
+    expect(
+      screen.getByRole('heading', {
+        name: /this is not a discipline problem/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shell).toHaveAttribute('data-state', 'signal');
+  });
+
+  it('reaches a throughput slide with throughput visual state', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<CognitionDeck />);
+
+    const shell = container.querySelector('main');
+    const nextButton = screen.getByRole('button', { name: /next slide/i });
+
+    await user.click(nextButton);
+    await user.click(nextButton);
+
+    expect(
+      screen.getByRole('heading', {
+        name: /throughput is now a cognitive constraint/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shell).toHaveAttribute('data-state', 'throughput');
+  });
+
+  it('reaches a recursion slide with recursion visual state', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<CognitionDeck />);
+
+    const shell = container.querySelector('main');
+    const nextButton = screen.getByRole('button', { name: /next slide/i });
+
+    for (let index = 0; index < 13; index += 1) {
+      await user.click(nextButton);
+    }
+
+    expect(
+      screen.getByRole('heading', {
+        name: /controlled recursive depth/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shell).toHaveAttribute('data-state', 'recursion');
+  });
+
   it('ignores the global space shortcut when a button is focused', async () => {
     const user = userEvent.setup();
 
