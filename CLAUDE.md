@@ -43,7 +43,7 @@ src/
   main.tsx             # ReactDOM.createRoot entry point
   index.css            # Tailwind directives only
   vite-env.d.ts        # Vite type reference
-  components/          # 15 UI components (PascalCase.tsx)
+  components/          # 13 UI components (PascalCase.tsx)
   hooks/               # useFormValidation (generic form state + validation)
   lib/
     supabase.ts        # ALL Supabase queries live here — never query inline
@@ -97,7 +97,7 @@ All data access goes through `src/lib/supabase.ts` — never write inline Supaba
 | `document_notes` | `id`, `document_id`, `content`, `position` | Inline annotations |
 | `document_links` | `source_document_id`, `target_document_id`, `link_type` | Graph edges |
 
-**RLS**: All tables are public read-only (intentional — public knowledge base, no auth in current code).
+**RLS**: All tables allow public access (no auth required) — reads and writes (`addBookmark`, `updateReadingProgress`, `addDocumentNote`) work without authentication. No user sign-in is implemented.
 
 Migrations are in `supabase/migrations/` as timestamped SQL files. Run them in order; do not edit applied migrations.
 
@@ -133,7 +133,7 @@ When adding a new category:
 - Use `useCallback` for event handlers passed as props to avoid needless re-renders.
 - Use `useRef` for canvas refs, animation frame IDs, and DOM refs — not `useState`.
 - Tailwind only for styling — no inline `style` props unless dealing with dynamic canvas/SVG values.
-- Dark mode is prop-drilled as `isDarkMode: boolean` — do not use a context or CSS class approach.
+- Dark mode is prop-drilled as `isDarkMode: boolean` for component logic; the root `dark` class on `document.documentElement` is managed in `App.tsx` for Tailwind's `dark:` variant support.
 - Form validation: use the existing `useFormValidation` hook + `src/lib/validation.ts` validators; do not add external form libraries.
 - Canvas rendering: always account for `devicePixelRatio` to avoid blurry output on retina screens.
 - Reading progress: upserted to Supabase every 5 seconds from `DocumentViewer` — do not increase this frequency.
