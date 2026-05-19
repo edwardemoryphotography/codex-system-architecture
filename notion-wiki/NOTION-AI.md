@@ -26,6 +26,10 @@ Notion AI may need you to **@ mention** the hub or database, or paste the prompt
 
 ## Copy-paste for Notion AI
 
+**In Notion:** open [📋 Paste prompts (Notion AI)](https://www.notion.so/365330f7bc3b81d2ad20f4594670e6cf) on the LLM Wiki hub for all blocks.
+
+## Copy-paste for Notion AI (inline)
+
 ```
 Search my workspace for "LLM Wiki Agent Layer" and open "📋 For Notion AI — start here".
 

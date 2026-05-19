@@ -33,6 +33,11 @@
     "data_source_id": "56e8a0a2-cc3e-4d05-b7f1-6d08eb9a3ad4",
     "url": "https://www.notion.so/53ef6c57168148b9bd4cb22ae90f8e8e"
   },
+  "projects": {
+    "codex_system_architecture_page_id": "365330f7-bc3b-81b7-b614-e8def1b1bb7f",
+    "codex_system_architecture_url": "https://www.notion.so/365330f7bc3b81b7b614e8def1b1bb7f",
+    "codex_repo_audit_page_id": "0ecb3f92110d48c7b4911475526f0674"
+  },
   "codex": {
     "brain_dump_map_page_id": "50ac7e8f-7a75-417e-83ed-ce42d108fe84",
     "command_center_page_id": "e7460e0f-599a-4a47-9ea6-058aef2e2ec8",
