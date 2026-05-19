@@ -1,4 +1,10 @@
-# Canonical index policy
+# Superseded
+
+**Use [`CORPUS-POLICY.md`](./CORPUS-POLICY.md)** — whole workspace is the knowledge base; KB database is synthesis only.
+
+---
+
+# Canonical index policy (archived 2026-05-19)
 
 **Decision (2026-05-19):** The wiki index is **🧠 Knowledge Base → All Entries**, not a separate hub page.
 

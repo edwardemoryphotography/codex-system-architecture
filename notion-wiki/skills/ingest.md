@@ -1,36 +1,28 @@
 # Skill: ingest (Notion)
 
-Compile one raw item into **Knowledge Base** (+ related Topics/Notes if needed).
+**Enrich the corpus** — do not funnel all knowledge into the KB database.
+
+See `docs/CORPUS-POLICY.md`.
 
 ## Input
 
-One of:
-
-- Wiki Compile Queue row URL or name (`Status` = Inbox)
-- Second Brain INBOX item URL
-- Resources / Notes page URL
-- External URL + title (create queue row first)
+Wiki Compile Queue row, INBOX/Resources/Notes/Project page, or external URL.
 
 ## Steps
 
 1. **Fetch** source with `notion-fetch`.
-2. **Search** Knowledge Base for similar `Entry` title — update if found, else create.
-3. **Set queue** row `Status` → `Processing` (if using queue).
-4. **Create/update Knowledge Base** row (`knowledge_base.data_source_id`):
-   - `Entry`, `Summary`, `Source URL`, `Tags` (include wiki-type tag)
-   - `Status`: `Draft`
-   - Body: key claims, quotes, `[[mentions]]` to related Notion pages where possible
-5. **Fan out** — update or create **Topics** rows for major concepts; link in KB body.
-6. **Queue** → `Done`; set `Wiki Type` on queue row.
-7. **Append Wiki Log** (`wiki_log.page_id`) via `notion-update-page` `insert_content` at end.
+2. **Enrich in place** — `notion-update-page` `insert_content`: compiled summary + links to related pages (Projects, Topics, Codex).
+3. **Relate** — update Project/Topic database rows or add mentions in body.
+4. **Optional synthesis** — if durable and cross-cutting: create/update **Knowledge Base** row (`knowledge_base.data_source_id`) with Summary, Tags, link back to source URL.
+5. Queue → Done; append **Wiki Log**.
 
 ## Do not
 
-- Delete or archive source pages unless human asks
-- Create duplicate KB rows for the same source
+- Imply KB is the only knowledge store
+- Delete originals
+- Duplicate entire source body into KB unless human asks
 
 ## Verification
 
-- [ ] KB row URL returned to human
-- [ ] Log entry appended
-- [ ] Queue status updated (if applicable)
+- [ ] Source (or project) page updated with summary/links
+- [ ] Human told which pages were touched (source, projects, optional KB)

@@ -12,9 +12,10 @@ All UUIDs: [`config/notion.workspace.json`](./config/notion.workspace.json).
 - **Use:** Agent intake queue — what to compile next
 - **Properties:** `Name` (title), `Status` (Inbox | Processing | Done | Skipped), `Wiki Type` (Source | Entity | Concept | Synthesis), `Source URL`, `Raw Page`
 
-### Knowledge Base (compiled wiki)
+### Knowledge Base (compiled wiki + **canonical index**)
 
 - **data_source_id:** `knowledge_base.data_source_id`
+- **Canonical index view:** **All Entries** (table) — agents read this first on query; see `docs/INDEX-POLICY.md`
 - **Use:** Primary compiled entries — summaries, status, verification
 - **Key properties:** `Entry` (title), `Summary`, `Status`, `Tags`, `Source URL`, `Importance`, `Notes`, `Last Verified`, `Next Review`
 

@@ -1,6 +1,6 @@
 # Agents — Notion LLM Wiki
 
-You maintain a **compounding wiki inside the user's Notion workspace**. Raw capture lives in Second Brain (INBOX, Resources); compiled knowledge lives primarily in **Knowledge Base**.
+You work on the user's **full Notion corpus** — every page and project is the knowledge base. Second Brain, Projects, Codex, Notes, etc. are where work lives. The **🧠 Knowledge Base database** is only for optional **synthesis distillations** (see `docs/CORPUS-POLICY.md`).
 
 ## Bootstrap (every session)
 

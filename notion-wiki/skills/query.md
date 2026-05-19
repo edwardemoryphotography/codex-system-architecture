@@ -1,33 +1,25 @@
 # Skill: query (Notion)
 
-Answer using **compiled wiki first**, then wider workspace search.
+Answer from the **whole workspace corpus**, not only the 🧠 Knowledge Base database.
 
-## Canonical index (always first)
+See `docs/CORPUS-POLICY.md`.
 
-**Knowledge Base → view "All Entries"** — `knowledge_base.url` in config.
+## Search order
 
-Do not use a duplicate index on the LLM Wiki hub. Hub = router only. See `Index policy` in Notion or repo `docs/INDEX-POLICY.md`.
+1. `notion-search` — full workspace (`query_type`: `internal`).
+2. **Corpus map zones** — Second Brain, Projects, Tasks, Topics, Notes, Resources, Codex pages (config IDs in `notion.workspace.json`).
+3. **Active projects** — bias toward rows on Corpus map (Notion page).
+4. **Knowledge Base** — synthesis shortcut only; `notion-fetch` if a row likely answers the question.
+5. Open best 3–8 **pages** (any zone) for body content.
 
-## Steps
+## Respond with
 
-1. Query/filter **Knowledge Base** (All Entries) for matching `Entry` / `Summary` / `Tags`.
-2. `notion-fetch` the best 3–8 entry **pages** for body content.
-3. `notion-search` — workspace (`query_type`: `internal`) for gaps.
-4. Prioritize additional hits in:
-   - Topics, Notes
-   - Codex pages (Brain Dump Map, Command Center) for doctrine/shipping questions
-5. Respond with:
-   - **Answer** (short)
-   - **Evidence** — bullet per page with title + URL
-   - **Gaps** — what is missing from the wiki
-6. If answer is durable, offer new **Knowledge Base** row (`Tags` includes `synthesis`) or update existing synthesis entry.
-
-## Optional filters
-
-- `page_url`: restrict to Second Brain subtree
-- `data_source_url`: search only Knowledge Base collection
+- Short answer
+- Evidence bullets — **multiple zones**, title + URL each
+- Gaps (including external repos not in Notion)
+- Optional: offer KB synthesis row only if a new cross-cutting distill is warranted
 
 ## Verification
 
-- [ ] At least one Notion URL cited, or explicit “no coverage”
-- [ ] Did not invent pages — only cited fetched/search results
+- [ ] Evidence is not KB-only unless the question was meta/synthesis-specific
+- [ ] Did not invent pages

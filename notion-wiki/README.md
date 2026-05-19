@@ -11,8 +11,9 @@ Pattern: [Karpathy LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9
 | **Hub** | [🤖 LLM Wiki — Agent Layer](https://www.notion.so/365330f7bc3b8138a066de7fad91876f) (under Second Brain) |
 | **Log** | [Wiki Log](https://www.notion.so/365330f7bc3b81148112f1ba57f6dccc) |
 | **Compile queue** | [Wiki Compile Queue](https://www.notion.so/c7fa0a9d6f5f46d39ba8b16f5bc87c96) |
-| **Compiled wiki** | [🧠 Knowledge Base](https://www.notion.so/53ef6c57168148b9bd4cb22ae90f8e8e) |
-| **Capture** | Second Brain → INBOX, Resources, Notes |
+| **Corpus (your whole brain)** | **Entire Notion workspace** — see [Corpus map](https://www.notion.so/365330f7bc3b81d58db3d8f2a257e701) |
+| **Wiki synthesis (distill only)** | [🧠 Knowledge Base](https://www.notion.so/53ef6c57168148b9bd4cb22ae90f8e8e) — not the boundary of knowledge |
+| **Capture** | Second Brain → INBOX, Resources, Notes, **Projects** |
 
 IDs are in [`config/notion.workspace.json`](./config/notion.workspace.json).
 
@@ -29,14 +30,14 @@ IDs are in [`config/notion.workspace.json`](./config/notion.workspace.json).
 └────────────────────────────┬─────────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────────┐
-│  Notion — Second Brain (raw) + Knowledge Base (compiled)     │
+│  Corpus — all Notion + projects; KB DB = synthesis only      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | You | Agent (with Notion MCP) |
 |-------|-----|-------------------------|
-| **Raw** | Clip to INBOX / Resources; queue row in Wiki Compile Queue | Reads pages; does not delete your history |
-| **Wiki** | Browse Knowledge Base, Topics, Notes | Creates/updates entries, Summary, Tags, body content |
+| **Corpus** | Work across Notion — projects, notes, Codex, inbox | Searches whole workspace; enriches pages in place |
+| **Synthesis** | Optional distill rows in 🧠 Knowledge Base | Adds KB row only when insight is cross-cutting |
 | **Skills** | “Ingest this”, “What do I know about X?” | Loads the right `skills/*.md` |
 | **Agents** | Steer emphasis | `notion-search`, `notion-fetch`, `notion-create-pages`, `notion-update-page` |
 
