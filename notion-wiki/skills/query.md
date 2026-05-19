@@ -7,10 +7,8 @@ Answer using **compiled wiki first**, then wider workspace search.
 1. `notion-search` — query across workspace (`query_type`: `internal`).
 2. Prioritize hits in:
    - Knowledge Base database
-   - Topics, Notes
    - Codex pages (Brain Dump Map, Command Center) for doctrine/shipping questions
-3. `notion-fetch` top 3–8 pages.
-4. Respond with:
+5. Respond with:
    - **Answer** (short)
    - **Evidence** — bullet per page with title + URL
    - **Gaps** — what is missing from the wiki
