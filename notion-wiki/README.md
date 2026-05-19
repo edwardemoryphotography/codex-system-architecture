@@ -58,10 +58,18 @@ IDs are in [`config/notion.workspace.json`](./config/notion.workspace.json).
 
 > Follow `skills/backfill.md` — survey Knowledge Base and suggest Tags / gaps.
 
-## Requirements
+## Notion AI (in-app) — read this if paste failed
 
-- **Notion MCP** connected in Cursor (or agent with Notion access)
-- Repo cloned or `notion-wiki/` copied into a project your agent can read
+Notion AI **does not see** `notion-wiki/` on disk. That is expected.
+
+Use pages under the hub instead: **[📋 For Notion AI — start here](https://www.notion.so/365330f7bc3b81b9bc24e59570ec6c7b)** and the **Skill:** pages next to it.
+
+Full explanation + copy-paste prompt: [`NOTION-AI.md`](./NOTION-AI.md).
+
+## Requirements (Cursor / Claude Code / Codex)
+
+- **Notion MCP** connected
+- Repo cloned so `notion-wiki/` exists on disk
 - Optional: duplicate hub to another workspace using [`SETUP.md`](./SETUP.md)
 
 ## Files
