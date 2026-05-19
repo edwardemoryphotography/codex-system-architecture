@@ -1,0 +1,38 @@
+{
+  "$schema": "Workspace IDs for notion-wiki skills. Regenerate via SETUP.md if you move pages.",
+  "llm_wiki_hub": {
+    "page_id": "365330f7-bc3b-8138-a066-de7fad91876f",
+    "url": "https://www.notion.so/365330f7bc3b8138a066de7fad91876f"
+  },
+  "wiki_log": {
+    "page_id": "365330f7-bc3b-8114-8112-f1ba57f6dccc",
+    "url": "https://www.notion.so/365330f7bc3b81148112f1ba57f6dccc"
+  },
+  "wiki_compile_queue": {
+    "database_id": "c7fa0a9d-6f5f-46d3-9ba8-b16f5bc87c96",
+    "data_source_id": "6e390e48-8d22-40eb-a2b9-48bb45a8e56e",
+    "url": "https://www.notion.so/c7fa0a9d6f5f46d39ba8b16f5bc87c96"
+  },
+  "second_brain": {
+    "page_id": "b18f71eb-bbc2-49b2-9605-f2e479beb0b3",
+    "url": "https://www.notion.so/b18f71ebbbc249b29605f2e479beb0b3",
+    "inbox_database_id": "51588bff-1bb6-45c5-8be7-1530c3ea8e42",
+    "resources_database_id": "55243f56-6ac8-4b3a-b898-eba4447f9bfc",
+    "resources_data_source_id": "8831bc2a-e5a7-459a-9891-86b45e18e03b",
+    "topics_database_id": "c462f00a-709e-4303-bcac-16ef95789e55",
+    "topics_data_source_id": "50653d4f-1b6c-401a-ae58-3b7e2c030e1f",
+    "notes_database_id": "8b80320c-c553-4247-91bf-ab75d7782313",
+    "notes_data_source_id": "265376ce-c2a3-478b-b664-8314ecddb6ad"
+  },
+  "knowledge_base": {
+    "database_id": "53ef6c57-1681-48b9-bd4c-b22ae90f8e8e",
+    "data_source_id": "56e8a0a2-cc3e-4d05-b7f1-6d08eb9a3ad4",
+    "url": "https://www.notion.so/53ef6c57168148b9bd4cb22ae90f8e8e"
+  },
+  "codex": {
+    "brain_dump_map_page_id": "50ac7e8f-7a75-417e-83ed-ce42d108fe84",
+    "command_center_page_id": "e7460e0f-599a-4a47-9ea6-058aef2e2ec8",
+    "legacy_codex_page_id": "c073f3a8-f261-424a-898f-ab95214aba38",
+    "project_knowledge_intake_database_id": "b10f096c-1ed3-49ae-b6e6-909e66f70379"
+  }
+}
