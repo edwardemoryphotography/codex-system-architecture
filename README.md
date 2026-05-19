@@ -26,6 +26,12 @@ Built with StackBlitz for rapid prototyping, this repo serves as the living blue
 
 ---
 
+## Personal wiki starter
+
+For a **local Obsidian second brain** (raw sources → skill-routed agents → compiled wiki), see [`personal-wiki/`](./personal-wiki/README.md). Copy that folder into your vault path and drive it with Claude Code, Cursor, or Codex using `AGENTS.md` + `skills/`.
+
+---
+
 ## Purpose
 
 This repo is the **design layer** for the broader Codex ecosystem:
