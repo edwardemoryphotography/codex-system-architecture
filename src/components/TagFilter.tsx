@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Tag, X, Filter, ChevronDown } from 'lucide-react';
+import { X, Filter, ChevronDown } from 'lucide-react';
 import { getTags } from '../lib/supabase';
 
 interface TagData {

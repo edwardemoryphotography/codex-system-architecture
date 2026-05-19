@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, FileText, Bookmark, Clock, Hash, Command, ArrowRight, Star, Moon, Sun, Maximize2, Network } from 'lucide-react';
+import { Search, FileText, Clock, Command, ArrowRight, Star, Moon, Sun, Maximize2, Network } from 'lucide-react';
 import { searchDocuments, getBookmarks, getRecentDocuments } from '../lib/supabase';
 import { CodexDocument } from '../types';
 

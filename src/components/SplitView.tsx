@@ -10,13 +10,11 @@ interface SplitViewProps {
   isDarkMode: boolean;
 }
 
-export function SplitView({ leftPath, rightPath, onClose, onSelectDocument, isDarkMode }: SplitViewProps) {
+export function SplitView({ leftPath, rightPath, onClose, isDarkMode }: SplitViewProps) {
   const [splitRatio, setSplitRatio] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const [syncScroll, setSyncScroll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const leftScrollRef = useRef<HTMLDivElement>(null);
-  const rightScrollRef = useRef<HTMLDivElement>(null);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging || !containerRef.current) return;

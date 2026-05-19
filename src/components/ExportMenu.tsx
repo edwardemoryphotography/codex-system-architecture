@@ -8,7 +8,7 @@ interface ExportMenuProps {
   onClose: () => void;
 }
 
-export function ExportMenu({ document, isDarkMode, onClose }: ExportMenuProps) {
+export function ExportMenu({ document, isDarkMode }: ExportMenuProps) {
   const [exporting, setExporting] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
 
