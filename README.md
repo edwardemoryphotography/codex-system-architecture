@@ -30,6 +30,10 @@ Built with StackBlitz for rapid prototyping, this repo serves as the living blue
 
 For a **local Obsidian second brain** (raw sources → skill-routed agents → compiled wiki), see [`personal-wiki/`](./personal-wiki/README.md). Copy that folder into your vault path and drive it with Claude Code, Cursor, or Codex using `AGENTS.md` + `skills/`.
 
+## Notion second brain (agent layer)
+
+If your knowledge lives in **Notion**, see [`notion-wiki/`](./notion-wiki/README.md) — skills + config wired to your Second Brain, Knowledge Base, and a new **LLM Wiki** hub under Notion.
+
 ---
 
 ## Purpose
