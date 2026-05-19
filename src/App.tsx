@@ -20,8 +20,6 @@ interface RecentDoc {
 
 function App() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<CodexDocument[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [recentDocs, setRecentDocs] = useState<RecentDoc[]>([]);
   const [showRecent, setShowRecent] = useState(false);
@@ -151,7 +149,7 @@ function App() {
           </button>
         </div>
 
-        <SearchBar onSelectDocument={handleSelectDocument} onSearchResults={(results, query) => { setSearchResults(results); setSearchQuery(query); }} isDarkMode={isDarkMode} />
+        <SearchBar onSelectDocument={handleSelectDocument} onSearchResults={() => {}} isDarkMode={isDarkMode} />
 
         <TagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} isDarkMode={isDarkMode} />
 

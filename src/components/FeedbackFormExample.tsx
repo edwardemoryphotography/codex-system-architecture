@@ -11,7 +11,7 @@ interface FeedbackFormExampleProps {
   isDarkMode: boolean;
 }
 
-interface FormValues {
+interface FormValues extends Record<string, string> {
   name: string;
   email: string;
   category: string;
@@ -73,7 +73,7 @@ export function FeedbackFormExample({ isOpen, onClose, isDarkMode }: FeedbackFor
 
     toast.success(
       'Feedback submitted successfully!',
-      `Thank you ${values.name}, we\'ll get back to you soon.`
+      `Thank you ${values.name}, we'll get back to you soon.`
     );
     actions.reset();
     onClose();
