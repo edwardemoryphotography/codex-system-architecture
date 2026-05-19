@@ -22,7 +22,11 @@
     "topics_database_id": "c462f00a-709e-4303-bcac-16ef95789e55",
     "topics_data_source_id": "50653d4f-1b6c-401a-ae58-3b7e2c030e1f",
     "notes_database_id": "8b80320c-c553-4247-91bf-ab75d7782313",
-    "notes_data_source_id": "265376ce-c2a3-478b-b664-8314ecddb6ad"
+    "notes_data_source_id": "265376ce-c2a3-478b-b664-8314ecddb6ad",
+    "projects_database_id": "b1cfc9c71c9f4010aaa9f93733fff729",
+    "projects_data_source_id": "68fa035f-7c84-4923-bd31-13880e1af164",
+    "tasks_database_id": "8007868c-16f1-4c03-95ac-5567f6778bbf",
+    "tasks_data_source_id": "02aa1ad7-e4cf-47c4-915e-004b45384aa5"
   },
   "knowledge_base": {
     "database_id": "53ef6c57-1681-48b9-bd4c-b22ae90f8e8e",
