@@ -145,6 +145,60 @@ When adding a new category:
 - Knowledge graph data is fetched lazily on modal open — do not preload.
 - Canvas-based components manage their own animation loop via `requestAnimationFrame` stored in a `useRef`.
 
+## Agent behavior
+
+How AI assistants should work in this repo. Adapted from [Karpathy behavioral guidelines](https://github.com/multica-ai/andrej-karpathy-skills/blob/main/.cursor/rules/karpathy-guidelines.mdc). **Coding Rules** and **Performance Patterns** above win for project-specific facts.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks (typos, comment-only), use judgment.
+
+### Instruction precedence
+
+1. The user's request for the current task
+2. This file (`CLAUDE.md`) — stack, schema, conventions, and agent behavior
+3. [`AGENTS.md`](./AGENTS.md) — entrypoint and verification checklist
+4. Tool-specific files (e.g. `.cursor/rules/`) — pointers only; must not contradict this file
+
+### Think before coding
+
+- State assumptions explicitly; ask when uncertain.
+- If multiple interpretations exist, present them — do not pick silently.
+- If a simpler approach exists, say so.
+- If something is unclear, stop and name what is confusing.
+
+### Simplicity first
+
+- No features, abstractions, or configurability beyond what was asked.
+- No error handling for impossible scenarios.
+- If the diff is much larger than the task requires, simplify.
+
+### Surgical changes
+
+- Do not "improve" adjacent code, comments, or formatting.
+- Match existing style; every changed line should trace to the request.
+- Remove imports or symbols only if **your** changes made them unused.
+- Mention unrelated dead code; do not delete it unless asked.
+
+### Goal-driven execution
+
+Turn requests into verifiable outcomes, for example:
+
+- "Fix the bug" → reproduce, fix, then confirm with checks below
+- "Add validation" → invalid inputs rejected; `npm run typecheck` passes
+- "Refactor X" → same behavior; `npm run typecheck && npm run lint` pass
+
+For multi-step work, state a short plan with a verify step per step.
+
+### Verification (before claiming done)
+
+| Change type | Verify |
+|-------------|--------|
+| TypeScript / React (`src/`) | `npm run typecheck && npm run lint` |
+| Build / Vite config | Also `npm run build` |
+| Supabase schema | New file in `supabase/migrations/`; do not edit applied migrations |
+| UI behavior | `npm run dev` and exercise affected flows |
+
+Do not claim success without running the checks that apply to your diff.
+
 ## Related Repos in the Codex Ecosystem
 
 | Repo | Role |
