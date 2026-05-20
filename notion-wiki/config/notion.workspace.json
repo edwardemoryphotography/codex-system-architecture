@@ -43,5 +43,11 @@
     "command_center_page_id": "e7460e0f-599a-4a47-9ea6-058aef2e2ec8",
     "legacy_codex_page_id": "c073f3a8-f261-424a-898f-ab95214aba38",
     "project_knowledge_intake_database_id": "b10f096c-1ed3-49ae-b6e6-909e66f70379"
+  },
+  "supabase": {
+    "project_ref": "hzzzxmtpkgdmjcbncxjh",
+    "name": "supabase-indigo-paddle",
+    "dashboard_url": "https://supabase.com/dashboard/project/hzzzxmtpkgdmjcbncxjh",
+    "schema_doc": "supabase/SCHEMA.md"
   }
 }

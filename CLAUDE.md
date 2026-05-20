@@ -96,8 +96,12 @@ All data access goes through `src/lib/supabase.ts` — never write inline Supaba
 | `bookmarks` | `id`, `document_id` | User bookmarks |
 | `document_notes` | `id`, `document_id`, `content`, `position` | Inline annotations |
 | `document_links` | `source_document_id`, `target_document_id`, `link_type` | Graph edges |
+| `actions` | `action_title`, `status`, `context_complexity`, `portfolio_segment`, `priority_weight`, `is_next_action` | Control Panel task queue |
+| `initialize_session_start(session_mode)` | RPC — `'high'` \| `'low'` | Returns prioritized TODO actions; sets one `is_next_action` |
 
-**RLS**: All tables allow public access (no auth required) — reads and writes (`addBookmark`, `updateReadingProgress`, `addDocumentNote`) work without authentication. No user sign-in is implemented.
+**Canonical Supabase project:** `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) — see `supabase/project.json` and `supabase/SCHEMA.md`. Same URL/anon key for Vercel, local dev, and mobile clients.
+
+**RLS**: All tables allow public access (no auth required) — reads and writes (`addBookmark`, `updateReadingProgress`, `addDocumentNote`, `actions`) work without authentication. No user sign-in is implemented.
 
 Migrations are in `supabase/migrations/` as timestamped SQL files. Run them in order; do not edit applied migrations.
 
