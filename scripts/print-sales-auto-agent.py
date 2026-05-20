@@ -2,8 +2,10 @@
 """
 Print Sales Auto-Agent (v1) — abandoned checkout → Automated Edition Manager.
 
-Ship-ugly: endpoint and anon key are hardcoded below (no env framework).
-Canonical path in this repo: scripts/print-sales-auto-agent.py
+Ship-ugly: endpoint URL is hardcoded below (no env framework).
+Posts to the Vercel Edition Manager API (uses Supabase credentials on the server).
+
+Canonical path: scripts/print-sales-auto-agent.py
 (Photographer Pack local bundle: Agent-C-Print-Drop/)
 """
 
@@ -16,10 +18,8 @@ import urllib.request
 
 # --- hardcoded connection (Step 3) ---
 EDITION_MANAGER_ENDPOINT = (
-    "https://hzzzxmtpkgdmjcbncxjh.supabase.co/rest/v1/edition_manager_events"
+    "https://codex-system-architecture.vercel.app/api/edition-ingest"
 )
-# Paste your supabase-indigo-paddle anon key from the dashboard (Settings → API).
-SUPABASE_ANON_KEY = "your-anon-key-from-dashboard"
 
 
 def push_abandoned_checkout(
@@ -44,27 +44,14 @@ def push_abandoned_checkout(
         EDITION_MANAGER_ENDPOINT,
         data=data,
         method="POST",
-        headers={
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
-            "Content-Type": "application/json",
-            "Prefer": "return=representation",
-        },
+        headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=60) as resp:
         raw = resp.read().decode("utf-8")
         return json.loads(raw) if raw else {}
 
 
 def main() -> int:
-    if SUPABASE_ANON_KEY == "your-anon-key-from-dashboard":
-        print(
-            "Set SUPABASE_ANON_KEY in scripts/print-sales-auto-agent.py "
-            "(hardcode your anon key), then re-run.",
-            file=sys.stderr,
-        )
-        return 1
-
     try:
         result = push_abandoned_checkout(
             customer_email="test-buyer@example.com",
