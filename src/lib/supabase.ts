@@ -1,16 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : null;
+
+function client(): SupabaseClient {
+  if (!supabase) {
+    throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  }
+  return supabase;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 export async function getDocuments() {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('codex_documents')
     .select('*')
     .order('category', { ascending: true })
@@ -21,7 +29,8 @@ export async function getDocuments() {
 }
 
 export async function getDocumentByPath(path: string) {
-  const { data, error } = await supabase
+  if (!supabase) return null;
+  const { data, error } = await client()
     .from('codex_documents')
     .select(`
       *,
@@ -37,7 +46,8 @@ export async function getDocumentByPath(path: string) {
 }
 
 export async function searchDocuments(query: string) {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('codex_documents')
     .select('*')
     .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
@@ -48,7 +58,8 @@ export async function searchDocuments(query: string) {
 }
 
 export async function getDocumentsByCategory(category: string) {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('codex_documents')
     .select('*')
     .eq('category', category)
@@ -59,7 +70,8 @@ export async function getDocumentsByCategory(category: string) {
 }
 
 export async function getTags() {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('codex_tags')
     .select('*')
     .order('name', { ascending: true });
@@ -69,7 +81,8 @@ export async function getTags() {
 }
 
 export async function getRecentDocuments(limit = 10) {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('reading_progress')
     .select(`
       *,
@@ -83,7 +96,8 @@ export async function getRecentDocuments(limit = 10) {
 }
 
 export async function updateReadingProgress(documentId: string, scrollPosition: number, timeSpent: number) {
-  const { data, error } = await supabase
+  if (!supabase) return null;
+  const { data, error } = await client()
     .from('reading_progress')
     .upsert({
       document_id: documentId,
@@ -100,7 +114,8 @@ export async function updateReadingProgress(documentId: string, scrollPosition: 
 }
 
 export async function getReadingProgress(documentId: string) {
-  const { data, error } = await supabase
+  if (!supabase) return null;
+  const { data, error } = await client()
     .from('reading_progress')
     .select('*')
     .eq('document_id', documentId)
@@ -111,7 +126,8 @@ export async function getReadingProgress(documentId: string) {
 }
 
 export async function getBookmarks() {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('bookmarks')
     .select(`
       *,
@@ -124,7 +140,8 @@ export async function getBookmarks() {
 }
 
 export async function addBookmark(documentId: string) {
-  const { data, error } = await supabase
+  if (!supabase) return null;
+  const { data, error } = await client()
     .from('bookmarks')
     .insert({ document_id: documentId })
     .select()
@@ -135,7 +152,8 @@ export async function addBookmark(documentId: string) {
 }
 
 export async function removeBookmark(documentId: string) {
-  const { error } = await supabase
+  if (!supabase) return;
+  const { error } = await client()
     .from('bookmarks')
     .delete()
     .eq('document_id', documentId);
@@ -144,7 +162,8 @@ export async function removeBookmark(documentId: string) {
 }
 
 export async function isBookmarked(documentId: string) {
-  const { data, error } = await supabase
+  if (!supabase) return false;
+  const { data, error } = await client()
     .from('bookmarks')
     .select('id')
     .eq('document_id', documentId)
@@ -155,7 +174,8 @@ export async function isBookmarked(documentId: string) {
 }
 
 export async function getDocumentNotes(documentId: string) {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('document_notes')
     .select('*')
     .eq('document_id', documentId)
@@ -166,7 +186,8 @@ export async function getDocumentNotes(documentId: string) {
 }
 
 export async function addDocumentNote(documentId: string, content: string, position?: string) {
-  const { data, error } = await supabase
+  if (!supabase) return null;
+  const { data, error } = await client()
     .from('document_notes')
     .insert({ document_id: documentId, content, position })
     .select()
@@ -177,7 +198,8 @@ export async function addDocumentNote(documentId: string, content: string, posit
 }
 
 export async function deleteDocumentNote(noteId: string) {
-  const { error } = await supabase
+  if (!supabase) return;
+  const { error } = await client()
     .from('document_notes')
     .delete()
     .eq('id', noteId);
@@ -186,7 +208,8 @@ export async function deleteDocumentNote(noteId: string) {
 }
 
 export async function getDocumentLinks() {
-  const { data, error } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await client()
     .from('document_links')
     .select(`
       *,
@@ -199,7 +222,8 @@ export async function getDocumentLinks() {
 }
 
 export async function addDocumentLink(sourceId: string, targetId: string, linkType = 'reference') {
-  const { data, error } = await supabase
+  if (!supabase) return null;
+  const { data, error } = await client()
     .from('document_links')
     .insert({ source_document_id: sourceId, target_document_id: targetId, link_type: linkType })
     .select()
