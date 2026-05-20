@@ -1,0 +1,8 @@
+{
+  "name": "Automated Edition Manager — live ingest",
+  "method": "POST",
+  "url": "https://codex-system-architecture.vercel.app/api/edition-ingest",
+  "content_type": "application/json",
+  "upstream": "https://hzzzxmtpkgdmjcbncxjh.supabase.co/rest/v1/edition_manager_events",
+  "notes": "Agent calls Vercel API; server uses VITE_SUPABASE_* from Vercel env and writes edition_manager_events."
+}
