@@ -7,7 +7,11 @@
   "tables": {
     "knowledge": ["codex_documents", "codex_tags", "codex_document_tags", "document_links"],
     "interactions": ["reading_progress", "bookmarks", "document_notes"],
-    "control_panel": ["actions"]
+    "control_panel": ["actions"],
+    "edition_manager": ["edition_manager_events"]
+  },
+  "rest_ingest": {
+    "edition_manager_events": "POST https://hzzzxmtpkgdmjcbncxjh.supabase.co/rest/v1/edition_manager_events"
   },
   "rpc": {
     "initialize_session_start": {

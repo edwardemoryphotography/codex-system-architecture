@@ -7,6 +7,7 @@
 | Knowledge | `codex_documents`, `codex_tags`, `codex_document_tags`, `document_links` | Sidebar, viewer, graph, search |
 | Interactions | `reading_progress`, `bookmarks`, `document_notes` | Document viewer |
 | Control Panel | `actions`, `initialize_session_start(session_mode)` | Home screen Route Task |
+| Edition Manager | `edition_manager_events` (REST POST) | `scripts/print-sales-auto-agent.py` |
 
 ## Environment (all clients)
 

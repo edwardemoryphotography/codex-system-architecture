@@ -1,0 +1,7 @@
+{
+  "name": "Automated Edition Manager — live ingest",
+  "method": "POST",
+  "url": "https://hzzzxmtpkgdmjcbncxjh.supabase.co/rest/v1/edition_manager_events",
+  "content_type": "application/json",
+  "notes": "Print Sales Auto Agent posts abandoned-checkout and sale events here (Supabase REST, public insert RLS)."
+}
