@@ -10,7 +10,8 @@ import { ToastProvider } from './components/Toast';
 import { FeedbackFormExample } from './components/FeedbackFormExample';
 import { CodexDocument } from './types';
 import { Clock, History, MessageSquarePlus } from 'lucide-react';
-import { getRecentDocuments } from './lib/supabase';
+import { getRecentDocuments, isSupabaseConfigured } from './lib/supabase';
+import { SupabaseSetupBanner } from './components/SupabaseSetupBanner';
 
 interface RecentDoc {
   codex_documents: CodexDocument;
@@ -114,8 +115,10 @@ function App() {
 
   return (
     <ToastProvider isDarkMode={isDarkMode}>
-    <div className={`min-h-screen flex overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
-      <div className={`flex flex-col h-screen transition-all duration-500 ease-out
+    <div className={`min-h-screen flex flex-col transition-colors duration-500 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
+      {!isSupabaseConfigured && <SupabaseSetupBanner isDarkMode={isDarkMode} />}
+    <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className={`flex flex-col h-full transition-all duration-500 ease-out
         ${isFocusMode || isSplitView ? 'w-0 opacity-0 overflow-hidden' : 'w-72'}
         ${isDarkMode ? 'bg-gray-900/95 backdrop-blur-xl border-gray-800' : 'bg-white/95 backdrop-blur-xl border-gray-200'}
         border-r relative z-10
@@ -264,6 +267,7 @@ function App() {
         onClose={() => setIsFormExampleOpen(false)}
         isDarkMode={isDarkMode}
       />
+    </div>
     </div>
     </ToastProvider>
   );
