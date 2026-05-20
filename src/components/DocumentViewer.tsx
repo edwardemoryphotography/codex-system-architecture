@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getDocumentByPath, updateReadingProgress, getReadingProgress, isBookmarked, addBookmark, removeBookmark, getDocumentNotes, addDocumentNote, deleteDocumentNote } from '../lib/supabase';
 import { CodexDocument } from '../types';
-import { Calendar, FileText, ChevronRight, BookOpen, Sparkles, Star, Maximize2, MessageSquare, X, Send, Download, Columns } from 'lucide-react';
+import { Calendar, FileText, ChevronRight, Star, Maximize2, MessageSquare, X, Send, Download, Columns } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { TableOfContents } from './TableOfContents';
-import { ParticleField } from './ParticleField';
+import { ControlPanelScreen } from './ControlPanelScreen';
 import { ExportMenu } from './ExportMenu';
 
 interface DocumentViewerProps {
@@ -141,26 +141,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   };
 
   if (!path) {
-    return (
-      <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-gray-950' : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'}`}>
-        <ParticleField particleCount={50} connectionDistance={100} mouseRadius={180} className="opacity-40" />
-        <div className="text-center max-w-lg px-6 relative z-10">
-          <div className="w-24 h-24 mx-auto mb-8 rounded-3xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500 shadow-2xl shadow-blue-500/30 transform hover:scale-105 transition-transform duration-300">
-            <BookOpen className="w-12 h-12 text-white" />
-          </div>
-          <h2 className={`text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Welcome to Codex</h2>
-          <p className={`text-lg leading-relaxed mb-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Your personal knowledge base and operational system. Select a document from the navigation to explore.
-          </p>
-          <div className={`flex items-center justify-center gap-3 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            <Sparkles className="w-4 h-4" />
-            <span>Press</span>
-            <kbd className={`px-2 py-1 rounded font-mono text-xs ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>Cmd+K</kbd>
-            <span>to search</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <ControlPanelScreen isDarkMode={isDarkMode} />;
   }
 
   if (loading) {

@@ -4,7 +4,6 @@ import { SearchBar } from './components/SearchBar';
 import { DocumentViewer } from './components/DocumentViewer';
 import { CommandPalette } from './components/CommandPalette';
 import { KnowledgeGraph } from './components/KnowledgeGraph';
-import { ParticleField } from './components/ParticleField';
 import { SplitView } from './components/SplitView';
 import { TagFilter } from './components/TagFilter';
 import { ToastProvider } from './components/Toast';
@@ -116,12 +115,6 @@ function App() {
   return (
     <ToastProvider isDarkMode={isDarkMode}>
     <div className={`min-h-screen flex overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
-      {!selectedPath && !isFocusMode && !isSplitView && (
-        <div className="fixed inset-0 pointer-events-none">
-          <ParticleField particleCount={60} connectionDistance={120} mouseRadius={150} className="opacity-30 pointer-events-auto" />
-        </div>
-      )}
-
       <div className={`flex flex-col h-screen transition-all duration-500 ease-out
         ${isFocusMode || isSplitView ? 'w-0 opacity-0 overflow-hidden' : 'w-72'}
         ${isDarkMode ? 'bg-gray-900/95 backdrop-blur-xl border-gray-800' : 'bg-white/95 backdrop-blur-xl border-gray-200'}
