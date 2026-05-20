@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { CodexAction, SessionMode } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -231,4 +232,25 @@ export async function addDocumentLink(sourceId: string, targetId: string, linkTy
 
   if (error) throw error;
   return data;
+}
+
+export async function getActions() {
+  if (!supabase) return [];
+  const { data, error } = await client()
+    .from('actions')
+    .select('*')
+    .order('priority_weight', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as CodexAction[];
+}
+
+export async function initializeSessionStart(sessionMode: SessionMode = 'high') {
+  if (!supabase) return [];
+  const { data, error } = await client().rpc('initialize_session_start', {
+    session_mode: sessionMode,
+  });
+
+  if (error) throw error;
+  return (data ?? []) as CodexAction[];
 }

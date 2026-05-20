@@ -53,6 +53,8 @@ npm run build
 
 See [`.env.example`](./.env.example). Never commit `.env.local`.
 
+**One Supabase project** for docs + Control Panel: `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`). Details: [`supabase/SCHEMA.md`](./supabase/SCHEMA.md).
+
 ## Deploy (Vercel)
 
 1. Import this repo in [Vercel](https://vercel.com/new).
