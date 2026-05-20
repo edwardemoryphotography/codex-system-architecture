@@ -24,8 +24,12 @@ function App() {
   const [recentDocs, setRecentDocs] = useState<RecentDoc[]>([]);
   const [showRecent, setShowRecent] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('codex-dark-mode');
-    return saved ? JSON.parse(saved) : false;
+    try {
+      const saved = localStorage.getItem('codex-dark-mode');
+      return saved ? JSON.parse(saved) === true : true;
+    } catch {
+      return true;
+    }
   });
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
