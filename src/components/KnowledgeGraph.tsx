@@ -58,7 +58,6 @@ export function KnowledgeGraph({ isOpen, onClose, onSelectDocument, isDarkMode }
   const [isLoading, setIsLoading] = useState(true);
   const [nodeCount, setNodeCount] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
-  const [zoom, setZoom] = useState(1);
 
   isDarkModeRef.current = isDarkMode;
 
@@ -126,7 +125,7 @@ export function KnowledgeGraph({ isOpen, onClose, onSelectDocument, isDarkMode }
           return acc;
         }, {});
 
-        Object.values(categoryGroups).forEach((group) => {
+        (Object.values(categoryGroups) as CodexDocument[][]).forEach((group) => {
           for (let i = 0; i < group.length - 1; i++) {
             if (Math.random() > 0.5) {
               graphEdges.push({ source: group[i].id, target: group[i + 1].id });
@@ -384,23 +383,19 @@ export function KnowledgeGraph({ isOpen, onClose, onSelectDocument, isDarkMode }
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     zoomRef.current = Math.max(0.3, Math.min(3, zoomRef.current * delta));
-    setZoom(zoomRef.current);
   }, []);
 
   const handleZoomIn = useCallback(() => {
     zoomRef.current = Math.min(3, zoomRef.current * 1.2);
-    setZoom(zoomRef.current);
   }, []);
 
   const handleZoomOut = useCallback(() => {
     zoomRef.current = Math.max(0.3, zoomRef.current * 0.8);
-    setZoom(zoomRef.current);
   }, []);
 
   const resetView = useCallback(() => {
     zoomRef.current = 1;
     offsetRef.current = { x: 0, y: 0 };
-    setZoom(1);
   }, []);
 
   if (!isOpen) return null;

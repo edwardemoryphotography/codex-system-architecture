@@ -1,0 +1,1 @@
+{"id":"6bb9b9d9-b314-4be6-b4d6-324fcd87ba4a","received_at":"2026-05-20T01:58:59.965Z","event_type":"abandoned_checkout","customer_email":"test-buyer@example.com","cart_total_cents":29700,"edition_title":"Mountain Dawn — Limited Metal Print","payload":{"channel":"manual_test","recovery_email_draft":true},"source":"print-sales-auto-agent"}

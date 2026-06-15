@@ -1,0 +1,12 @@
+---
+description: Pointer to repo-wide agent behavior in CLAUDE.md (multi-tool canonical source).
+alwaysApply: false
+---
+
+# Agent behavior (pointer)
+
+**Canonical rules:** [`CLAUDE.md`](../../CLAUDE.md) → section **Agent behavior**.
+
+Do not treat this file as a separate rule set. It exists so Cursor rule discovery can link to the same guidance used by Claude Code, Codex, and other tools.
+
+Upstream reference: [Karpathy behavioral guidelines](https://github.com/multica-ai/andrej-karpathy-skills/blob/main/.cursor/rules/karpathy-guidelines.mdc).

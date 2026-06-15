@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, BookOpen, Folder } from 'lucide-react';
+import { ChevronDown, BookOpen, Folder } from 'lucide-react';
 import { getDocuments } from '../lib/supabase';
 import { CodexDocument } from '../types';
 

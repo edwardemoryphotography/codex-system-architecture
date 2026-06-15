@@ -44,20 +44,11 @@
     <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0a;color:#fafafa;font-family:system-ui,sans-serif">
+        Loading Cognition Requires Infrastructure…
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('SW registered:', registration.scope);
-            })
-            .catch(error => {
-              console.log('SW registration failed:', error);
-            });
-        });
-      }
-    </script>
   </body>
 </html>

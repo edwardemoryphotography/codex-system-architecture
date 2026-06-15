@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Check, Copy, CheckCheck } from 'lucide-react';
+import { ChevronRight, Check, Copy, CheckCheck } from 'lucide-react';
 
 interface MarkdownRendererProps {
   content: string;
