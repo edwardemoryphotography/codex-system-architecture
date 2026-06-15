@@ -1,7 +1,7 @@
 {
-  "name": "Codex System Architecture",
-  "short_name": "Codex",
-  "description": "Navigate, search, and explore system architecture documentation with hierarchical browsing and full-text search capabilities.",
+  "name": "Cognition Requires Infrastructure",
+  "short_name": "Cognition Requires Infrastructure",
+  "description": "A cinematic systems documentary about nonlinear cognition, creative overload, and the architecture required to turn vision into reality.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -73,23 +73,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Codex desktop view with document navigation"
+      "label": "Cognition Requires Infrastructure desktop experience"
     },
     {
       "src": "/screenshots/mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Codex mobile view"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Search Documents",
-      "short_name": "Search",
-      "description": "Search across all documents",
-      "url": "/?action=search",
-      "icons": [{ "src": "/icons/search-shortcut.svg", "sizes": "96x96" }]
+      "label": "Cognition Requires Infrastructure mobile experience"
     }
   ],
   "related_applications": [],
