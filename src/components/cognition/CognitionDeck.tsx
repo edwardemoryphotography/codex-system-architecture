@@ -135,6 +135,12 @@ export function CognitionDeck() {
       <CognitionBackground state={visualState} />
 
       <div className="cognition-deck__chrome">
+        <div className="cognition-deck__chrome-top">
+          <a className="cognition-deck__codex-link" href="/">
+            Back to Codex
+          </a>
+        </div>
+
         <div
           className="cognition-deck__progress"
           aria-label="Deck progress"

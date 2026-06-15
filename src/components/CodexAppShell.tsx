@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, History, MessageSquarePlus } from 'lucide-react';
+import { Brain, Clock, History, MessageSquarePlus } from 'lucide-react';
 
 import { Navigation } from './Navigation';
 import { SearchBar } from './SearchBar';
@@ -159,6 +159,21 @@ export function CodexAppShell() {
                   </p>
                 </div>
               </div>
+
+              <a
+                href="/cognition"
+                className={`mt-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all border ${
+                  isDarkMode
+                    ? 'border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/15 text-violet-200'
+                    : 'border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800'
+                }`}
+              >
+                <Brain className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1 font-medium">Cognition Deck</span>
+                <span className={`text-xs ${isDarkMode ? 'text-violet-300/70' : 'text-violet-600/70'}`}>
+                  Manifesto
+                </span>
+              </a>
 
               <button
                 onClick={() => setIsCommandPaletteOpen(true)}

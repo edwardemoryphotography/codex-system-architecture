@@ -127,6 +127,44 @@ body {
   padding-top: 0.25rem;
 }
 
+.cognition-deck__chrome-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cognition-deck__codex-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid rgb(var(--cognition-text-rgb) / 0.12);
+  border-radius: 999px;
+  background: rgb(var(--cognition-bg-rgb) / 0.34);
+  color: rgb(var(--cognition-text-rgb) / 0.72);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    color 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.cognition-deck__codex-link:hover {
+  color: rgb(var(--cognition-text-rgb) / 0.92);
+  border-color: rgb(var(--state-primary-rgb) / 0.34);
+  background: rgb(var(--cognition-bg-rgb) / 0.48);
+  box-shadow: 0 0 24px rgb(var(--state-primary-rgb) / 0.12);
+}
+
+.cognition-deck__codex-link:focus-visible {
+  outline: 2px solid rgb(var(--state-primary-rgb) / 0.72);
+  outline-offset: 3px;
+}
+
 .cognition-deck__progress {
   height: 4px;
   overflow: hidden;

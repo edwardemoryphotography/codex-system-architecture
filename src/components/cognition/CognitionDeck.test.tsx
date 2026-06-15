@@ -18,6 +18,7 @@ describe('CognitionDeck', () => {
       screen.getByRole('button', { name: /previous slide/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /next slide/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to codex/i })).toHaveAttribute('href', '/');
   });
 
   it('advances to the next slide from the next button', async () => {
