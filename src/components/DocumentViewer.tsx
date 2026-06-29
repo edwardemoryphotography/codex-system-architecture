@@ -179,9 +179,9 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className={`sticky top-0 z-10 backdrop-blur-xl transition-all duration-300 ${isDarkMode ? colors.darkBg + ' border-b ' + colors.darkBorder : colors.bg + ' border-b ' + colors.border}`}>
-          <div className={`max-w-4xl mx-auto px-8 py-6 ${isFocusMode ? 'max-w-3xl' : ''}`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className={`flex items-center gap-1 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+          <div className={`max-w-4xl mx-auto px-4 py-4 md:px-8 md:py-6 ${isFocusMode ? 'max-w-3xl' : ''}`}>
+            <div className="flex items-start md:items-center justify-between gap-3 mb-4">
+              <div className={`flex items-center gap-1 text-xs md:text-sm overflow-x-auto max-w-full ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
                 {pathParts.map((part, idx) => (
                   <span key={idx} className="flex items-center">
                     {idx > 0 && <ChevronRight className="w-4 h-4 mx-1" />}
@@ -207,7 +207,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
                   {showExport && <ExportMenu document={document} isDarkMode={isDarkMode} onClose={() => setShowExport(false)} />}
                 </div>
                 {onOpenSplitView && (
-                  <button onClick={onOpenSplitView} className={`p-2 rounded-xl transition-all ${isDarkMode ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`} title="Split view">
+                  <button onClick={onOpenSplitView} className={`hidden md:inline-flex p-2 rounded-xl transition-all ${isDarkMode ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`} title="Split view">
                     <Columns className="w-5 h-5" />
                   </button>
                 )}
@@ -223,7 +223,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
               {document.category.replace(/_/g, ' ').toUpperCase()}
             </div>
 
-            <h1 className={`text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{document.title}</h1>
+            <h1 className={`text-2xl md:text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{document.title}</h1>
 
             <div className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
               <Calendar className="w-4 h-4" />
@@ -232,7 +232,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
           </div>
         </div>
 
-        <article className={`max-w-4xl mx-auto px-8 py-8 ${isFocusMode ? 'max-w-3xl' : ''}`}>
+        <article className={`max-w-4xl mx-auto px-4 py-6 md:px-8 md:py-8 ${isFocusMode ? 'max-w-3xl' : ''}`}>
           <MarkdownRenderer content={document.content} isDarkMode={isDarkMode} />
         </article>
       </div>
@@ -240,7 +240,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
       <TableOfContents content={document.content} isDarkMode={isDarkMode} onNavigate={(id) => console.log('Navigate to:', id)} />
 
       {showNotes && (
-        <div className={`absolute right-4 top-32 w-80 rounded-2xl shadow-2xl overflow-hidden z-30 ${isDarkMode ? 'bg-gray-800/95 backdrop-blur-xl border border-gray-700' : 'bg-white/95 backdrop-blur-xl border border-gray-200'}`} style={{ animation: 'slideIn 0.2s ease-out' }}>
+        <div className={`fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:right-4 md:top-32 md:bottom-auto w-auto md:w-80 rounded-2xl shadow-2xl overflow-hidden z-30 pb-[env(safe-area-inset-bottom)] md:pb-0 ${isDarkMode ? 'bg-gray-800/95 backdrop-blur-xl border border-gray-700' : 'bg-white/95 backdrop-blur-xl border border-gray-200'}`} style={{ animation: 'slideIn 0.2s ease-out' }}>
           <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
             <div className="flex items-center justify-between">
               <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notes</h3>
