@@ -86,18 +86,18 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
 
   return (
     <div className={`flex-1 flex flex-col min-h-0 overflow-y-auto ${shell}`}>
-      <div className="flex-1 flex flex-col max-w-xl mx-auto w-full px-5 py-8 min-h-0">
-        <header className="mb-8 shrink-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Codex Control Panel</h1>
+      <div className="flex-1 flex flex-col max-w-xl mx-auto w-full px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-5 md:py-8 min-h-0">
+        <header className="mb-6 md:mb-8 shrink-0">
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Codex Control Panel</h1>
           <p className={`text-sm mt-1 ${muted}`}>Momentum-first routing</p>
         </header>
 
-        <section className="flex-1 flex flex-col gap-6 min-h-0">
+        <section className="flex-1 flex flex-col gap-5 md:gap-6 min-h-0">
           <textarea
             value={task}
             onChange={(e) => setTask(e.target.value)}
             placeholder="What needs to move forward?"
-            className={`w-full min-h-[160px] rounded-2xl border p-4 text-base resize-none focus:outline-none focus:border-neutral-600 ${panel} ${isDarkMode ? 'placeholder:text-neutral-500' : 'placeholder:text-neutral-400'}`}
+            className={`w-full min-h-[140px] md:min-h-[160px] rounded-2xl border p-4 text-base resize-none focus:outline-none focus:border-neutral-600 ${panel} ${isDarkMode ? 'placeholder:text-neutral-500' : 'placeholder:text-neutral-400'}`}
           />
 
           <div className="flex flex-wrap gap-2">
@@ -106,7 +106,7 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
                 key={c.id}
                 type="button"
                 onClick={() => setChip(chip === c.id ? null : c.id)}
-                className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                className={`px-3 py-2 md:py-1.5 rounded-full text-sm border transition ${
                   chip === c.id ? chipActive : chipIdle
                 }`}
               >

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, Clock, History, MessageSquarePlus } from 'lucide-react';
+import { Brain, Clock, History, Menu, MessageSquarePlus, Search, X } from 'lucide-react';
 
 import { Navigation } from './Navigation';
 import { SearchBar } from './SearchBar';
@@ -11,6 +11,7 @@ import { TagFilter } from './TagFilter';
 import { ToastProvider } from './Toast';
 import { FeedbackFormExample } from './FeedbackFormExample';
 import { SupabaseSetupBanner } from './SupabaseSetupBanner';
+import { useIsMobileLayout } from '../hooks/useMediaQuery';
 import { getRecentDocuments, isSupabaseConfigured } from '../lib/supabase';
 import type { CodexDocument } from '../types';
 
@@ -39,6 +40,10 @@ export function CodexAppShell() {
   const [splitLeftPath, setSplitLeftPath] = useState<string | null>(null);
   const [splitRightPath, setSplitRightPath] = useState<string | null>(null);
   const [isFormExampleOpen, setIsFormExampleOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const isMobileLayout = useIsMobileLayout();
+  const showDesktopSidebar = !isFocusMode && !isSplitView && !isMobileLayout;
+  const showMobileSidebar = isMobileLayout && isMobileNavOpen && !isFocusMode && !isSplitView;
 
   useEffect(() => {
     localStorage.setItem('codex-dark-mode', JSON.stringify(isDarkMode));
@@ -61,12 +66,32 @@ export function CodexAppShell() {
   }, [selectedPath]);
 
   useEffect(() => {
+    if (!isMobileLayout) {
+      setIsMobileNavOpen(false);
+    }
+  }, [isMobileLayout]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileNavOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen(true);
       }
       if (e.key === 'Escape') {
+        if (isMobileNavOpen) setIsMobileNavOpen(false);
         if (isFocusMode) setIsFocusMode(false);
         if (isSplitView) setIsSplitView(false);
       }
@@ -92,10 +117,11 @@ export function CodexAppShell() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFocusMode, isSplitView, selectedPath]);
+  }, [isFocusMode, isSplitView, isMobileNavOpen, selectedPath]);
 
   const handleSelectDocument = useCallback((path: string) => {
     setSelectedPath(path);
+    setIsMobileNavOpen(false);
   }, []);
 
   const openSplitView = useCallback(() => {
@@ -126,16 +152,34 @@ export function CodexAppShell() {
         }`}
       >
         {!isSupabaseConfigured && <SupabaseSetupBanner isDarkMode={isDarkMode} />}
-        <div className="flex flex-1 overflow-hidden min-h-0">
+        <div className="flex flex-1 overflow-hidden min-h-0 relative">
+          {showMobileSidebar && (
+            <button
+              type="button"
+              aria-label="Close navigation"
+              className="fixed inset-0 z-30 bg-black/55 md:hidden"
+              onClick={() => setIsMobileNavOpen(false)}
+            />
+          )}
+
           <div
-            className={`flex flex-col h-full transition-all duration-500 ease-out
-              ${isFocusMode || isSplitView ? 'w-0 opacity-0 overflow-hidden' : 'w-72'}
+            className={`flex flex-col h-full transition-all duration-300 ease-out border-r z-40
+              ${
+                isMobileLayout
+                  ? `fixed inset-y-0 left-0 w-[min(100vw,20rem)] max-w-full shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${
+                      showMobileSidebar
+                        ? 'translate-x-0 pointer-events-auto opacity-100'
+                        : '-translate-x-full pointer-events-none opacity-0'
+                    }`
+                  : showDesktopSidebar
+                    ? 'relative w-72 opacity-100'
+                    : 'relative w-0 opacity-0 overflow-hidden pointer-events-none'
+              }
               ${
                 isDarkMode
                   ? 'bg-gray-900/95 backdrop-blur-xl border-gray-800'
                   : 'bg-white/95 backdrop-blur-xl border-gray-200'
               }
-              border-r relative z-10
             `}
           >
             <div className={`p-4 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
@@ -150,7 +194,7 @@ export function CodexAppShell() {
                     />
                   </svg>
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Codex
                   </h1>
@@ -158,6 +202,20 @@ export function CodexAppShell() {
                     Knowledge System
                   </p>
                 </div>
+                {isMobileLayout && (
+                  <button
+                    type="button"
+                    aria-label="Close navigation"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className={`p-2 rounded-xl transition-all ${
+                      isDarkMode
+                        ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-300'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
               </div>
 
               <a
@@ -192,12 +250,17 @@ export function CodexAppShell() {
                   />
                 </svg>
                 <span className="flex-1 text-left">Quick search...</span>
-                <kbd className={`px-1.5 py-0.5 text-xs rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                <kbd
+                  className={`hidden md:inline px-1.5 py-0.5 text-xs rounded ${
+                    isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                  }`}
+                >
                   Cmd+K
                 </kbd>
               </button>
             </div>
 
+            <div className="flex-1 min-h-0 overflow-y-auto">
             <SearchBar
               onSelectDocument={handleSelectDocument}
               onSearchResults={() => {}}
@@ -264,8 +327,9 @@ export function CodexAppShell() {
               selectedPath={selectedPath}
               isDarkMode={isDarkMode}
             />
+            </div>
 
-            <div className={`p-3 border-t ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
+            <div className={`p-3 border-t shrink-0 ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsKnowledgeGraphOpen(true)}
@@ -320,7 +384,11 @@ export function CodexAppShell() {
                 </button>
               </div>
 
-              <div className={`mt-2 px-2 py-1.5 rounded-lg text-xs ${isDarkMode ? 'bg-gray-800/30 text-gray-500' : 'bg-gray-100/50 text-gray-400'}`}>
+              <div
+                className={`hidden md:block mt-2 px-2 py-1.5 rounded-lg text-xs ${
+                  isDarkMode ? 'bg-gray-800/30 text-gray-500' : 'bg-gray-100/50 text-gray-400'
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <span>Cmd+G</span>
                   <span>Graph</span>
@@ -337,7 +405,49 @@ export function CodexAppShell() {
             </div>
           </div>
 
-          <div className={`flex-1 relative transition-all duration-500 ${isFocusMode ? 'px-0' : ''}`}>
+          <div className={`flex-1 min-w-0 flex flex-col relative transition-all duration-500 ${isFocusMode ? 'px-0' : ''}`}>
+            {isMobileLayout && !isFocusMode && !isSplitView && (
+              <header
+                className={`shrink-0 flex items-center gap-3 px-4 py-3 border-b md:hidden pt-[max(0.75rem,env(safe-area-inset-top))] ${
+                  isDarkMode ? 'border-gray-800 bg-gray-950/95' : 'border-gray-200 bg-white/95'
+                }`}
+              >
+                <button
+                  type="button"
+                  aria-label="Open navigation"
+                  onClick={() => setIsMobileNavOpen(true)}
+                  className={`p-2.5 rounded-xl transition-all ${
+                    isDarkMode
+                      ? 'bg-gray-800/70 text-gray-200'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {selectedPath ? selectedPath.split('/').pop()?.replace('.md', '').replace(/_/g, ' ') : 'Codex Control Panel'}
+                  </p>
+                  <p className={`text-xs truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Knowledge System
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Open search"
+                  onClick={() => setIsCommandPaletteOpen(true)}
+                  className={`p-2.5 rounded-xl transition-all ${
+                    isDarkMode
+                      ? 'bg-gray-800/70 text-gray-200'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              </header>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col">
             {isFocusMode && (
               <button
                 onClick={() => setIsFocusMode(false)}
@@ -379,6 +489,7 @@ export function CodexAppShell() {
                 onOpenSplitView={openSplitView}
               />
             )}
+            </div>
           </div>
 
           <CommandPalette
