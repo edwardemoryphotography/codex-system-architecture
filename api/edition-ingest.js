@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 function normalizeSupabaseUrl(url) {
   if (!url) return url;
   const dashboard = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
-  return dashboard ? `https://${dashboard[1]}.supabase.co` : url;
+  return dashboard ? `https://${dashboard[1].toLowerCase()}.supabase.co` : url;
 }
 
 function getSupabase() {
@@ -25,12 +25,13 @@ function getSupabase() {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(204).end();
   }
   if (req.method !== 'POST' && req.method !== 'GET') {
-    return res.status(405).json({ error: 'POST only' });
+    res.setHeader('Allow', 'GET, POST, OPTIONS');
+    return res.status(405).json({ error: 'GET or POST only' });
   }
 
   const supabase = getSupabase();
@@ -44,13 +45,14 @@ export default async function handler(req, res) {
   // GET = health check: confirms env vars resolve and the table is reachable,
   // without writing anything. Checkable from a phone browser.
   if (req.method === 'GET') {
-    const { count, error } = await supabase
+    const { error } = await supabase
       .from('edition_manager_events')
-      .select('*', { count: 'exact', head: true });
+      .select('id')
+      .limit(1);
     if (error) {
       return res.status(503).json({ ok: false, configured: true, error: error.message, code: error.code });
     }
-    return res.status(200).json({ ok: true, configured: true, events: count });
+    return res.status(200).json({ ok: true, configured: true, reachable: true });
   }
 
   const body = req.body ?? {};

@@ -7,7 +7,7 @@ import type { CodexAction, SessionMode } from '../types';
 function normalizeSupabaseUrl(url: string | undefined): string | undefined {
   if (!url) return url;
   const dashboard = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
-  return dashboard ? `https://${dashboard[1]}.supabase.co` : url;
+  return dashboard ? `https://${dashboard[1].toLowerCase()}.supabase.co` : url;
 }
 
 const supabaseUrl = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL as string | undefined);
