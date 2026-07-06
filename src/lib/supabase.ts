@@ -1,7 +1,16 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { CodexAction, SessionMode } from '../types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+// VITE_SUPABASE_URL has been seen set to the dashboard page
+// (https://supabase.com/dashboard/project/<ref>) instead of the API URL,
+// which silently breaks every query. Derive the real endpoint from the ref.
+function normalizeSupabaseUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  const dashboard = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+  return dashboard ? `https://${dashboard[1].toLowerCase()}.supabase.co` : url;
+}
+
+const supabaseUrl = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL as string | undefined);
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);

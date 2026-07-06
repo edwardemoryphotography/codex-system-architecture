@@ -4,8 +4,17 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+// VITE_SUPABASE_URL has been seen set to the dashboard page
+// (https://supabase.com/dashboard/project/<ref>) instead of the API URL,
+// which silently breaks every insert. Derive the real endpoint from the ref.
+function normalizeSupabaseUrl(url) {
+  if (!url) return url;
+  const dashboard = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+  return dashboard ? `https://${dashboard[1].toLowerCase()}.supabase.co` : url;
+}
+
 function getSupabase() {
-  const url = process.env.VITE_SUPABASE_URL;
+  const url = normalizeSupabaseUrl(process.env.VITE_SUPABASE_URL);
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY;
@@ -16,12 +25,13 @@ function getSupabase() {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(204).end();
   }
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'POST only' });
+  if (req.method !== 'POST' && req.method !== 'GET') {
+    res.setHeader('Allow', 'GET, POST, OPTIONS');
+    return res.status(405).json({ error: 'GET or POST only' });
   }
 
   const supabase = getSupabase();
@@ -30,6 +40,19 @@ export default async function handler(req, res) {
       error: 'Supabase not configured on Vercel',
       hint: 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the Vercel project',
     });
+  }
+
+  // GET = health check: confirms env vars resolve and the table is reachable,
+  // without writing anything. Checkable from a phone browser.
+  if (req.method === 'GET') {
+    const { error } = await supabase
+      .from('edition_manager_events')
+      .select('id')
+      .limit(1);
+    if (error) {
+      return res.status(503).json({ ok: false, configured: true, error: error.message, code: error.code });
+    }
+    return res.status(200).json({ ok: true, configured: true, reachable: true });
   }
 
   const body = req.body ?? {};
