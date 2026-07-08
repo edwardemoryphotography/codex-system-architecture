@@ -1,14 +1,14 @@
 {
-  "name": "Cognition Requires Infrastructure",
-  "short_name": "Cognition Requires Infrastructure",
-  "description": "A cinematic systems documentary about nonlinear cognition, creative overload, and the architecture required to turn vision into reality.",
+  "name": "Codex — Knowledge System",
+  "short_name": "Codex",
+  "description": "Momentum-first knowledge and routing for nonlinear minds — documents, cognition deck, and control panel.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f3f4f6",
-  "theme_color": "#1f2937",
-  "categories": ["productivity", "utilities", "business"],
+  "background_color": "#070a10",
+  "theme_color": "#070a10",
+  "categories": ["productivity", "utilities", "education"],
   "lang": "en",
   "dir": "ltr",
   "icons": [
@@ -73,14 +73,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Cognition Requires Infrastructure desktop experience"
+      "label": "Codex desktop experience"
     },
     {
       "src": "/screenshots/mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Cognition Requires Infrastructure mobile experience"
+      "label": "Codex mobile experience"
     }
   ],
   "related_applications": [],

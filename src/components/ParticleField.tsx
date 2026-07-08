@@ -32,11 +32,11 @@ export function ParticleField({
   const dimensionsRef = useRef({ width: 0, height: 0 });
 
   const colors = [
-    'rgba(59, 130, 246, 0.8)',
-    'rgba(14, 165, 233, 0.8)',
-    'rgba(6, 182, 212, 0.8)',
-    'rgba(20, 184, 166, 0.8)',
-    'rgba(99, 102, 241, 0.6)',
+    'rgba(110, 212, 255, 0.75)',
+    'rgba(14, 165, 233, 0.65)',
+    'rgba(6, 182, 212, 0.7)',
+    'rgba(232, 184, 109, 0.45)',
+    'rgba(200, 208, 220, 0.4)',
   ];
 
   const initParticles = useCallback((width: number, height: number) => {

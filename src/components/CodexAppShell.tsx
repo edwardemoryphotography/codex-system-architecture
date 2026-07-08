@@ -148,7 +148,7 @@ export function CodexAppShell() {
     <ToastProvider isDarkMode={isDarkMode}>
       <div
         className={`min-h-screen flex flex-col transition-colors duration-500 ${
-          isDarkMode ? 'bg-gray-950' : 'bg-gray-50'
+          isDarkMode ? 'codex-atmosphere text-[#eef2f7]' : 'codex-atmosphere-light text-slate-900'
         }`}
       >
         {!isSupabaseConfigured && <SupabaseSetupBanner isDarkMode={isDarkMode} />}
@@ -157,7 +157,7 @@ export function CodexAppShell() {
             <button
               type="button"
               aria-label="Close navigation"
-              className="fixed inset-0 z-30 bg-black/55 md:hidden"
+              className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
               onClick={() => setIsMobileNavOpen(false)}
             />
           )}
@@ -177,28 +177,42 @@ export function CodexAppShell() {
               }
               ${
                 isDarkMode
-                  ? 'bg-gray-900/95 backdrop-blur-xl border-gray-800'
-                  : 'bg-white/95 backdrop-blur-xl border-gray-200'
+                  ? 'bg-[#0a0e16]/90 backdrop-blur-2xl border-white/8'
+                  : 'bg-white/90 backdrop-blur-2xl border-slate-200/80'
               }
             `}
           >
-            <div className={`p-4 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
+            <div className={`p-4 border-b ${isDarkMode ? 'border-white/8' : 'border-slate-100'}`}>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/20">
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-codex-glow ${
+                    isDarkMode
+                      ? 'bg-gradient-to-br from-codex-cyan/90 to-sky-600'
+                      : 'bg-gradient-to-br from-sky-500 to-cyan-600'
+                  }`}
+                >
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
+                      strokeWidth={1.75}
                       d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                     />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <h1
+                    className={`font-display text-xl font-bold tracking-tight ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
                     Codex
                   </h1>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  <p
+                    className={`font-mono text-[0.62rem] tracking-[0.16em] uppercase ${
+                      isDarkMode ? 'text-white/35' : 'text-slate-400'
+                    }`}
+                  >
                     Knowledge System
                   </p>
                 </div>
@@ -209,8 +223,8 @@ export function CodexAppShell() {
                     onClick={() => setIsMobileNavOpen(false)}
                     className={`p-2 rounded-xl transition-all ${
                       isDarkMode
-                        ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-300'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                        ? 'bg-white/5 hover:bg-white/10 text-white/70'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                     }`}
                   >
                     <X className="w-5 h-5" />
@@ -222,23 +236,27 @@ export function CodexAppShell() {
                 href="/cognition"
                 className={`mt-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all border ${
                   isDarkMode
-                    ? 'border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/15 text-violet-200'
-                    : 'border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800'
+                    ? 'border-codex-cyan/20 bg-codex-cyan/8 hover:bg-codex-cyan/12 text-codex-cyan'
+                    : 'border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
                 }`}
               >
                 <Brain className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                 <span className="flex-1 font-medium">Cognition Deck</span>
-                <span className={`text-xs ${isDarkMode ? 'text-violet-300/70' : 'text-violet-600/70'}`}>
+                <span
+                  className={`font-mono text-[0.6rem] tracking-[0.12em] uppercase ${
+                    isDarkMode ? 'text-codex-cyan/55' : 'text-sky-600/70'
+                  }`}
+                >
                   Manifesto
                 </span>
               </a>
 
               <button
                 onClick={() => setIsCommandPaletteOpen(true)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                className={`w-full mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                   isDarkMode
-                    ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-400'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
+                    ? 'bg-white/[0.04] hover:bg-white/[0.07] text-white/45 border border-white/8'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-transparent'
                 }`}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -251,8 +269,8 @@ export function CodexAppShell() {
                 </svg>
                 <span className="flex-1 text-left">Quick search...</span>
                 <kbd
-                  className={`hidden md:inline px-1.5 py-0.5 text-xs rounded ${
-                    isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                  className={`hidden md:inline px-1.5 py-0.5 font-mono text-[0.65rem] rounded ${
+                    isDarkMode ? 'bg-white/10 text-white/50' : 'bg-slate-200 text-slate-500'
                   }`}
                 >
                   Cmd+K
@@ -274,22 +292,28 @@ export function CodexAppShell() {
             />
 
             {recentDocs.length > 0 && (
-              <div className={`mx-3 mb-2 rounded-xl overflow-hidden ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100/80'}`}>
+              <div
+                className={`mx-3 mb-2 rounded-xl overflow-hidden border ${
+                  isDarkMode ? 'bg-white/[0.03] border-white/8' : 'bg-slate-100/80 border-transparent'
+                }`}
+              >
                 <button
                   onClick={() => setShowRecent(!showRecent)}
                   className={`w-full flex items-center justify-between px-3 py-2 transition-colors ${
-                    isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-200/50'
+                    isDarkMode ? 'hover:bg-white/[0.04]' : 'hover:bg-slate-200/50'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <History className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                    <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <History className={`w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`} />
+                    <span
+                      className={`text-sm font-medium ${isDarkMode ? 'text-white/75' : 'text-slate-700'}`}
+                    >
                       Recent
                     </span>
                   </div>
                   <svg
                     className={`w-4 h-4 transition-transform ${showRecent ? 'rotate-180' : ''} ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      isDarkMode ? 'text-white/40' : 'text-slate-500'
                     }`}
                     fill="none"
                     viewBox="0 0 24 24"
@@ -305,14 +329,24 @@ export function CodexAppShell() {
                         key={doc.codex_documents.id}
                         onClick={() => handleSelectDocument(doc.codex_documents.path)}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${
-                          isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-white'
+                          isDarkMode ? 'hover:bg-white/[0.05]' : 'hover:bg-white'
                         }`}
                       >
-                        <Clock className={`w-3 h-3 flex-shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                        <span className={`text-xs truncate flex-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        <Clock
+                          className={`w-3 h-3 flex-shrink-0 ${isDarkMode ? 'text-white/30' : 'text-slate-400'}`}
+                        />
+                        <span
+                          className={`text-xs truncate flex-1 ${
+                            isDarkMode ? 'text-white/65' : 'text-slate-600'
+                          }`}
+                        >
                           {doc.codex_documents.title}
                         </span>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                        <span
+                          className={`font-mono text-[0.6rem] ${
+                            isDarkMode ? 'text-white/25' : 'text-slate-400'
+                          }`}
+                        >
                           {formatTimeAgo(doc.last_read_at)}
                         </span>
                       </button>
@@ -329,12 +363,14 @@ export function CodexAppShell() {
             />
             </div>
 
-            <div className={`p-3 border-t shrink-0 ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
+            <div className={`p-3 border-t shrink-0 ${isDarkMode ? 'border-white/8' : 'border-slate-100'}`}>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsKnowledgeGraphOpen(true)}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${
-                    isDarkMode ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    isDarkMode
+                      ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white/70 border border-white/8'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                   }`}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -350,7 +386,9 @@ export function CodexAppShell() {
                 <button
                   onClick={() => setIsFormExampleOpen(true)}
                   className={`p-2 rounded-xl transition-all ${
-                    isDarkMode ? 'bg-gray-800/50 hover:bg-gray-800 text-green-400' : 'bg-gray-100 hover:bg-gray-200 text-green-600'
+                    isDarkMode
+                      ? 'bg-white/[0.04] hover:bg-white/[0.08] text-emerald-400 border border-white/8'
+                      : 'bg-slate-100 hover:bg-slate-200 text-emerald-600'
                   }`}
                   title="Form Validation Demo"
                 >
@@ -359,7 +397,9 @@ export function CodexAppShell() {
                 <button
                   onClick={() => setIsDarkMode(!isDarkMode)}
                   className={`p-2 rounded-xl transition-all ${
-                    isDarkMode ? 'bg-gray-800/50 hover:bg-gray-800 text-yellow-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    isDarkMode
+                      ? 'bg-white/[0.04] hover:bg-white/[0.08] text-codex-amber border border-white/8'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                   }`}
                 >
                   {isDarkMode ? (
@@ -385,8 +425,8 @@ export function CodexAppShell() {
               </div>
 
               <div
-                className={`hidden md:block mt-2 px-2 py-1.5 rounded-lg text-xs ${
-                  isDarkMode ? 'bg-gray-800/30 text-gray-500' : 'bg-gray-100/50 text-gray-400'
+                className={`hidden md:block mt-2 px-2.5 py-2 rounded-xl font-mono text-[0.62rem] tracking-[0.08em] ${
+                  isDarkMode ? 'bg-white/[0.03] text-white/30' : 'bg-slate-100/50 text-slate-400'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -408,8 +448,10 @@ export function CodexAppShell() {
           <div className={`flex-1 min-w-0 flex flex-col relative transition-all duration-500 ${isFocusMode ? 'px-0' : ''}`}>
             {isMobileLayout && !isFocusMode && !isSplitView && (
               <header
-                className={`shrink-0 flex items-center gap-3 px-4 py-3 border-b md:hidden pt-[max(0.75rem,env(safe-area-inset-top))] ${
-                  isDarkMode ? 'border-gray-800 bg-gray-950/95' : 'border-gray-200 bg-white/95'
+                className={`shrink-0 flex items-center gap-3 px-4 py-3 border-b md:hidden pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl ${
+                  isDarkMode
+                    ? 'border-white/8 bg-[#070a10]/90'
+                    : 'border-slate-200 bg-white/90'
                 }`}
               >
                 <button
@@ -418,18 +460,28 @@ export function CodexAppShell() {
                   onClick={() => setIsMobileNavOpen(true)}
                   className={`p-2.5 rounded-xl transition-all ${
                     isDarkMode
-                      ? 'bg-gray-800/70 text-gray-200'
-                      : 'bg-gray-100 text-gray-700'
+                      ? 'bg-white/[0.06] text-white/85'
+                      : 'bg-slate-100 text-slate-700'
                   }`}
                 >
                   <Menu className="w-5 h-5" />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedPath ? selectedPath.split('/').pop()?.replace('.md', '').replace(/_/g, ' ') : 'Codex Control Panel'}
+                  <p
+                    className={`text-sm font-display font-semibold truncate ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
+                    {selectedPath
+                      ? selectedPath.split('/').pop()?.replace('.md', '').replace(/_/g, ' ')
+                      : 'Codex'}
                   </p>
-                  <p className={`text-xs truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Knowledge System
+                  <p
+                    className={`font-mono text-[0.6rem] tracking-[0.14em] uppercase truncate ${
+                      isDarkMode ? 'text-white/35' : 'text-slate-400'
+                    }`}
+                  >
+                    {selectedPath ? 'Knowledge System' : 'Control Panel'}
                   </p>
                 </div>
                 <button
@@ -438,8 +490,8 @@ export function CodexAppShell() {
                   onClick={() => setIsCommandPaletteOpen(true)}
                   className={`p-2.5 rounded-xl transition-all ${
                     isDarkMode
-                      ? 'bg-gray-800/70 text-gray-200'
-                      : 'bg-gray-100 text-gray-700'
+                      ? 'bg-white/[0.06] text-white/85'
+                      : 'bg-slate-100 text-slate-700'
                   }`}
                 >
                   <Search className="w-5 h-5" />

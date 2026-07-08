@@ -96,11 +96,11 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
           className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-all duration-200 group
             ${isSelected
               ? isDarkMode
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-blue-50 text-blue-700'
+                ? 'bg-codex-cyan/12 text-codex-cyan'
+                : 'bg-sky-50 text-sky-700'
               : isDarkMode
-                ? 'text-gray-300 hover:bg-gray-800'
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'text-white/65 hover:bg-white/[0.04] hover:text-white/90'
+                : 'text-slate-700 hover:bg-slate-100'
             }
           `}
           style={{ paddingLeft: `${12 + level * 14}px` }}
@@ -108,7 +108,7 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
           <span className={`transition-transform duration-200 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
             {hasChildren ? (
               <ChevronDown className={`w-4 h-4 flex-shrink-0 ${
-                isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                isDarkMode ? 'text-white/30' : 'text-slate-400'
               }`} />
             ) : (
               <div className="w-4" />
@@ -136,10 +136,10 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
 
   if (loading) {
     return (
-      <div className={`flex-1 p-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+      <div className={`flex-1 p-4 ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Loading...</span>
+          <div className="w-4 h-4 border-2 border-codex-cyan border-t-transparent rounded-full animate-spin" />
+          <span className="font-mono text-[0.68rem] tracking-[0.14em] uppercase">Loading</span>
         </div>
       </div>
     );
