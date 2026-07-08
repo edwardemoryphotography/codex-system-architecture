@@ -146,13 +146,27 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
 
   if (loading) {
     return (
-      <div className={`flex-1 flex items-center justify-center ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`}>
-        <div className="text-center">
-          <div className="w-16 h-16 relative mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div
+        className={`flex-1 flex items-center justify-center ${
+          isDarkMode ? 'bg-transparent' : 'bg-transparent'
+        }`}
+      >
+        <div className="text-center codex-fade-up">
+          <div className="w-14 h-14 relative mx-auto mb-5">
+            <div
+              className={`absolute inset-0 border-2 rounded-full ${
+                isDarkMode ? 'border-white/10' : 'border-slate-200'
+              }`}
+            />
+            <div className="absolute inset-0 border-2 border-codex-cyan border-t-transparent rounded-full animate-spin" />
           </div>
-          <p className={`font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading document...</p>
+          <p
+            className={`font-mono text-[0.68rem] tracking-[0.18em] uppercase ${
+              isDarkMode ? 'text-white/40' : 'text-slate-500'
+            }`}
+          >
+            Loading document
+          </p>
         </div>
       </div>
     );
@@ -160,10 +174,12 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
 
   if (error || !document) {
     return (
-      <div className={`flex-1 flex items-center justify-center ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`}>
-        <div className="text-center p-8">
-          <FileText className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
-          <p className={`font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{error || 'Document not found'}</p>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center p-8 codex-fade-up">
+          <FileText className={`w-14 h-14 mx-auto mb-4 ${isDarkMode ? 'text-white/15' : 'text-slate-300'}`} />
+          <p className={`font-medium ${isDarkMode ? 'text-white/45' : 'text-slate-500'}`}>
+            {error || 'Document not found'}
+          </p>
         </div>
       </div>
     );
@@ -174,18 +190,45 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   const pathParts = document.path.split('/').filter(Boolean);
 
   return (
-    <div className={`flex-1 flex flex-col overflow-hidden relative ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`}>
-      <div className="absolute top-0 left-0 right-0 h-1 z-20" style={{ background: `linear-gradient(to right, #3b82f6 ${scrollProgress}%, ${isDarkMode ? '#1f2937' : '#e5e7eb'} ${scrollProgress}%)` }} />
+    <div
+      className={`flex-1 flex flex-col overflow-hidden relative ${
+        isDarkMode ? 'bg-[#070a10]/40' : 'bg-white/70'
+      }`}
+    >
+      <div
+        className="absolute top-0 left-0 right-0 h-0.5 z-20"
+        style={{
+          background: `linear-gradient(to right, #6ed4ff ${scrollProgress}%, ${
+            isDarkMode ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
+          } ${scrollProgress}%)`,
+        }}
+      />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className={`sticky top-0 z-10 backdrop-blur-xl transition-all duration-300 ${isDarkMode ? colors.darkBg + ' border-b ' + colors.darkBorder : colors.bg + ' border-b ' + colors.border}`}>
+        <div
+          className={`sticky top-0 z-10 backdrop-blur-xl transition-all duration-300 ${
+            isDarkMode
+              ? colors.darkBg + ' border-b ' + colors.darkBorder
+              : colors.bg + ' border-b ' + colors.border
+          }`}
+        >
           <div className={`max-w-4xl mx-auto px-4 py-4 md:px-8 md:py-6 ${isFocusMode ? 'max-w-3xl' : ''}`}>
             <div className="flex items-start md:items-center justify-between gap-3 mb-4">
-              <div className={`flex items-center gap-1 text-xs md:text-sm overflow-x-auto max-w-full ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+              <div
+                className={`flex items-center gap-1 font-mono text-[0.65rem] md:text-xs tracking-[0.06em] overflow-x-auto max-w-full ${
+                  isDarkMode ? 'text-white/35' : 'text-slate-500'
+                }`}
+              >
                 {pathParts.map((part, idx) => (
                   <span key={idx} className="flex items-center">
-                    {idx > 0 && <ChevronRight className="w-4 h-4 mx-1" />}
-                    <span className={idx === pathParts.length - 1 ? (isDarkMode ? colors.darkText : colors.text) + ' font-medium' : ''}>
+                    {idx > 0 && <ChevronRight className="w-3.5 h-3.5 mx-1 opacity-60" />}
+                    <span
+                      className={
+                        idx === pathParts.length - 1
+                          ? (isDarkMode ? colors.darkText : colors.text) + ' font-medium'
+                          : ''
+                      }
+                    >
                       {part.replace('.md', '').replace(/_/g, ' ')}
                     </span>
                   </span>
@@ -219,20 +262,40 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
               </div>
             </div>
 
-            <div className={`inline-block px-3 py-1 text-xs font-semibold rounded-full mb-3 ${isDarkMode ? colors.darkBg + ' ' + colors.darkText + ' border ' + colors.darkBorder : colors.bg + ' ' + colors.text + ' border ' + colors.border}`}>
+            <div
+              className={`inline-block px-3 py-1 font-mono text-[0.62rem] tracking-[0.16em] font-medium rounded-full mb-3 ${
+                isDarkMode
+                  ? colors.darkBg + ' ' + colors.darkText + ' border ' + colors.darkBorder
+                  : colors.bg + ' ' + colors.text + ' border ' + colors.border
+              }`}
+            >
               {document.category.replace(/_/g, ' ').toUpperCase()}
             </div>
 
-            <h1 className={`text-2xl md:text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{document.title}</h1>
+            <h1
+              className={`font-display text-2xl md:text-4xl font-bold tracking-[-0.03em] leading-[1.1] mb-4 ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}
+            >
+              {document.title}
+            </h1>
 
-            <div className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+            <div
+              className={`flex items-center gap-2 text-sm ${
+                isDarkMode ? 'text-white/40' : 'text-slate-500'
+              }`}
+            >
               <Calendar className="w-4 h-4" />
               <span>Last updated {formatDate(document.updated_at)}</span>
             </div>
           </div>
         </div>
 
-        <article className={`max-w-4xl mx-auto px-4 py-6 md:px-8 md:py-8 ${isFocusMode ? 'max-w-3xl' : ''}`}>
+        <article
+          className={`max-w-4xl mx-auto px-4 py-6 md:px-8 md:py-8 codex-fade-up ${
+            isFocusMode ? 'max-w-3xl' : ''
+          }`}
+        >
           <MarkdownRenderer content={document.content} isDarkMode={isDarkMode} />
         </article>
       </div>
@@ -277,9 +340,6 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
         </div>
       )}
 
-      <style>{`
-        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-      `}</style>
     </div>
   );
 }

@@ -200,23 +200,23 @@ export function CommandPalette({
   let flatIndex = 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] md:pt-[15vh]">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
         onClick={onClose}
       />
 
       <div
-        className={`relative w-full max-w-2xl mx-4 rounded-2xl shadow-2xl overflow-hidden
-          ${isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'}
+        className={`relative w-full max-w-2xl mx-4 rounded-2xl shadow-codex-panel overflow-hidden
+          ${isDarkMode ? 'bg-[#0c111a]/95 border border-white/10' : 'bg-white border border-slate-200'}
           transform transition-all duration-200 ease-out
         `}
         style={{
           animation: 'commandPaletteIn 0.2s ease-out'
         }}
       >
-        <div className={`flex items-center gap-3 px-4 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-          <Search className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
+        <div className={`flex items-center gap-3 px-4 py-4 border-b ${isDarkMode ? 'border-white/8' : 'border-slate-100'}`}>
+          <Search className={`w-5 h-5 ${isDarkMode ? 'text-codex-cyan/70' : 'text-slate-400'}`} />
           <input
             ref={inputRef}
             type="text"
@@ -225,11 +225,11 @@ export function CommandPalette({
             onKeyDown={handleKeyDown}
             placeholder="Search documents, actions, or type a command..."
             className={`flex-1 bg-transparent outline-none text-lg
-              ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}
+              ${isDarkMode ? 'text-white placeholder-white/30' : 'text-slate-900 placeholder-slate-400'}
             `}
           />
-          <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium
-            ${isDarkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'}
+          <div className={`flex items-center gap-1 px-2 py-1 rounded font-mono text-[0.65rem]
+            ${isDarkMode ? 'bg-white/8 text-white/40' : 'bg-slate-100 text-slate-500'}
           `}>
             <Command className="w-3 h-3" />
             <span>K</span>
@@ -241,19 +241,19 @@ export function CommandPalette({
           className="max-h-[400px] overflow-y-auto py-2"
         >
           {isLoading ? (
-            <div className={`px-4 py-8 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-sm">Searching...</p>
+            <div className={`px-4 py-8 text-center ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
+              <div className="w-6 h-6 border-2 border-codex-cyan border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+              <p className="font-mono text-[0.68rem] tracking-[0.14em] uppercase">Searching</p>
             </div>
           ) : items.length === 0 ? (
-            <div className={`px-4 py-8 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <div className={`px-4 py-8 text-center ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
               <p className="text-sm">No results found</p>
             </div>
           ) : (
             Object.entries(groupedItems).map(([group, groupItems]) => (
               <div key={group}>
-                <div className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider
-                  ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}
+                <div className={`px-4 py-2 font-mono text-[0.62rem] font-medium uppercase tracking-[0.16em]
+                  ${isDarkMode ? 'text-white/30' : 'text-slate-400'}
                 `}>
                   {group}
                 </div>
@@ -269,11 +269,11 @@ export function CommandPalette({
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-150
                         ${isSelected
                           ? isDarkMode
-                            ? 'bg-gray-800 text-white'
-                            : 'bg-blue-50 text-blue-900'
+                            ? 'bg-codex-cyan/10 text-white'
+                            : 'bg-sky-50 text-sky-900'
                           : isDarkMode
-                            ? 'text-gray-300 hover:bg-gray-800'
-                            : 'text-gray-700 hover:bg-gray-50'
+                            ? 'text-white/65 hover:bg-white/[0.04]'
+                            : 'text-slate-700 hover:bg-slate-50'
                         }
                       `}
                     >
