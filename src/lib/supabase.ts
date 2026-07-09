@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
 import type { CodexAction, CodexDocument, SessionMode } from '../types';
 
 // VITE_SUPABASE_URL has been seen set to the dashboard page
@@ -69,7 +70,7 @@ function client(): SupabaseClient {
   return supabase;
 }
 
-export async function getDocuments() {
+async function fetchLiveDocuments(): Promise<CodexDocument[]> {
   if (!supabase) return [];
   const { data, error } = await client()
     .from('codex_documents')
@@ -81,8 +82,29 @@ export async function getDocuments() {
   return (data ?? []).map((row) => normalizeDocument(row as Record<string, unknown>));
 }
 
+export async function getDocuments() {
+  if (!supabase) {
+    return corpusToDocuments();
+  }
+
+  try {
+    const liveDocs = await fetchLiveDocuments();
+    if (isLeanDocumentSet(liveDocs)) {
+      return corpusToDocuments();
+    }
+    return liveDocs;
+  } catch {
+    return corpusToDocuments();
+  }
+}
+
 export async function getDocumentByPath(path: string) {
-  if (!supabase) return null;
+  const corpusDocs = corpusToDocuments();
+  const corpusMatch = corpusDocs.find((doc) => doc.path === path) ?? null;
+
+  if (!supabase) {
+    return corpusMatch;
+  }
 
   const byPath = await client()
     .from('codex_documents')
@@ -117,6 +139,10 @@ export async function getDocumentByPath(path: string) {
     }
   }
 
+  if (corpusMatch) {
+    return corpusMatch;
+  }
+
   // Final fallback: load all and match synthesized path (small datasets only).
   if (isMissingColumnError(byPath.error) || isMissingRelationError(byPath.error) || !byPath.data) {
     const docs = await getDocuments();
@@ -128,27 +154,22 @@ export async function getDocumentByPath(path: string) {
 }
 
 export async function searchDocuments(query: string) {
-  if (!supabase) return [];
-  const { data, error } = await client()
-    .from('codex_documents')
-    .select('*')
-    .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
-    .order('category', { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []).map((row) => normalizeDocument(row as Record<string, unknown>));
+  const docs = await getDocuments();
+  const needle = query.trim().toLowerCase();
+  if (!needle) return docs;
+  return docs.filter(
+    (doc) =>
+      doc.title.toLowerCase().includes(needle) ||
+      doc.content.toLowerCase().includes(needle) ||
+      doc.path.toLowerCase().includes(needle),
+  );
 }
 
 export async function getDocumentsByCategory(category: string) {
-  if (!supabase) return [];
-  const { data, error } = await client()
-    .from('codex_documents')
-    .select('*')
-    .eq('category', category)
-    .order('order', { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []).map((row) => normalizeDocument(row as Record<string, unknown>));
+  const docs = await getDocuments();
+  return docs
+    .filter((doc) => doc.category === category)
+    .sort((a, b) => a.order - b.order);
 }
 
 export async function getTags() {

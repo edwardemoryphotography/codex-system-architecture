@@ -31,6 +31,7 @@ const categoryColors: Record<string, { bg: string; text: string; border: string;
   business: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', darkBg: 'bg-orange-500/10', darkText: 'text-orange-400', darkBorder: 'border-orange-500/30' },
   personal_os: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', darkBg: 'bg-teal-500/10', darkText: 'text-teal-400', darkBorder: 'border-teal-500/30' },
   convergence: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', darkBg: 'bg-slate-500/10', darkText: 'text-slate-400', darkBorder: 'border-slate-500/30' },
+  onboarding: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', darkBg: 'bg-violet-500/10', darkText: 'text-violet-400', darkBorder: 'border-violet-500/30' },
 };
 
 export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, onToggleFocusMode, onOpenSplitView }: DocumentViewerProps) {
