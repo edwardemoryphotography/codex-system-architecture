@@ -1,17 +1,58 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { CodexAction, SessionMode } from '../types';
+import type { CodexAction, CodexDocument, SessionMode } from '../types';
 
 // VITE_SUPABASE_URL has been seen set to the dashboard page
 // (https://supabase.com/dashboard/project/<ref>) instead of the API URL,
 // which silently breaks every query. Derive the real endpoint from the ref.
-function normalizeSupabaseUrl(url: string | undefined): string | undefined {
+export function normalizeSupabaseUrl(url: string | undefined): string | undefined {
   if (!url) return url;
   const dashboard = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
   return dashboard ? `https://${dashboard[1].toLowerCase()}.supabase.co` : url;
 }
 
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/** Normalize lean/partial schemas (missing path/parent_id) into CodexDocument shape. */
+export function normalizeDocument(row: Record<string, unknown>): CodexDocument {
+  const id = String(row.id ?? '');
+  const title = String(row.title ?? 'Untitled');
+  const category = String(row.category ?? 'root');
+  const existingPath = typeof row.path === 'string' && row.path.length > 0 ? row.path : null;
+
+  return {
+    id,
+    title,
+    path: existingPath ?? `/${category}/${slugify(title) || id.slice(0, 8)}`,
+    content: String(row.content ?? ''),
+    category,
+    parent_id: (row.parent_id as string | null | undefined) ?? null,
+    order: typeof row.order === 'number' ? row.order : 0,
+    created_at: String(row.created_at ?? new Date().toISOString()),
+    updated_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString()),
+  };
+}
+
+function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST205' || /could not find the table/i.test(error.message ?? '');
+}
+
+function isMissingColumnError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '42703' || /column .* does not exist/i.test(error.message ?? '');
+}
+
 const supabaseUrl = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL as string | undefined);
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// Prefer the legacy anon key; fall back to the newer publishable key name from
+// Supabase dashboard "Connect" snippets (Vite apps still use createClient).
+const supabaseAnonKey =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined);
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
@@ -21,7 +62,9 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
 
 function client(): SupabaseClient {
   if (!supabase) {
-    throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+    throw new Error(
+      'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY).',
+    );
   }
   return supabase;
 }
@@ -35,12 +78,13 @@ export async function getDocuments() {
     .order('order', { ascending: true });
 
   if (error) throw error;
-  return data;
+  return (data ?? []).map((row) => normalizeDocument(row as Record<string, unknown>));
 }
 
 export async function getDocumentByPath(path: string) {
   if (!supabase) return null;
-  const { data, error } = await client()
+
+  const byPath = await client()
     .from('codex_documents')
     .select(`
       *,
@@ -51,8 +95,36 @@ export async function getDocumentByPath(path: string) {
     .eq('path', path)
     .maybeSingle();
 
-  if (error) throw error;
-  return data;
+  if (!byPath.error && byPath.data) {
+    return normalizeDocument(byPath.data as Record<string, unknown>);
+  }
+
+  // Lean schemas may omit `path` / tag joins — fall back to id lookup.
+  const idMatch = path.match(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  );
+  const candidateId = idMatch?.[0] ?? (path.includes('/') ? null : path);
+
+  if (candidateId) {
+    const byId = await client()
+      .from('codex_documents')
+      .select('*')
+      .eq('id', candidateId)
+      .maybeSingle();
+
+    if (!byId.error && byId.data) {
+      return normalizeDocument(byId.data as Record<string, unknown>);
+    }
+  }
+
+  // Final fallback: load all and match synthesized path (small datasets only).
+  if (isMissingColumnError(byPath.error) || isMissingRelationError(byPath.error) || !byPath.data) {
+    const docs = await getDocuments();
+    return docs.find((doc) => doc.path === path) ?? null;
+  }
+
+  if (byPath.error) throw byPath.error;
+  return null;
 }
 
 export async function searchDocuments(query: string) {
@@ -64,7 +136,7 @@ export async function searchDocuments(query: string) {
     .order('category', { ascending: true });
 
   if (error) throw error;
-  return data;
+  return (data ?? []).map((row) => normalizeDocument(row as Record<string, unknown>));
 }
 
 export async function getDocumentsByCategory(category: string) {
@@ -76,7 +148,7 @@ export async function getDocumentsByCategory(category: string) {
     .order('order', { ascending: true });
 
   if (error) throw error;
-  return data;
+  return (data ?? []).map((row) => normalizeDocument(row as Record<string, unknown>));
 }
 
 export async function getTags() {
@@ -86,6 +158,7 @@ export async function getTags() {
     .select('*')
     .order('name', { ascending: true });
 
+  if (isMissingRelationError(error)) return [];
   if (error) throw error;
   return data;
 }
@@ -101,8 +174,14 @@ export async function getRecentDocuments(limit = 10) {
     .order('last_read_at', { ascending: false })
     .limit(limit);
 
+  if (isMissingRelationError(error)) return [];
   if (error) throw error;
-  return data;
+  return (data ?? []).map((row) => {
+    const doc = row.codex_documents
+      ? normalizeDocument(row.codex_documents as Record<string, unknown>)
+      : null;
+    return { ...row, codex_documents: doc };
+  });
 }
 
 export async function updateReadingProgress(documentId: string, scrollPosition: number, timeSpent: number) {
@@ -119,6 +198,7 @@ export async function updateReadingProgress(documentId: string, scrollPosition: 
     .select()
     .maybeSingle();
 
+  if (isMissingRelationError(error)) return null;
   if (error) throw error;
   return data;
 }
@@ -131,6 +211,7 @@ export async function getReadingProgress(documentId: string) {
     .eq('document_id', documentId)
     .maybeSingle();
 
+  if (isMissingRelationError(error)) return null;
   if (error) throw error;
   return data;
 }
@@ -145,8 +226,14 @@ export async function getBookmarks() {
     `)
     .order('created_at', { ascending: false });
 
+  if (isMissingRelationError(error)) return [];
   if (error) throw error;
-  return data;
+  return (data ?? []).map((row) => ({
+    ...row,
+    codex_documents: row.codex_documents
+      ? normalizeDocument(row.codex_documents as Record<string, unknown>)
+      : null,
+  }));
 }
 
 export async function addBookmark(documentId: string) {
@@ -157,6 +244,7 @@ export async function addBookmark(documentId: string) {
     .select()
     .maybeSingle();
 
+  if (isMissingRelationError(error)) return null;
   if (error) throw error;
   return data;
 }
@@ -168,6 +256,7 @@ export async function removeBookmark(documentId: string) {
     .delete()
     .eq('document_id', documentId);
 
+  if (isMissingRelationError(error)) return;
   if (error) throw error;
 }
 
@@ -179,6 +268,7 @@ export async function isBookmarked(documentId: string) {
     .eq('document_id', documentId)
     .maybeSingle();
 
+  if (isMissingRelationError(error)) return false;
   if (error) throw error;
   return !!data;
 }
@@ -191,6 +281,7 @@ export async function getDocumentNotes(documentId: string) {
     .eq('document_id', documentId)
     .order('created_at', { ascending: false });
 
+  if (isMissingRelationError(error)) return [];
   if (error) throw error;
   return data;
 }
@@ -203,6 +294,7 @@ export async function addDocumentNote(documentId: string, content: string, posit
     .select()
     .maybeSingle();
 
+  if (isMissingRelationError(error)) return null;
   if (error) throw error;
   return data;
 }
@@ -214,6 +306,7 @@ export async function deleteDocumentNote(noteId: string) {
     .delete()
     .eq('id', noteId);
 
+  if (isMissingRelationError(error)) return;
   if (error) throw error;
 }
 
@@ -227,6 +320,7 @@ export async function getDocumentLinks() {
       target:codex_documents!target_document_id (*)
     `);
 
+  if (isMissingRelationError(error)) return [];
   if (error) throw error;
   return data;
 }
@@ -239,6 +333,7 @@ export async function addDocumentLink(sourceId: string, targetId: string, linkTy
     .select()
     .maybeSingle();
 
+  if (isMissingRelationError(error)) return null;
   if (error) throw error;
   return data;
 }

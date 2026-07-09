@@ -11,12 +11,20 @@
 
 ## Environment (all clients)
 
+This repo is a **Vite SPA**, not Next.js. Use `VITE_` env vars and `@supabase/supabase-js`
+(`createClient`). Do **not** paste Supabase dashboard Next.js snippets (`@supabase/ssr`,
+`NEXT_PUBLIC_*`, `middleware.ts`, `cookies()`).
+
 ```env
 VITE_SUPABASE_URL=https://hzzzxmtpkgdmjcbncxjh.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon-key from dashboard>
+# Optional alias if the dashboard only shows a publishable key:
+# VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-Use the same values in **Vercel**, **local `.env.local`**, and any **Next.js / iPhone** app — do not create a second Supabase project for Codex.
+Use the same values in **Vercel**, **local `.env.local`**, and any mobile client.
+Canonical project remains `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) unless you
+intentionally migrate and run the full `supabase/migrations/` set on a new project.
 
 ## Migrations
 

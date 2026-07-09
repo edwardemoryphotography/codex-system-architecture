@@ -15,8 +15,9 @@ export function SupabaseSetupBanner({ isDarkMode }: SupabaseSetupBannerProps) {
       <p className="font-medium">Documents database not connected</p>
       <p className={`mt-1 ${isDarkMode ? 'text-amber-200/90' : 'text-amber-900/80'}`}>
         Add <code className="font-mono text-xs">VITE_SUPABASE_URL</code> and{' '}
-        <code className="font-mono text-xs">VITE_SUPABASE_ANON_KEY</code> in Vercel → Settings →
-        Environment Variables, then redeploy. Control Panel still works below.
+        <code className="font-mono text-xs">VITE_SUPABASE_ANON_KEY</code> (or{' '}
+        <code className="font-mono text-xs">VITE_SUPABASE_PUBLISHABLE_KEY</code>) in Vercel →
+        Settings → Environment Variables, then redeploy. Control Panel still works below.
       </p>
     </div>
   );
