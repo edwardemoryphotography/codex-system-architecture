@@ -170,4 +170,24 @@ describe('CognitionDeck', () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it('advances on a leftward swipe', () => {
+    render(<CognitionDeck />);
+
+    const deck = screen.getByRole('main', { name: /cognition deck/i });
+
+    fireEvent.touchStart(deck, {
+      changedTouches: [{ clientX: 220, clientY: 240 }],
+    });
+    fireEvent.touchEnd(deck, {
+      changedTouches: [{ clientX: 120, clientY: 244 }],
+    });
+
+    expect(screen.getByText(/02 \/ 16/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: /this is not a discipline problem/i,
+      }),
+    ).toBeInTheDocument();
+  });
 });

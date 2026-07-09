@@ -200,14 +200,15 @@ export function CommandPalette({
   let flatIndex = 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-start justify-center sm:pt-[12vh] p-0 sm:p-4">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
       <div
-        className={`relative w-full max-w-2xl mx-4 rounded-2xl shadow-2xl overflow-hidden
+        className={`relative w-full max-w-2xl sm:mx-0 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden
+          max-h-[92vh] sm:max-h-[min(80vh,40rem)] flex flex-col
           ${isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'}
           transform transition-all duration-200 ease-out
         `}
@@ -215,6 +216,9 @@ export function CommandPalette({
           animation: 'commandPaletteIn 0.2s ease-out'
         }}
       >
+        <div className="sm:hidden flex justify-center pt-3 pb-1" aria-hidden="true">
+          <div className={`h-1 w-10 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`} />
+        </div>
         <div className={`flex items-center gap-3 px-4 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
           <Search className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
           <input
@@ -223,12 +227,12 @@ export function CommandPalette({
             value={query}
             onChange={e => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={handleKeyDown}
-            placeholder="Search documents, actions, or type a command..."
-            className={`flex-1 bg-transparent outline-none text-lg
+            placeholder="Search documents or actions..."
+            className={`flex-1 bg-transparent outline-none text-base sm:text-lg
               ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}
             `}
           />
-          <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium
+          <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded text-xs font-medium
             ${isDarkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'}
           `}>
             <Command className="w-3 h-3" />
@@ -238,7 +242,7 @@ export function CommandPalette({
 
         <div
           ref={listRef}
-          className="max-h-[400px] overflow-y-auto py-2"
+          className="flex-1 min-h-0 max-h-[60vh] sm:max-h-[400px] overflow-y-auto py-2"
         >
           {isLoading ? (
             <div className={`px-4 py-8 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -311,7 +315,7 @@ export function CommandPalette({
           )}
         </div>
 
-        <div className={`flex items-center justify-between px-4 py-3 border-t text-xs
+        <div className={`hidden sm:flex items-center justify-between px-4 py-3 border-t text-xs
           ${isDarkMode ? 'border-gray-700 text-gray-500' : 'border-gray-100 text-gray-400'}
         `}>
           <div className="flex items-center gap-4">
@@ -328,6 +332,11 @@ export function CommandPalette({
               Close
             </span>
           </div>
+        </div>
+        <div className={`sm:hidden px-4 py-3 border-t text-center text-xs pb-[max(0.75rem,env(safe-area-inset-bottom))]
+          ${isDarkMode ? 'border-gray-700 text-gray-500' : 'border-gray-100 text-gray-400'}
+        `}>
+          Tap a result to open
         </div>
       </div>
 

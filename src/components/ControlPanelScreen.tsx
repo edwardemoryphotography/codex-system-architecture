@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { initializeSessionStart, isSupabaseConfigured } from '../lib/supabase';
 import type { CodexAction, SessionMode } from '../types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 
 const CHIPS = [
   { id: 'execute', label: 'Execute now', mode: 'high' as SessionMode },
@@ -35,8 +35,8 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
   const panel = isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-200';
   const muted = isDarkMode ? 'text-neutral-400' : 'text-neutral-500';
   const chipIdle = isDarkMode
-    ? 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:border-neutral-600'
-    : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400';
+    ? 'bg-neutral-900/80 text-neutral-300 border-neutral-800 active:border-neutral-500'
+    : 'bg-white text-neutral-600 border-neutral-200 active:border-neutral-400';
   const chipActive = isDarkMode
     ? 'bg-neutral-100 text-neutral-900 border-neutral-100'
     : 'bg-neutral-900 text-white border-neutral-900';
@@ -85,70 +85,102 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
   };
 
   return (
-    <div className={`flex-1 flex flex-col min-h-0 overflow-y-auto ${shell}`}>
-      <div className="flex-1 flex flex-col max-w-xl mx-auto w-full px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-5 md:py-8 min-h-0">
-        <header className="mb-6 md:mb-8 shrink-0">
-          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Codex Control Panel</h1>
-          <p className={`text-sm mt-1 ${muted}`}>Momentum-first routing</p>
-        </header>
+    <div className={`relative flex-1 flex flex-col min-h-0 overflow-hidden ${shell}`}>
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 ${
+          isDarkMode
+            ? 'bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.12),transparent_55%)]'
+            : 'bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.08),transparent_55%)]'
+        }`}
+      />
 
-        <section className="flex-1 flex flex-col gap-5 md:gap-6 min-h-0">
-          <textarea
-            value={task}
-            onChange={(e) => setTask(e.target.value)}
-            placeholder="What needs to move forward?"
-            className={`w-full min-h-[140px] md:min-h-[160px] rounded-2xl border p-4 text-base resize-none focus:outline-none focus:border-neutral-600 ${panel} ${isDarkMode ? 'placeholder:text-neutral-500' : 'placeholder:text-neutral-400'}`}
-          />
+      <div className="relative flex-1 flex flex-col max-w-xl mx-auto w-full min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 pt-4 md:px-5 md:pt-8">
+          <header className="mb-5 md:mb-8 shrink-0">
+            <div className="hidden md:block">
+              <h1 className="text-2xl font-semibold tracking-tight">Codex Control Panel</h1>
+              <p className={`text-sm mt-1 ${muted}`}>Momentum-first routing</p>
+            </div>
+            <div className="md:hidden">
+              <p className={`inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.16em] ${muted}`}>
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                Momentum-first
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight">What needs to move?</h1>
+              <p className={`text-sm mt-1.5 leading-relaxed ${muted}`}>
+                Capture the next move, pick a route, then ship it.
+              </p>
+            </div>
+          </header>
 
-          <div className="flex flex-wrap gap-2">
-            {CHIPS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setChip(chip === c.id ? null : c.id)}
-                className={`px-3 py-2 md:py-1.5 rounded-full text-sm border transition ${
-                  chip === c.id ? chipActive : chipIdle
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
+          <section className="flex flex-col gap-5 md:gap-6 pb-4">
+            <textarea
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+              placeholder="What needs to move forward?"
+              className={`w-full min-h-[132px] md:min-h-[160px] rounded-2xl border p-4 text-base resize-none focus:outline-none focus:border-neutral-600 ${panel} ${isDarkMode ? 'placeholder:text-neutral-500' : 'placeholder:text-neutral-400'}`}
+            />
+
+            <div>
+              <p className={`mb-2.5 text-xs uppercase tracking-[0.14em] ${muted}`}>Route</p>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                {CHIPS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setChip(chip === c.id ? null : c.id)}
+                    className={`px-3 py-2.5 sm:py-1.5 rounded-2xl sm:rounded-full text-sm border transition text-left sm:text-center ${
+                      chip === c.id ? chipActive : chipIdle
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {routeError && (
+              <p className="text-sm text-red-400" role="alert">{routeError}</p>
+            )}
+
+            {routedActions && routedActions.length > 0 && (
+              <ul className={`text-sm space-y-2 rounded-xl border p-3 ${panel}`}>
+                {routedActions.map((a) => (
+                  <li key={a.id} className={a.is_next_action ? 'font-medium' : muted}>
+                    {a.action_title}
+                    {a.is_next_action ? ' · next' : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <footer
+          className={`shrink-0 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-5 md:pb-6 border-t backdrop-blur-xl ${
+            isDarkMode ? 'border-neutral-800/80 bg-neutral-950/90' : 'border-neutral-200/80 bg-neutral-50/90'
+          }`}
+        >
+          <div className="flex flex-col gap-2.5">
+            <button
+              type="button"
+              disabled={!task.trim() || routing}
+              onClick={() => void routeTask()}
+              className="w-full py-3.5 md:py-4 rounded-2xl bg-white text-neutral-900 font-medium disabled:opacity-30 flex items-center justify-center gap-2"
+            >
+              {routing && <Loader2 className="w-4 h-4 animate-spin" />}
+              Route Task
+            </button>
+            <button
+              type="button"
+              disabled={!task.trim()}
+              onClick={fastExecute}
+              className={`w-full py-3 rounded-2xl border font-medium disabled:opacity-30 ${secondaryBtn}`}
+            >
+              Fast Execute Here
+            </button>
           </div>
-
-          {routeError && (
-            <p className="text-sm text-red-400" role="alert">{routeError}</p>
-          )}
-
-          {routedActions && routedActions.length > 0 && (
-            <ul className={`text-sm space-y-2 rounded-xl border p-3 ${panel}`}>
-              {routedActions.map((a) => (
-                <li key={a.id} className={a.is_next_action ? 'font-medium' : muted}>
-                  {a.action_title}
-                  {a.is_next_action ? ' · next' : ''}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <footer className="mt-6 flex flex-col gap-3 shrink-0 pb-4">
-          <button
-            type="button"
-            disabled={!task.trim() || routing}
-            onClick={() => void routeTask()}
-            className="w-full py-4 rounded-2xl bg-white text-neutral-900 font-medium disabled:opacity-30 flex items-center justify-center gap-2"
-          >
-            {routing && <Loader2 className="w-4 h-4 animate-spin" />}
-            Route Task
-          </button>
-          <button
-            type="button"
-            disabled={!task.trim()}
-            onClick={fastExecute}
-            className={`w-full py-3 rounded-2xl border font-medium disabled:opacity-30 ${secondaryBtn}`}
-          >
-            Fast Execute Here
-          </button>
         </footer>
       </div>
     </div>

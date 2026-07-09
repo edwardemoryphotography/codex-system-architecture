@@ -426,10 +426,12 @@ export function CodexAppShell() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedPath ? selectedPath.split('/').pop()?.replace('.md', '').replace(/_/g, ' ') : 'Codex Control Panel'}
+                    {selectedPath
+                      ? selectedPath.split('/').pop()?.replace('.md', '').replace(/_/g, ' ')
+                      : 'Codex'}
                   </p>
                   <p className={`text-xs truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Knowledge System
+                    {selectedPath ? 'Document' : 'Control Panel'}
                   </p>
                 </div>
                 <button

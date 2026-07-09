@@ -55,13 +55,19 @@ export function TableOfContents({ content, isDarkMode, onNavigate }: TableOfCont
   if (items.length < 3) return null;
 
   return (
-    <div className={`fixed right-4 top-1/2 -translate-y-1/2 z-30 transition-all duration-300
-      ${isExpanded ? 'w-64' : 'w-12'}
-    `}>
-      <div className={`rounded-2xl overflow-hidden shadow-xl transition-all duration-300
-        ${isDarkMode ? 'bg-gray-800/90 backdrop-blur-xl' : 'bg-white/90 backdrop-blur-xl'}
+    <div
+      className={`fixed z-30 transition-all duration-300
+      right-3 bottom-[max(1rem,env(safe-area-inset-bottom))] md:right-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2
+      ${isExpanded ? 'w-[min(18rem,calc(100vw-1.5rem))] md:w-64' : 'w-12'}
+    `}
+    >
+      <div className={`rounded-2xl overflow-hidden shadow-xl transition-all duration-300 border
+        ${isDarkMode ? 'bg-gray-800/95 backdrop-blur-xl border-gray-700/80' : 'bg-white/95 backdrop-blur-xl border-gray-200'}
       `}>
         <button
+          type="button"
+          aria-label={isExpanded ? 'Collapse table of contents' : 'Open table of contents'}
+          aria-expanded={isExpanded}
           onClick={() => setIsExpanded(!isExpanded)}
           className={`w-full flex items-center gap-3 p-3 transition-colors
             ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
@@ -76,7 +82,7 @@ export function TableOfContents({ content, isDarkMode, onNavigate }: TableOfCont
         </button>
 
         {isExpanded && (
-          <div className="max-h-80 overflow-y-auto px-2 pb-3">
+          <div className="max-h-[min(50vh,20rem)] md:max-h-80 overflow-y-auto px-2 pb-3">
             {items.map(item => (
               <button
                 key={item.id}

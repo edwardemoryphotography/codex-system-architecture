@@ -297,6 +297,16 @@ body {
   padding-bottom: 0.35rem;
 }
 
+.cognition-deck__swipe-hint {
+  display: none;
+  margin: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(var(--cognition-text-rgb) / 0.42);
+}
+
 .cognition-deck__controls {
   display: flex;
   flex-wrap: wrap;
@@ -384,12 +394,16 @@ body {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .cognition-deck__swipe-hint {
+    display: block;
+  }
 }
 
 @media (max-width: 640px) {
   .cognition-deck {
-    padding-top: 1rem;
-    padding-bottom: 1.25rem;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
   }
 
   .cognition-deck::after {
@@ -401,13 +415,23 @@ body {
     gap: 0.9rem;
   }
 
+  .cognition-deck h1 {
+    max-width: 14ch;
+    font-size: clamp(2.4rem, 11vw, 3.6rem);
+  }
+
   .cognition-deck__controls {
     width: 100%;
   }
 
   .cognition-deck__controls button {
-    flex: 1 1 12rem;
+    flex: 1 1 0;
     justify-content: center;
+    min-height: 2.85rem;
+  }
+
+  .cognition-deck__footer {
+    gap: 0.75rem;
   }
 }
 

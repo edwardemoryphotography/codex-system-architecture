@@ -14,10 +14,16 @@ import '../../styles/cognition.css';
 import { CognitionBackground } from './CognitionBackground';
 
 const SLIDE_TRANSITION_MS = 420;
+const SWIPE_THRESHOLD_PX = 56;
 
 interface RenderedSlide {
   slide: CognitionSlide;
   phase: 'current' | 'enter' | 'exit';
+}
+
+interface TouchPoint {
+  x: number;
+  y: number;
 }
 
 function formatSlideNumber(index: number): string {
@@ -48,6 +54,7 @@ export function CognitionDeck() {
   const totalSlides = cognitionSlides.length;
   const previousIndexRef = useRef(0);
   const transitionTimeoutRef = useRef<number | null>(null);
+  const touchStartRef = useRef<TouchPoint | null>(null);
 
   const currentSlide = cognitionSlides[currentIndex];
   const progress = getProgressPercent(currentIndex, totalSlides);
@@ -56,6 +63,14 @@ export function CognitionDeck() {
   const counterText = useMemo(() => {
     return `${formatSlideNumber(currentIndex)} / ${formatSlideNumber(totalSlides - 1)}`;
   }, [currentIndex, totalSlides]);
+
+  const goToPrevious = () => {
+    setCurrentIndex((index) => clampSlideIndex(index - 1, totalSlides));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((index) => clampSlideIndex(index + 1, totalSlides));
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -70,12 +85,12 @@ export function CognitionDeck() {
         event.key === 'Spacebar'
       ) {
         event.preventDefault();
-        setCurrentIndex((index) => clampSlideIndex(index + 1, totalSlides));
+        goToNext();
       }
 
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
-        setCurrentIndex((index) => clampSlideIndex(index - 1, totalSlides));
+        goToPrevious();
       }
     };
 
@@ -85,6 +100,48 @@ export function CognitionDeck() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [totalSlides]);
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
+    if (isInteractiveTarget(event.target)) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+
+    if (!start || isInteractiveTarget(event.target)) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+
+    if (deltaX < 0) {
+      goToNext();
+      return;
+    }
+
+    goToPrevious();
+  };
 
   useEffect(() => {
     return () => {
@@ -131,6 +188,8 @@ export function CognitionDeck() {
       className="cognition-deck"
       aria-label="Cognition deck"
       data-state={visualState}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <CognitionBackground state={visualState} />
 
@@ -193,24 +252,21 @@ export function CognitionDeck() {
           <button
             aria-label="Previous slide"
             type="button"
-            onClick={() =>
-              setCurrentIndex((index) => clampSlideIndex(index - 1, totalSlides))
-            }
+            onClick={goToPrevious}
           >
-            Previous slide
+            Previous
           </button>
           <button
             aria-label="Next slide"
             type="button"
-            onClick={() =>
-              setCurrentIndex((index) => clampSlideIndex(index + 1, totalSlides))
-            }
+            onClick={goToNext}
           >
-            Next slide
+            Next
           </button>
         </div>
 
         <p className="cognition-deck__counter">{counterText}</p>
+        <p className="cognition-deck__swipe-hint">Swipe to continue</p>
       </footer>
     </main>
   );
