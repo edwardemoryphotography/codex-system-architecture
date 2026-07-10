@@ -28,7 +28,20 @@ const categoryIcons: Record<string, string> = {
 
 export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false }: NavigationProps) {
   const [documents, setDocuments] = useState<CodexDocument[]>([]);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/codex', '/codex/root', '/codex/council', '/codex/artistic_systems']));
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set([
+      '/codex',
+      '/codex/root',
+      '/codex/council',
+      '/codex/artistic_systems',
+      '/codex/personal_os',
+      '/codex/neuro',
+      '/codex/automation',
+      '/codex/business',
+      '/codex/territory',
+      '/codex/convergence',
+    ]),
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

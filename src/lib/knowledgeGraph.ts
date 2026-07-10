@@ -53,6 +53,29 @@ function depthFromPath(path: string): number {
 }
 
 function excerptFor(doc: CodexDocument): string {
+  const lines = doc.content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    if (
+      line.startsWith('#') ||
+      line.startsWith('```') ||
+      line.startsWith('|') ||
+      line.startsWith('-') ||
+      line.startsWith('>') ||
+      line.startsWith('┌') ||
+      line.startsWith('│') ||
+      line.startsWith('└') ||
+      line.startsWith('├')
+    ) {
+      continue;
+    }
+    if (line.length < 24) continue;
+    return line.length <= 140 ? line : `${line.slice(0, 137)}…`;
+  }
+
   const text = doc.content.replace(/\s+/g, ' ').trim();
   if (text.length <= 120) return text;
   return `${text.slice(0, 117)}…`;

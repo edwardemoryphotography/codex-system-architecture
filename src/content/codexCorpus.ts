@@ -1,4 +1,5 @@
 import type { CodexDocument } from '../types';
+import { getCodexDocumentBody } from './codexDocumentBodies';
 
 /** Seeded Codex corpus used when the live DB is lean/incomplete. */
 export interface CorpusDocument {
@@ -122,7 +123,7 @@ export function corpusToDocuments(): CodexDocument[] {
       id,
       title: doc.title,
       path: doc.path,
-      content: doc.content,
+      content: getCodexDocumentBody(doc.path, doc.content),
       category: doc.category,
       parent_id: null,
       order: doc.order,
