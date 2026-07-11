@@ -210,11 +210,7 @@ export function CommandPalette({
         className={`relative w-full max-w-2xl sm:mx-0 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden
           max-h-[92vh] sm:max-h-[min(80vh,40rem)] flex flex-col
           ${isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'}
-          transform transition-all duration-200 ease-out
         `}
-        style={{
-          animation: 'commandPaletteIn 0.2s ease-out'
-        }}
       >
         <div className="sm:hidden flex justify-center pt-3 pb-1" aria-hidden="true">
           <div className={`h-1 w-10 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`} />
@@ -340,18 +336,6 @@ export function CommandPalette({
         </div>
       </div>
 
-      <style>{`
-        @keyframes commandPaletteIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }
