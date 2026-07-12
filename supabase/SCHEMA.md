@@ -22,7 +22,7 @@ VITE_SUPABASE_ANON_KEY=<anon-key from dashboard>
 # VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-Use the same values in **Vercel**, **local `.env.local`**, and `codex-control-panel`.
+Use the same values in **Vercel**, **local `.env.local`**, and **Control Panel** (`codex-control-panel`).
 Canonical project remains `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) unless you
 intentionally migrate and run the full `supabase/migrations/` set on a new project.
 
