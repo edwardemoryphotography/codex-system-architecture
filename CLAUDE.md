@@ -99,7 +99,9 @@ All data access goes through `src/lib/supabase.ts` — never write inline Supaba
 | `actions` | `action_title`, `status`, `context_complexity`, `portfolio_segment`, `priority_weight`, `is_next_action` | Control Panel task queue |
 | `initialize_session_start(session_mode)` | RPC — `'high'` \| `'low'` | Returns prioritized TODO actions; sets one `is_next_action` |
 
-**Canonical Supabase project:** `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) — see `supabase/project.json` and `supabase/SCHEMA.md`. Same URL/anon key for Vercel, local dev, and mobile clients.
+**Canonical Supabase project:** `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) — see `supabase/project.json` and `supabase/SCHEMA.md`. Same URL/anon key for this repo's own Vercel deploy, local dev, and Control Panel clients (`codex-control-panel`).
+
+**Not shared with `legacy-codex`:** that repo runs its own separate Supabase project (`pkydkbuodikttfeawqsw`) with its own tables (`nd_codex_bookmarks`, `nd_prefs`, `nd_captures`) — it is a related front-end conceptually, but not a client of this schema.
 
 **RLS**: All tables allow public access (no auth required) — reads and writes (`addBookmark`, `updateReadingProgress`, `addDocumentNote`, `actions`) work without authentication. No user sign-in is implemented.
 
@@ -207,6 +209,6 @@ Do not claim success without running the checks that apply to your diff.
 
 | Repo | Role |
 |------|------|
-| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Neurodivergent execution framework (this repo's production front-end) |
+| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Neurodivergent execution framework — a related front-end, but runs its own separate Supabase project, not this repo's schema |
 | `neurocreative-platform` | EEG + WHOOP biometric backend |
 | `mem-layer` | AI memory/conversation aggregation |
