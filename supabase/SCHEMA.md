@@ -22,9 +22,14 @@ VITE_SUPABASE_ANON_KEY=<anon-key from dashboard>
 # VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-Use the same values in **Vercel**, **local `.env.local`**, and any mobile client.
+Use the same values in **Vercel**, **local `.env.local`**, and **Control Panel** (`codex-control-panel`).
 Canonical project remains `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) unless you
 intentionally migrate and run the full `supabase/migrations/` set on a new project.
+
+**`legacy-codex` is not a client of this schema.** It runs its own separate Supabase
+project (`pkydkbuodikttfeawqsw`) with its own tables (`nd_codex_bookmarks`, `nd_prefs`,
+`nd_captures`). Do not point it at `supabase-indigo-paddle`, and do not assume its data
+lives here.
 
 ## Migrations
 
