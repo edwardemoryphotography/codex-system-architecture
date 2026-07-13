@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   cognitionSlides,
@@ -9,9 +9,14 @@ import {
   getProgressPercent,
   getVisualStateForSlide,
 } from '../../lib/cognitionState';
+import {
+  loadCognitionSession,
+  saveCognitionSession,
+} from '../../lib/cognitionPersistence';
 import type { CognitionSlide } from '../../types/cognition';
 import '../../styles/cognition.css';
 import { CognitionBackground } from './CognitionBackground';
+import { CognitionSlidePayload } from './CognitionSlidePayload';
 
 const SLIDE_TRANSITION_MS = 420;
 const SWIPE_THRESHOLD_PX = 56;
@@ -47,12 +52,27 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 }
 
 export function CognitionDeck() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [renderedSlides, setRenderedSlides] = useState<RenderedSlide[]>([
-    { slide: cognitionSlides[0], phase: 'current' },
-  ]);
   const totalSlides = cognitionSlides.length;
-  const previousIndexRef = useRef(0);
+  const initialSessionRef = useRef(loadCognitionSession());
+  const [currentIndex, setCurrentIndex] = useState(() =>
+    clampSlideIndex(initialSessionRef.current.currentIndex, totalSlides),
+  );
+  const [selectedNodeId, setSelectedNodeId] = useState(
+    initialSessionRef.current.selectedNodeId,
+  );
+  const [recoveryScore, setRecoveryScore] = useState(
+    initialSessionRef.current.recoveryScore,
+  );
+  const [renderedSlides, setRenderedSlides] = useState<RenderedSlide[]>([
+    {
+      slide:
+        cognitionSlides[
+          clampSlideIndex(initialSessionRef.current.currentIndex, totalSlides)
+        ],
+      phase: 'current',
+    },
+  ]);
+  const previousIndexRef = useRef(currentIndex);
   const transitionTimeoutRef = useRef<number | null>(null);
   const touchStartRef = useRef<TouchPoint | null>(null);
 
@@ -64,13 +84,28 @@ export function CognitionDeck() {
     return `${formatSlideNumber(currentIndex)} / ${formatSlideNumber(totalSlides - 1)}`;
   }, [currentIndex, totalSlides]);
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setCurrentIndex((index) => clampSlideIndex(index - 1, totalSlides));
-  };
+  }, [totalSlides]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentIndex((index) => clampSlideIndex(index + 1, totalSlides));
-  };
+  }, [totalSlides]);
+
+  const handleRecoveryScoreChange = useCallback((score: number) => {
+    if (Number.isFinite(score)) {
+      setRecoveryScore(Math.min(100, Math.max(0, score)));
+    }
+  }, []);
+
+  useEffect(() => {
+    saveCognitionSession({
+      version: 1,
+      currentIndex,
+      selectedNodeId,
+      recoveryScore,
+    });
+  }, [currentIndex, recoveryScore, selectedNodeId]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -99,7 +134,7 @@ export function CognitionDeck() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [totalSlides]);
+  }, [goToNext, goToPrevious]);
 
   const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
     if (isInteractiveTarget(event.target)) {
@@ -242,6 +277,15 @@ export function CognitionDeck() {
             <p className="cognition-deck__body">{slide.body}</p>
             {slide.kicker ? (
               <p className="cognition-deck__kicker">{slide.kicker}</p>
+            ) : null}
+            {slide.payload ? (
+              <CognitionSlidePayload
+                payload={slide.payload}
+                selectedNodeId={selectedNodeId}
+                onNodeSelect={setSelectedNodeId}
+                recoveryScore={recoveryScore}
+                onRecoveryScoreChange={handleRecoveryScoreChange}
+              />
             ) : null}
           </article>
         ))}

@@ -18,22 +18,17 @@ interface Palette {
 }
 
 const PALETTES: Record<CognitiveVisualState, Palette> = {
-  signal: {
+  coherence: {
     primary: '110, 212, 255',
     secondary: '151, 123, 255',
     accent: '241, 186, 109',
   },
-  throughput: {
-    primary: '110, 212, 255',
-    secondary: '220, 230, 242',
-    accent: '151, 123, 255',
-  },
-  fragmentation: {
+  overload: {
     primary: '255, 124, 116',
     secondary: '241, 186, 109',
     accent: '110, 212, 255',
   },
-  stabilization: {
+  codex: {
     primary: '110, 212, 255',
     secondary: '151, 123, 255',
     accent: '220, 230, 242',
@@ -43,7 +38,7 @@ const PALETTES: Record<CognitiveVisualState, Palette> = {
     secondary: '110, 212, 255',
     accent: '241, 186, 109',
   },
-  proof: {
+  reduction: {
     primary: '220, 230, 242',
     secondary: '110, 212, 255',
     accent: '151, 123, 255',
@@ -426,33 +421,31 @@ function drawFrame(
 ) {
   const palette = PALETTES[state];
   const focusX =
-    state === 'fragmentation'
+    state === 'overload'
       ? width * 0.72
-      : state === 'proof'
+      : state === 'reduction'
         ? width * 0.5
         : width * 0.36;
-  const focusY = state === 'stabilization' ? height * 0.5 : height * 0.28;
+  const focusY = state === 'codex' ? height * 0.5 : height * 0.28;
 
   context.clearRect(0, 0, width, height);
   drawBackdrop(context, width, height, palette, focusX, focusY);
 
   switch (state) {
-    case 'signal':
+    case 'coherence':
       drawSignal(context, width, height, time, palette);
       break;
-    case 'throughput':
+    case 'overload':
       drawThroughput(context, width, height, time, palette);
-      break;
-    case 'fragmentation':
       drawFragmentation(context, width, height, time, palette);
       break;
-    case 'stabilization':
+    case 'codex':
       drawStabilization(context, width, height, time, palette);
       break;
     case 'recursion':
       drawRecursion(context, width, height, time, palette);
       break;
-    case 'proof':
+    case 'reduction':
       drawProof(context, width, height, time, palette);
       break;
   }
@@ -474,7 +467,7 @@ export function CognitionBackground({ state }: CognitionBackgroundProps) {
 
     const mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const prefersReducedMotion = mediaQuery?.matches ?? false;
-    const motionMultiplier = state === 'proof' ? 0.3 : 1;
+    const motionMultiplier = state === 'reduction' ? 0.3 : 1;
 
     let frame = 0;
     let dimensions = resizeCanvas(canvas, context);

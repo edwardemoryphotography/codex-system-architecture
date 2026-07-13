@@ -9,10 +9,10 @@ import {
 
 describe('getVisualStateForSlide', () => {
   it('returns the visual state declared in slide metadata', () => {
-    expect(getVisualStateForSlide(cognitionSlides[0])).toBe('signal');
-    expect(getVisualStateForSlide(cognitionSlides[2])).toBe('throughput');
+    expect(getVisualStateForSlide(cognitionSlides[0])).toBe('coherence');
+    expect(getVisualStateForSlide(cognitionSlides[2])).toBe('overload');
     expect(getVisualStateForSlide(cognitionSlides[13])).toBe('recursion');
-    expect(getVisualStateForSlide(cognitionSlides[15])).toBe('proof');
+    expect(getVisualStateForSlide(cognitionSlides[15])).toBe('reduction');
   });
 });
 
