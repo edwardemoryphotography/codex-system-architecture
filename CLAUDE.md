@@ -1,6 +1,6 @@
 # codex-system-architecture — CLAUDE.md
 
-Visual knowledge management SPA for the **Codex AI platform**: a neurodivergent execution and knowledge management system. This repo is the design/documentation layer; it visualizes how Codex components connect (AI agents, memory layers, automation workflows, UI shells).
+Visual documentation SPA for Eddie's **Codex ecosystem**. This repo is the architecture and reviewed-public-content layer; it maps how projects and concepts relate without implying that every mapped component is deployed.
 
 ## Tech Stack
 
@@ -63,7 +63,7 @@ public/
 | `DocumentViewer.tsx` | Full document render with markdown, bookmarks, notes, reading progress, export |
 | `KnowledgeGraph.tsx` | Force-directed canvas graph; physics simulation; hover/drag/zoom/double-click |
 | `CommandPalette.tsx` | Cmd+K modal: grouped search (docs, bookmarks, recent, actions), keyboard navigation |
-| `Navigation.tsx` | Sidebar: document tree from Supabase, category sections, current path highlighting |
+| `Navigation.tsx` | Sidebar: canonical document tree merged with live Supabase identity, category sections, current path highlighting |
 | `MarkdownRenderer.tsx` | Custom markdown→JSX with syntax highlighting, dark mode aware |
 | `SplitView.tsx` | Side-by-side document comparison with independent selections |
 | `SearchBar.tsx` | Real-time full-text search with 150 ms debounce, category filter |
@@ -99,7 +99,7 @@ All data access goes through `src/lib/supabase.ts` — never write inline Supaba
 | `actions` | `action_title`, `status`, `context_complexity`, `portfolio_segment`, `priority_weight`, `is_next_action` | Control Panel task queue |
 | `initialize_session_start(session_mode)` | RPC — `'high'` \| `'low'` | Returns prioritized TODO actions; sets one `is_next_action` |
 
-**Canonical Supabase project:** `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) — see `supabase/project.json` and `supabase/SCHEMA.md`. Same URL/anon key for Vercel, local dev, and mobile clients.
+**Configured Supabase project:** `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) — see `supabase/project.json` and `supabase/SCHEMA.md`. Same URL/anon key for Vercel, local dev, and mobile clients.
 
 **RLS**: All tables allow public access (no auth required) — reads and writes (`addBookmark`, `updateReadingProgress`, `addDocumentNote`, `actions`) work without authentication. No user sign-in is implemented.
 
@@ -108,7 +108,9 @@ Migrations are in `supabase/migrations/` as timestamped SQL files. Run them in o
 ## State Management
 
 - All top-level UI state lives in `App.tsx` as `useState`.
-- Supabase is the sole source of truth for document data — no local cache layer.
+- `src/content/codexDocumentBodies.ts` is the canonical source for reviewed public document titles and copy.
+- Supabase supplies live row IDs, hierarchy, timestamps, bookmarks, notes, reading progress, tags, links, and actions.
+- `src/lib/supabase.ts` merges canonical copy over matching live rows so stale database prose cannot override reviewed facts.
 - `localStorage` is used only for dark mode persistence (`darkMode`).
 - No Redux, Zustand, or other state library — the app is simple enough.
 
@@ -207,6 +209,6 @@ Do not claim success without running the checks that apply to your diff.
 
 | Repo | Role |
 |------|------|
-| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Neurodivergent execution framework (this repo's production front-end) |
+| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Separate Legacy Codex and Foundry Console project; inspect current deployment state before making production claims |
 | `neurocreative-platform` | EEG + WHOOP biometric backend |
 | `mem-layer` | AI memory/conversation aggregation |

@@ -11,18 +11,18 @@ describe('codexDocumentBodies', () => {
     }
   });
 
-  it('gives Personal OS a real architecture page and leaf manuals', () => {
+  it('gives Personal OS an honest architecture page and evidence-labeled guides', () => {
     const personalOs = getCodexDocumentBody('/codex/personal_os');
-    expect(personalOs).toMatch(/## Architecture/);
-    expect(personalOs).toMatch(/Personality Manual/);
-    expect(personalOs).toMatch(/Neurodivergent OS/);
+    expect(personalOs).toMatch(/practical support layer/i);
+    expect(personalOs).toMatch(/Evidence status/);
 
     const neuro = getCodexDocumentBody('/codex/personal_os/neurodivergent_os.md');
-    expect(neuro).toMatch(/# Neurodivergent Operating System/);
-    expect(neuro.length).toBeGreaterThan(1000);
+    expect(neuro).toMatch(/# Accessible Work System/);
+    expect(neuro).toMatch(/accessibility/i);
 
     const identity = getCodexDocumentBody('/codex/root/identity.md');
-    expect(identity).toMatch(/# Identity Framework/);
+    expect(identity).toMatch(/# Identity/);
+    expect(identity).toMatch(/Edward Emory Photography/);
   });
 
   it('hydrates corpus documents with full markdown bodies', () => {
@@ -30,10 +30,10 @@ describe('codexDocumentBodies', () => {
     expect(docs).toHaveLength(CORPUS_DOCUMENTS.length);
 
     const personal = docs.find((doc) => doc.path === '/codex/personal_os');
-    expect(personal?.content).toMatch(/Architecture/);
+    expect(personal?.content).toMatch(/Evidence status/);
 
     const leaf = docs.find((doc) => doc.path === '/codex/personal_os/personality_manual.md');
-    expect(leaf?.content).toMatch(/PERSONALITY PROFILE|Personality Manual/i);
+    expect(leaf?.content).toMatch(/Working With Eddie/i);
     expect(leaf?.parent_id).toBe(personal?.id);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeDocument, normalizeSupabaseUrl } from './supabase';
+import { mergeCanonicalDocument, normalizeDocument, normalizeSupabaseUrl } from './supabase';
 
 describe('normalizeSupabaseUrl', () => {
   it('converts dashboard URLs into API URLs', () => {
@@ -47,5 +47,36 @@ describe('normalizeDocument', () => {
     });
 
     expect(doc.path).toBe('/codex/root');
+  });
+});
+
+describe('mergeCanonicalDocument', () => {
+  it('preserves live row identity while replacing stale personal content', () => {
+    const live = normalizeDocument({
+      id: 'live-gear-row',
+      title: 'Gear Specs',
+      path: '/codex/artistic_systems/photography_ops/gear_specs.md',
+      content: 'Primary camera: Sony A7R IV',
+      category: 'artistic_systems',
+      parent_id: 'live-photography-parent',
+      order: 3,
+      created_at: '2025-12-04T00:00:00.000Z',
+      updated_at: '2025-12-30T00:00:00.000Z',
+    });
+    const canonical = {
+      ...live,
+      id: 'corpus-gear-row',
+      title: 'Verified Gear Inventory',
+      content: 'Primary camera: Sony A7 III',
+      updated_at: '2026-07-14T00:00:00.000Z',
+    };
+
+    expect(mergeCanonicalDocument(live, canonical)).toEqual({
+      ...live,
+      title: 'Verified Gear Inventory',
+      content: 'Primary camera: Sony A7 III',
+      category: canonical.category,
+      order: canonical.order,
+    });
   });
 });

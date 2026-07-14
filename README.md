@@ -1,6 +1,8 @@
 # codex-system-architecture
 
-Visual knowledge-management SPA for the **Codex AI platform** — documents, knowledge graph, command palette, and **Tier 4 Control Panel (Screen 1)** intake UI.
+Visual documentation and architecture SPA for Eddie's **Codex ecosystem** — canonical documents, knowledge graph, command palette, and the Control Panel Screen 1 intake UI.
+
+> This viewer documents real projects and explicitly labeled designs. It is not proof that every mapped system is deployed, integrated, or automated.
 
 [![Edit in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/edwardemoryphotography/codex-system-architecture)
 
@@ -8,7 +10,7 @@ Visual knowledge-management SPA for the **Codex AI platform** — documents, kno
 
 | Layer | Role |
 |-------|------|
-| **This app** | React + Vite + Supabase: browse Codex docs, graph, search, bookmarks, reading progress |
+| **This app** | React + Vite + Supabase: browse the reviewed Codex corpus, graph, search, bookmarks, and reading progress |
 | **Control Panel** | Home screen when no doc is selected — task input, six route chips, Route Task / Fast Execute (alerts only; routing in Screen 2) |
 | [`notion-wiki/`](./notion-wiki/README.md) | Agent skills + config for your Notion Second Brain |
 | [`personal-wiki/`](./personal-wiki/README.md) | Copyable Obsidian vault pattern (raw → skills → wiki) |
@@ -55,6 +57,8 @@ See [`.env.example`](./.env.example). Never commit `.env.local`.
 
 **One Supabase project** for docs + Control Panel: `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`). Details: [`supabase/SCHEMA.md`](./supabase/SCHEMA.md).
 
+Canonical public document copy is reviewed in [`src/content/codexDocumentBodies.ts`](./src/content/codexDocumentBodies.ts). Supabase supplies live row identity and application state; stale database copy is not allowed to override the reviewed corpus.
+
 ## Deploy (Vercel)
 
 1. Import this repo in [Vercel](https://vercel.com/new).
@@ -91,15 +95,18 @@ Standalone Control Panel prototype (earlier ship): [codex-control-panel on Verce
 
 Read [`AGENTS.md`](./AGENTS.md) and [`CLAUDE.md`](./CLAUDE.md) before coding. Cloud Agent secrets must use valid env names (e.g. `GEMINI_API_KEY`, not labels with spaces).
 
+Personal claims must follow the Reality Filter: verified facts, repository evidence, and unimplemented designs are labeled separately. See the [July 2026 corpus audit](./docs/CODEX-REALITY-AUDIT-2026-07-14.md).
+
 ## Related repos
 
-- [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) — production neurodivergent execution UI
-- [`mem-layer`](https://github.com/edwardemoryphotography/mem-layer) — AI memory aggregation
-- [`neurocreative-platform`](https://github.com/edwardemoryphotography/neurocreative-platform) — EEG + WHOOP backend
+- [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) — separate Legacy Codex and Foundry Console work
+- [`mem-layer`](https://github.com/edwardemoryphotography/mem-layer) — memory-layer project; current runtime status must be inspected before use
+- [`neurocreative-platform`](https://github.com/edwardemoryphotography/neurocreative-platform) — neurotechnology project; current runtime status must be inspected before use
 
 ## Roadmap
 
 - [x] Control Panel Screen 1 (intake + chips)
-- [ ] Screen 2 — routing / classifier
-- [ ] Deploy URL on Notion intake (after Vercel link)
-- [ ] Deeper README sync with `notion-wiki` inventory
+- [x] Evidence-labeled canonical corpus for all 59 document paths
+- [x] Repository content overrides stale Supabase copy
+- [ ] Apply the July 2026 corrective data migration to Supabase
+- [ ] Verify each future integration directly before marking it active
