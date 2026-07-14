@@ -38,6 +38,34 @@ export function normalizeDocument(row: Record<string, unknown>): CodexDocument {
   };
 }
 
+/** Keep live row identity and relationships while making reviewed corpus copy authoritative. */
+export function mergeCanonicalDocument(
+  live: CodexDocument,
+  canonical: CodexDocument,
+): CodexDocument {
+  return {
+    ...live,
+    title: canonical.title,
+    content: canonical.content,
+    category: canonical.category,
+    order: canonical.order,
+  };
+}
+
+function mergeLiveDocumentsWithCorpus(liveDocs: CodexDocument[]): CodexDocument[] {
+  const canonicalDocs = corpusToDocuments();
+  const liveByPath = new Map(liveDocs.map((document) => [document.path, document]));
+  const canonicalPaths = new Set(canonicalDocs.map((document) => document.path));
+
+  const mergedCanonical = canonicalDocs.map((canonical) => {
+    const live = liveByPath.get(canonical.path);
+    return live ? mergeCanonicalDocument(live, canonical) : canonical;
+  });
+  const nonCorpusDocuments = liveDocs.filter((document) => !canonicalPaths.has(document.path));
+
+  return [...mergedCanonical, ...nonCorpusDocuments];
+}
+
 function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   return error.code === 'PGRST205' || /could not find the table/i.test(error.message ?? '');
@@ -92,7 +120,7 @@ export async function getDocuments() {
     if (isLeanDocumentSet(liveDocs)) {
       return corpusToDocuments();
     }
-    return liveDocs;
+    return mergeLiveDocumentsWithCorpus(liveDocs);
   } catch {
     return corpusToDocuments();
   }
@@ -118,7 +146,8 @@ export async function getDocumentByPath(path: string) {
     .maybeSingle();
 
   if (!byPath.error && byPath.data) {
-    return normalizeDocument(byPath.data as Record<string, unknown>);
+    const liveDocument = normalizeDocument(byPath.data as Record<string, unknown>);
+    return corpusMatch ? mergeCanonicalDocument(liveDocument, corpusMatch) : liveDocument;
   }
 
   // Lean schemas may omit `path` / tag joins — fall back to id lookup.
@@ -135,7 +164,8 @@ export async function getDocumentByPath(path: string) {
       .maybeSingle();
 
     if (!byId.error && byId.data) {
-      return normalizeDocument(byId.data as Record<string, unknown>);
+      const liveDocument = normalizeDocument(byId.data as Record<string, unknown>);
+      return corpusMatch ? mergeCanonicalDocument(liveDocument, corpusMatch) : liveDocument;
     }
   }
 

@@ -41,7 +41,7 @@ export function useFormValidation<T extends Record<string, string>>(
 ): [FormState<T>, FormActions<T>] {
   const { initialValues, validationSchema, validateOnChange = true, validateOnBlur = true, debounceMs = 300 } = config;
 
-  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const createInitialFieldState = (): Record<keyof T, FieldValidation> => {
     const fields = {} as Record<keyof T, FieldValidation>;
