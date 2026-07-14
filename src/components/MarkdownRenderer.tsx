@@ -89,6 +89,10 @@ export function MarkdownRenderer({ content, isDarkMode = false }: MarkdownRender
     return <>{parts}</>;
   };
 
+  // Shared across recursive parseContent so TOC `heading-N` ids stay in document order.
+  let headingIndex = 0;
+  const nextHeadingId = () => `heading-${headingIndex++}`;
+
   const parseContent = (text: string) => {
     const lines = text.split('\n');
     const elements: JSX.Element[] = [];
@@ -145,6 +149,7 @@ export function MarkdownRenderer({ content, isDarkMode = false }: MarkdownRender
 
       if (line.startsWith('# ')) {
         const sectionId = `section-${sectionCounter++}`;
+        const headingId = nextHeadingId();
         const isCollapsed = collapsedSections.has(sectionId);
         const title = line.slice(2);
 
@@ -166,9 +171,12 @@ export function MarkdownRenderer({ content, isDarkMode = false }: MarkdownRender
                   ${isDarkMode ? 'text-gray-500 group-hover:text-gray-300' : 'text-gray-400 group-hover:text-gray-600'}
                 `} />
               </span>
-              <h1 className={`text-3xl font-bold transition-colors
+              <h1
+                id={headingId}
+                className={`text-3xl font-bold transition-colors scroll-mt-28
                 ${isDarkMode ? 'text-white group-hover:text-blue-400' : 'text-gray-900 group-hover:text-blue-600'}
-              `}>
+              `}
+              >
                 {title}
               </h1>
             </button>
@@ -184,6 +192,7 @@ export function MarkdownRenderer({ content, isDarkMode = false }: MarkdownRender
 
       if (line.startsWith('## ')) {
         const sectionId = `section-${sectionCounter++}`;
+        const headingId = nextHeadingId();
         const isCollapsed = collapsedSections.has(sectionId);
         const title = line.slice(3);
 
@@ -205,9 +214,12 @@ export function MarkdownRenderer({ content, isDarkMode = false }: MarkdownRender
                   ${isDarkMode ? 'text-gray-500 group-hover:text-gray-300' : 'text-gray-400 group-hover:text-gray-600'}
                 `} />
               </span>
-              <h2 className={`text-2xl font-semibold transition-colors
+              <h2
+                id={headingId}
+                className={`text-2xl font-semibold transition-colors scroll-mt-28
                 ${isDarkMode ? 'text-gray-100 group-hover:text-blue-400' : 'text-gray-800 group-hover:text-blue-600'}
-              `}>
+              `}
+              >
                 {title}
               </h2>
             </button>
@@ -222,10 +234,15 @@ export function MarkdownRenderer({ content, isDarkMode = false }: MarkdownRender
       }
 
       if (line.startsWith('### ')) {
+        const headingId = nextHeadingId();
         elements.push(
-          <h3 key={`h3-${i}`} className={`text-xl font-semibold mt-6 mb-3
+          <h3
+            key={headingId}
+            id={headingId}
+            className={`text-xl font-semibold mt-6 mb-3 scroll-mt-28
             ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}
-          `}>
+          `}
+          >
             {line.slice(4)}
           </h3>
         );

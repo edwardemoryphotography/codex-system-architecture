@@ -60,7 +60,7 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
   const buildTree = (): TreeNode[] => {
     const docsMap = new Map<string | null, CodexDocument[]>();
 
-    documents.forEach(doc => {
+    documents.forEach((doc) => {
       const parentId = doc.parent_id;
       if (!docsMap.has(parentId)) {
         docsMap.set(parentId, []);
@@ -72,7 +72,7 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
       const children = docsMap.get(parentId) || [];
       return children
         .sort((a, b) => a.order - b.order)
-        .map(doc => ({
+        .map((doc) => ({
           document: doc,
           children: buildNodes(doc.id),
         }));
@@ -100,46 +100,67 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
     return (
       <div>
         <button
+          type="button"
           onClick={() => {
             if (hasChildren) {
               toggleFolder(node.document.path);
             }
             onSelectDocument(node.document.path);
           }}
-          className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-all duration-200 group
-            ${isSelected
-              ? isDarkMode
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-blue-50 text-blue-700'
-              : isDarkMode
-                ? 'text-gray-300 hover:bg-gray-800'
-                : 'text-gray-700 hover:bg-gray-100'
+          className={`codex-press codex-focus-ring w-full flex items-center gap-2 px-3 py-2 text-sm group relative
+            ${
+              isSelected
+                ? isDarkMode
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'bg-blue-50 text-blue-700'
+                : isDarkMode
+                  ? 'text-gray-300 hover:bg-gray-800/80'
+                  : 'text-gray-700 hover:bg-gray-100'
             }
           `}
           style={{ paddingLeft: `${12 + level * 14}px` }}
         >
+          {isSelected && (
+            <span
+              aria-hidden="true"
+              className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-sky-400"
+            />
+          )}
           <span className={`transition-transform duration-200 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
             {hasChildren ? (
-              <ChevronDown className={`w-4 h-4 flex-shrink-0 ${
-                isDarkMode ? 'text-gray-500' : 'text-gray-400'
-              }`} />
+              <ChevronDown
+                className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}
+              />
             ) : (
               <div className="w-4" />
             )}
           </span>
           {hasChildren ? (
-            <Folder className={`w-4 h-4 flex-shrink-0 ${iconColor} transition-transform group-hover:scale-110`} />
+            <Folder
+              className={`w-4 h-4 flex-shrink-0 ${iconColor} transition-transform group-hover:scale-110`}
+            />
           ) : (
-            <BookOpen className={`w-4 h-4 flex-shrink-0 ${iconColor} transition-transform group-hover:scale-110`} />
+            <BookOpen
+              className={`w-4 h-4 flex-shrink-0 ${iconColor} transition-transform group-hover:scale-110`}
+            />
           )}
-          <span className="truncate font-medium">{node.document.title}</span>
+          <span className="truncate font-medium flex-1 text-left">{node.document.title}</span>
+          {hasChildren && (
+            <span
+              className={`text-[10px] tabular-nums px-1.5 py-0.5 rounded-md ${
+                isDarkMode ? 'bg-gray-800 text-gray-500' : 'bg-gray-200/80 text-gray-500'
+              }`}
+            >
+              {node.children.length}
+            </span>
+          )}
         </button>
         <div
           className={`overflow-hidden transition-all duration-200 ease-out
             ${hasChildren && isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}
           `}
         >
-          {node.children.map(child => (
+          {node.children.map((child) => (
             <TreeNodeComponent key={child.document.id} node={child} level={level + 1} />
           ))}
         </div>
@@ -162,7 +183,7 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
 
   return (
     <div className="flex-1 overflow-y-auto py-2">
-      {tree.map(node => (
+      {tree.map((node) => (
         <TreeNodeComponent key={node.document.id} node={node} />
       ))}
     </div>
