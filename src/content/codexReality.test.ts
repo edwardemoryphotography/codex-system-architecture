@@ -33,6 +33,16 @@ describe('Codex reality contract', () => {
     for (const document of corpusToDocuments()) {
       expect(document.content, document.path).toContain('**Evidence status:**');
       expect(document.content, document.path).toContain('**Last reviewed:** 2026-07-14');
+      expect(document.provenance_status.length, document.path).toBeGreaterThan(0);
+      expect(document.evidence_basis.trim().length, document.path).toBeGreaterThan(0);
+      expect(document.last_reviewed, document.path).toBe('2026-07-14');
+      expect(document.is_read_only, document.path).toBe(true);
+      for (const status of document.provenance_status) {
+        expect(
+          ['verified', 'repository_evidence', 'concept', 'unknown'],
+          document.path,
+        ).toContain(status);
+      }
     }
   });
 

@@ -1,17 +1,22 @@
 {
-  "$schema": "Canonical Supabase project for this repo and Control Panel clients.",
-  "project_ref": "hzzzxmtpkgdmjcbncxjh",
-  "name": "supabase-indigo-paddle",
-  "dashboard_url": "https://supabase.com/dashboard/project/hzzzxmtpkgdmjcbncxjh",
-  "api_url": "https://hzzzxmtpkgdmjcbncxjh.supabase.co",
+  "$schema": "Verified production Supabase project for the deployed viewer.",
+  "project_ref": "pkydkbuodikttfeawqsw",
+  "name": "foundry-console",
+  "dashboard_url": "https://supabase.com/dashboard/project/pkydkbuodikttfeawqsw",
+  "api_url": "https://pkydkbuodikttfeawqsw.supabase.co",
+  "last_verified": "2026-07-15",
   "tables": {
-    "knowledge": ["codex_documents", "codex_tags", "codex_document_tags", "document_links"],
-    "interactions": ["reading_progress", "bookmarks", "document_notes"],
-    "control_panel": ["actions"],
-    "edition_manager": ["edition_manager_events"]
+    "knowledge": ["codex_documents"],
+    "interactions": [],
+    "control_panel": ["actions", "codex_actions", "events", "friction_entries", "manual", "milestones", "settings", "sprints", "workspaces"],
+    "edition_manager": []
   },
-  "rest_ingest": {
-    "edition_manager_events": "POST https://hzzzxmtpkgdmjcbncxjh.supabase.co/rest/v1/edition_manager_events"
+  "feature_status": {
+    "documents": "verified_public_read_only",
+    "bookmarks": "unavailable",
+    "reading_progress": "unavailable",
+    "document_notes": "unavailable",
+    "edition_manager_events": "unknown"
   },
   "rpc": {
     "initialize_session_start": {

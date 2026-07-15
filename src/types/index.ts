@@ -1,3 +1,9 @@
+export type ProvenanceStatus =
+  | 'verified'
+  | 'repository_evidence'
+  | 'concept'
+  | 'unknown';
+
 export interface CodexDocument {
   id: string;
   title: string;
@@ -8,6 +14,10 @@ export interface CodexDocument {
   order: number;
   created_at: string;
   updated_at: string;
+  provenance_status: ProvenanceStatus[];
+  evidence_basis: string;
+  last_reviewed: string | null;
+  is_read_only: boolean;
 }
 
 export interface CodexTag {
