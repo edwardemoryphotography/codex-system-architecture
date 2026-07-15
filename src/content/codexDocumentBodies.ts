@@ -5,6 +5,8 @@ type EvidenceStatus =
   | 'MIXED — FACTS AND UNIMPLEMENTED DESIGN'
   | 'UNVERIFIED CONCEPT — NOT IMPLEMENTED';
 
+import type { ProvenanceStatus } from '../types';
+
 function documentBody(
   title: string,
   status: EvidenceStatus,
@@ -968,4 +970,55 @@ No productivity, recovery, focus, revenue, relationship, or creative-satisfactio
 
 export function getCodexDocumentBody(path: string, fallback = ''): string {
   return CODEX_DOCUMENT_BODIES[path] ?? fallback;
+}
+
+export interface CodexDocumentProvenance {
+  provenance_status: ProvenanceStatus[];
+  evidence_basis: string;
+  last_reviewed: string;
+}
+
+const provenanceOrder: ProvenanceStatus[] = [
+  'verified',
+  'repository_evidence',
+  'concept',
+  'unknown',
+];
+
+/** Parse the required evidence header into machine-readable provenance. */
+export function getCodexDocumentProvenance(path: string): CodexDocumentProvenance {
+  const content = CODEX_DOCUMENT_BODIES[path];
+  if (!content) throw new Error(`Missing canonical Codex body for ${path}`);
+
+  const evidenceStatus = content.match(/^\*\*Evidence status:\*\* ([^\r\n]+)$/m)?.[1];
+  const evidenceBasis = content.match(/^\*\*Evidence basis:\*\* ([^\r\n]+)$/m)?.[1];
+  const lastReviewed = content.match(/^\*\*Last reviewed:\*\* (\d{4}-\d{2}-\d{2})$/m)?.[1];
+
+  if (!evidenceStatus || !evidenceBasis || !lastReviewed) {
+    throw new Error(`Incomplete provenance header for ${path}`);
+  }
+
+  const statuses = new Set<ProvenanceStatus>();
+  if (/VERIFIED FACTS|VERIFIED PROJECT STATUS|MIXED/.test(evidenceStatus)) {
+    statuses.add('verified');
+  }
+  if (/repository|GitHub|Vercel|Supabase|source code|deployment/i.test(evidenceBasis)) {
+    statuses.add('repository_evidence');
+  }
+  if (/DESIGN|CONCEPT|UNIMPLEMENTED/.test(evidenceStatus)) {
+    statuses.add('concept');
+  }
+  if (/UNVERIFIED|Unknown|not verified|not freshly verified/i.test(`${evidenceStatus}\n${content}`)) {
+    statuses.add('unknown');
+  }
+
+  if (statuses.size === 0) {
+    throw new Error(`Unsupported evidence status for ${path}: ${evidenceStatus}`);
+  }
+
+  return {
+    provenance_status: provenanceOrder.filter((status) => statuses.has(status)),
+    evidence_basis: evidenceBasis,
+    last_reviewed: lastReviewed,
+  };
 }

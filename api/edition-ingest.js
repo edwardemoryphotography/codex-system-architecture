@@ -78,7 +78,7 @@ export default async function handler(req, res) {
       error: error.message,
       code: error.code,
       hint: missingTable
-        ? 'Run supabase/migrations/20260520140000_edition_manager_events.sql on supabase-indigo-paddle'
+        ? 'Verify the edition-manager upstream, then apply supabase/migrations/20260520140000_edition_manager_events.sql there'
         : undefined,
     });
   }

@@ -1,5 +1,5 @@
 import type { CodexDocument } from '../types';
-import { getCodexDocumentBody } from './codexDocumentBodies';
+import { getCodexDocumentBody, getCodexDocumentProvenance } from './codexDocumentBodies';
 
 /** Seeded Codex corpus used when the live DB is lean/incomplete. */
 export interface CorpusDocument {
@@ -118,6 +118,7 @@ export function corpusToDocuments(): CodexDocument[] {
 
   return CORPUS_DOCUMENTS.map((doc, index) => {
     const id = `corpus-${index}-${doc.path}`;
+    const provenance = getCodexDocumentProvenance(doc.path);
     byPath.set(doc.path, id);
     return {
       id,
@@ -129,6 +130,8 @@ export function corpusToDocuments(): CodexDocument[] {
       order: doc.order,
       created_at: '2025-12-04T00:00:00.000Z',
       updated_at: '2025-12-04T00:00:00.000Z',
+      ...provenance,
+      is_read_only: true,
     };
   }).map((doc) => {
     const parentPath = CORPUS_DOCUMENTS.find((item) => item.path === doc.path)?.parentPath ?? null;

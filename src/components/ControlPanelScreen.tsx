@@ -64,7 +64,7 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
       const next = actions.find((a) => a.is_next_action) ?? actions[0];
       const lines = actions.length
         ? actions.map((a) => `• ${a.action_title}${a.is_next_action ? ' ← next' : ''}`).join('\n')
-        : '(no TODO actions — run migrations / seed on supabase-indigo-paddle)';
+        : '(no verified TODO actions are available)';
 
       window.alert(
         `Routed: ${chip ?? 'auto'} (${mode})\n\nYour task:\n${task}\n\nSession actions:\n${lines}${

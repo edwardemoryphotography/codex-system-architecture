@@ -55,9 +55,9 @@ npm run build
 
 See [`.env.example`](./.env.example). Never commit `.env.local`.
 
-**One Supabase project** for docs + Control Panel: `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`). Details: [`supabase/SCHEMA.md`](./supabase/SCHEMA.md).
+The production viewer is connected to `foundry-console` (`pkydkbuodikttfeawqsw`). The reviewed document corpus is public and read-only; per-user bookmarks, notes, and reading history are not enabled. Details: [`supabase/SCHEMA.md`](./supabase/SCHEMA.md).
 
-Canonical public document copy is reviewed in [`src/content/codexDocumentBodies.ts`](./src/content/codexDocumentBodies.ts). Supabase supplies live row identity and application state; stale database copy is not allowed to override the reviewed corpus.
+Canonical public document copy is reviewed in [`src/content/codexDocumentBodies.ts`](./src/content/codexDocumentBodies.ts). Every document carries machine-readable `provenance_status`, `evidence_basis`, and `last_reviewed` fields. Allowed provenance values are `verified`, `repository_evidence`, `concept`, and `unknown`. Supabase supplies live row identity and application state; stale database copy is not allowed to override the reviewed corpus.
 
 ## Deploy (Vercel)
 
@@ -108,5 +108,5 @@ Personal claims must follow the Reality Filter: verified facts, repository evide
 - [x] Control Panel Screen 1 (intake + chips)
 - [x] Evidence-labeled canonical corpus for all 59 document paths
 - [x] Repository content overrides stale Supabase copy
-- [ ] Apply the July 2026 corrective data migration to Supabase
+- [x] Apply and verify the July 2026 corrective content and provenance migrations in the configured Supabase project
 - [ ] Verify each future integration directly before marking it active

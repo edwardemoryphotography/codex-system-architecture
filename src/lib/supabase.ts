@@ -1,6 +1,22 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
-import type { CodexAction, CodexDocument, SessionMode } from '../types';
+import type { CodexAction, CodexDocument, ProvenanceStatus, SessionMode } from '../types';
+
+const allowedProvenanceStatuses = new Set<ProvenanceStatus>([
+  'verified',
+  'repository_evidence',
+  'concept',
+  'unknown',
+]);
+
+function normalizeProvenanceStatuses(value: unknown): ProvenanceStatus[] {
+  if (!Array.isArray(value)) return ['unknown'];
+  const statuses = value.filter(
+    (status): status is ProvenanceStatus =>
+      typeof status === 'string' && allowedProvenanceStatuses.has(status as ProvenanceStatus),
+  );
+  return statuses.length > 0 ? [...new Set(statuses)] : ['unknown'];
+}
 
 // VITE_SUPABASE_URL has been seen set to the dashboard page
 // (https://supabase.com/dashboard/project/<ref>) instead of the API URL,
@@ -35,6 +51,13 @@ export function normalizeDocument(row: Record<string, unknown>): CodexDocument {
     order: typeof row.order === 'number' ? row.order : 0,
     created_at: String(row.created_at ?? new Date().toISOString()),
     updated_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString()),
+    provenance_status: normalizeProvenanceStatuses(row.provenance_status),
+    evidence_basis:
+      typeof row.evidence_basis === 'string' && row.evidence_basis.trim().length > 0
+        ? row.evidence_basis
+        : 'Unknown — no verified evidence basis is stored for this live row.',
+    last_reviewed: typeof row.last_reviewed === 'string' ? row.last_reviewed : null,
+    is_read_only: row.is_read_only === true || id.startsWith('corpus-'),
   };
 }
 
@@ -49,21 +72,49 @@ export function mergeCanonicalDocument(
     content: canonical.content,
     category: canonical.category,
     order: canonical.order,
+    provenance_status: canonical.provenance_status,
+    evidence_basis: canonical.evidence_basis,
+    last_reviewed: canonical.last_reviewed,
+    is_read_only: live.is_read_only || live.id.startsWith('corpus-'),
   };
 }
 
-function mergeLiveDocumentsWithCorpus(liveDocs: CodexDocument[]): CodexDocument[] {
+export function mergeLiveDocumentsWithCorpus(liveDocs: CodexDocument[]): CodexDocument[] {
   const canonicalDocs = corpusToDocuments();
   const liveByPath = new Map(liveDocs.map((document) => [document.path, document]));
   const canonicalPaths = new Set(canonicalDocs.map((document) => document.path));
 
+  const corpusIdToResolvedId = new Map<string, string>();
+  canonicalDocs.forEach((canonical) => {
+    const live = liveByPath.get(canonical.path);
+    corpusIdToResolvedId.set(canonical.id, live?.id ?? canonical.id);
+  });
+
   const mergedCanonical = canonicalDocs.map((canonical) => {
     const live = liveByPath.get(canonical.path);
-    return live ? mergeCanonicalDocument(live, canonical) : canonical;
+    const merged = live ? mergeCanonicalDocument(live, canonical) : { ...canonical, is_read_only: true };
+    if (merged.parent_id && corpusIdToResolvedId.has(merged.parent_id)) {
+      merged.parent_id = corpusIdToResolvedId.get(merged.parent_id) ?? merged.parent_id;
+    }
+    return merged;
   });
   const nonCorpusDocuments = liveDocs.filter((document) => !canonicalPaths.has(document.path));
 
   return [...mergedCanonical, ...nonCorpusDocuments];
+}
+
+/** Canonicalize document rows embedded inside bookmark, recent, and graph responses. */
+export function mergeEmbeddedCanonicalDocument(row: Record<string, unknown>): CodexDocument {
+  const liveDocument = normalizeDocument(row);
+  const canonical = corpusToDocuments().find((document) => document.path === liveDocument.path);
+  return canonical ? mergeCanonicalDocument(liveDocument, canonical) : liveDocument;
+}
+
+const documentUuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isPersistableDocumentId(documentId: string): boolean {
+  return documentUuidPattern.test(documentId) && !documentId.startsWith('corpus-');
 }
 
 function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
@@ -229,14 +280,14 @@ export async function getRecentDocuments(limit = 10) {
   if (error) throw error;
   return (data ?? []).map((row) => {
     const doc = row.codex_documents
-      ? normalizeDocument(row.codex_documents as Record<string, unknown>)
+      ? mergeEmbeddedCanonicalDocument(row.codex_documents as Record<string, unknown>)
       : null;
     return { ...row, codex_documents: doc };
   });
 }
 
 export async function updateReadingProgress(documentId: string, scrollPosition: number, timeSpent: number) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
   const { data, error } = await client()
     .from('reading_progress')
     .upsert({
@@ -255,7 +306,7 @@ export async function updateReadingProgress(documentId: string, scrollPosition: 
 }
 
 export async function getReadingProgress(documentId: string) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
   const { data, error } = await client()
     .from('reading_progress')
     .select('*')
@@ -282,13 +333,13 @@ export async function getBookmarks() {
   return (data ?? []).map((row) => ({
     ...row,
     codex_documents: row.codex_documents
-      ? normalizeDocument(row.codex_documents as Record<string, unknown>)
+      ? mergeEmbeddedCanonicalDocument(row.codex_documents as Record<string, unknown>)
       : null,
   }));
 }
 
 export async function addBookmark(documentId: string) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
   const { data, error } = await client()
     .from('bookmarks')
     .insert({ document_id: documentId })
@@ -301,7 +352,7 @@ export async function addBookmark(documentId: string) {
 }
 
 export async function removeBookmark(documentId: string) {
-  if (!supabase) return;
+  if (!supabase || !isPersistableDocumentId(documentId)) return;
   const { error } = await client()
     .from('bookmarks')
     .delete()
@@ -312,7 +363,7 @@ export async function removeBookmark(documentId: string) {
 }
 
 export async function isBookmarked(documentId: string) {
-  if (!supabase) return false;
+  if (!supabase || !isPersistableDocumentId(documentId)) return false;
   const { data, error } = await client()
     .from('bookmarks')
     .select('id')
@@ -325,7 +376,7 @@ export async function isBookmarked(documentId: string) {
 }
 
 export async function getDocumentNotes(documentId: string) {
-  if (!supabase) return [];
+  if (!supabase || !isPersistableDocumentId(documentId)) return [];
   const { data, error } = await client()
     .from('document_notes')
     .select('*')
@@ -338,7 +389,7 @@ export async function getDocumentNotes(documentId: string) {
 }
 
 export async function addDocumentNote(documentId: string, content: string, position?: string) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
   const { data, error } = await client()
     .from('document_notes')
     .insert({ document_id: documentId, content, position })
@@ -373,11 +424,21 @@ export async function getDocumentLinks() {
 
   if (isMissingRelationError(error)) return [];
   if (error) throw error;
-  return data;
+  return (data ?? []).map((row) => ({
+    ...row,
+    source: row.source
+      ? mergeEmbeddedCanonicalDocument(row.source as Record<string, unknown>)
+      : null,
+    target: row.target
+      ? mergeEmbeddedCanonicalDocument(row.target as Record<string, unknown>)
+      : null,
+  }));
 }
 
 export async function addDocumentLink(sourceId: string, targetId: string, linkType = 'reference') {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(sourceId) || !isPersistableDocumentId(targetId)) {
+    return null;
+  }
   const { data, error } = await client()
     .from('document_links')
     .insert({ source_document_id: sourceId, target_document_id: targetId, link_type: linkType })

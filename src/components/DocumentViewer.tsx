@@ -106,7 +106,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   }, [handleScroll]);
 
   useEffect(() => {
-    if (!document) return;
+    if (!document || document.is_read_only) return;
     const saveProgress = () => {
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
       updateReadingProgress(document.id, scrollProgress, timeSpent).catch(console.error);
@@ -116,7 +116,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   }, [document, scrollProgress, startTime]);
 
   const toggleBookmark = async () => {
-    if (!document) return;
+    if (!document || document.is_read_only) return;
     try {
       if (bookmarked) await removeBookmark(document.id);
       else await addBookmark(document.id);
@@ -127,7 +127,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   };
 
   const handleAddNote = async () => {
-    if (!document || !newNote.trim()) return;
+    if (!document || document.is_read_only || !newNote.trim()) return;
     try {
       const note = await addDocumentNote(document.id, newNote.trim());
       if (note) { setNotes([note, ...notes]); setNewNote(''); }
@@ -194,10 +194,10 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
               </div>
 
               <div className="flex items-center gap-1">
-                <button onClick={toggleBookmark} className={`p-2 rounded-xl transition-all ${bookmarked ? 'text-amber-500 bg-amber-500/10' : isDarkMode ? 'text-gray-500 hover:text-amber-500 hover:bg-gray-800' : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100'}`} title={bookmarked ? 'Remove bookmark' : 'Add bookmark'}>
+                <button disabled={document.is_read_only} onClick={toggleBookmark} className={`p-2 rounded-xl transition-all ${document.is_read_only ? 'cursor-not-allowed opacity-40' : ''} ${bookmarked ? 'text-amber-500 bg-amber-500/10' : isDarkMode ? 'text-gray-500 hover:text-amber-500 hover:bg-gray-800' : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100'}`} title={document.is_read_only ? 'Personal bookmark storage is not enabled' : bookmarked ? 'Remove bookmark' : 'Add bookmark'}>
                   <Star className={`w-5 h-5 ${bookmarked ? 'fill-current' : ''}`} />
                 </button>
-                <button onClick={() => setShowNotes(!showNotes)} className={`p-2 rounded-xl transition-all relative ${showNotes ? isDarkMode ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50' : isDarkMode ? 'text-gray-500 hover:text-blue-400 hover:bg-gray-800' : 'text-gray-400 hover:text-blue-600 hover:bg-gray-100'}`} title="Notes">
+                <button disabled={document.is_read_only} onClick={() => setShowNotes(!showNotes)} className={`p-2 rounded-xl transition-all relative ${document.is_read_only ? 'cursor-not-allowed opacity-40' : ''} ${showNotes ? isDarkMode ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50' : isDarkMode ? 'text-gray-500 hover:text-blue-400 hover:bg-gray-800' : 'text-gray-400 hover:text-blue-600 hover:bg-gray-100'}`} title={document.is_read_only ? 'Personal note storage is not enabled' : 'Notes'}>
                   <MessageSquare className="w-5 h-5" />
                   {notes.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">{notes.length}</span>}
                 </button>
@@ -234,6 +234,22 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
         </div>
 
         <article className={`max-w-4xl mx-auto px-4 py-6 md:px-8 md:py-8 ${isFocusMode ? 'max-w-3xl' : ''}`}>
+          <div className={`mb-6 rounded-xl border p-4 ${isDarkMode ? 'border-gray-700 bg-gray-900/70' : 'border-gray-200 bg-gray-50'}`}>
+            <div className="flex flex-wrap gap-2 mb-2" aria-label="Document provenance">
+              {document.provenance_status.map((status) => (
+                <span key={status} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isDarkMode ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-blue-800'}`}>
+                  {status.replace(/_/g, ' ').toUpperCase()}
+                </span>
+              ))}
+            </div>
+            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <span className="font-semibold">Evidence:</span> {document.evidence_basis}
+            </p>
+            <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+              Last reviewed: {document.last_reviewed ?? 'Unknown — not yet verified'}
+              {document.is_read_only ? ' · Public canonical document · read-only' : ''}
+            </p>
+          </div>
           <MarkdownRenderer content={document.content} isDarkMode={isDarkMode} />
         </article>
       </div>
