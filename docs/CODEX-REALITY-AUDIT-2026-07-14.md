@@ -1,5 +1,15 @@
 # Codex Reality Audit — 2026-07-14
 
+> **2026-07-15 correction:** The database-access limitation recorded in this
+> audit has been resolved. Production was verified to use the `foundry-console`
+> Supabase project (`pkydkbuodikttfeawqsw`), not the stale project reference
+> cited below. The corrective provenance and parent-index migrations were
+> applied and verified against all 59 canonical rows. See
+> [CODEX-PUBLIC-REALITY-AUDIT-2026-07-15.md](./CODEX-PUBLIC-REALITY-AUDIT-2026-07-15.md)
+> for the completed database, production-flow, repository, and deployment
+> audit. The original text remains below as a dated record of what was known
+> on 2026-07-14.
+
 ## Executive finding
 
 The deployed Codex viewer could not be trusted as a record of Eddie's actual life, equipment, business, health data, or system status.
