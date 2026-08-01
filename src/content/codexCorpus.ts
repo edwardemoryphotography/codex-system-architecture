@@ -113,8 +113,37 @@ export const CORPUS_BRIDGES: CorpusLink[] = [
   { sourcePath: '/codex/personal_os/reflections_between_worlds.md', targetPath: '/codex/convergence/system_reflexivity.md', linkType: 'bridges' },
 ];
 
+/**
+ * Cached result of buildCorpusDocuments(). The corpus is derived entirely from
+ * module-level constants, so the output never changes within a session and the
+ * documents are read-only by contract (`is_read_only: true`).
+ */
+let cachedCorpusDocuments: CodexDocument[] | null = null;
+
 export function corpusToDocuments(): CodexDocument[] {
+  if (!cachedCorpusDocuments) {
+    cachedCorpusDocuments = buildCorpusDocuments();
+  }
+  return cachedCorpusDocuments;
+}
+
+let cachedCorpusDocumentsByPath: Map<string, CodexDocument> | null = null;
+
+/** Path-indexed view of the corpus, for per-row canonical lookups. */
+export function corpusDocumentByPath(path: string): CodexDocument | undefined {
+  if (!cachedCorpusDocumentsByPath) {
+    cachedCorpusDocumentsByPath = new Map(
+      corpusToDocuments().map((document) => [document.path, document]),
+    );
+  }
+  return cachedCorpusDocumentsByPath.get(path);
+}
+
+function buildCorpusDocuments(): CodexDocument[] {
   const byPath = new Map<string, string>();
+  const parentPathByPath = new Map(
+    CORPUS_DOCUMENTS.map((item) => [item.path, item.parentPath ?? null]),
+  );
 
   return CORPUS_DOCUMENTS.map((doc, index) => {
     const id = `corpus-${index}-${doc.path}`;
@@ -134,7 +163,7 @@ export function corpusToDocuments(): CodexDocument[] {
       is_read_only: true,
     };
   }).map((doc) => {
-    const parentPath = CORPUS_DOCUMENTS.find((item) => item.path === doc.path)?.parentPath ?? null;
+    const parentPath = parentPathByPath.get(doc.path) ?? null;
     return {
       ...doc,
       parent_id: parentPath ? byPath.get(parentPath) ?? null : null,
