@@ -36,3 +36,35 @@ Canonical documents must satisfy all of these invariants:
 - Existing non-canonical rows with a null `path` are preserved and are not mislabeled as reviewed personal information.
 
 The public `SELECT` policy on `codex_documents` is intentional. Anonymous bookmark, note, reading-progress, update, insert, and delete policies are not.
+
+## Routing control plane — canonical ownership (recorded 2026-08-04)
+
+Provenance: `repository_evidence` for existing tables; `concept` for the two
+proposed tables until their migration is applied and verified. Nothing in
+this section claims deployed status.
+
+The Legacy Codex Autonomous Project Hygiene work (Lane A) fixed one
+authoritative owner per operational record type. Do not introduce parallel
+stores for any of these:
+
+| Record type | Canonical owner | Status |
+|---|---|---|
+| Project/workspace registry | `workspaces` (Foundry, `foundry-console/SCHEMA.sql` in legacy-codex) | deployed per project.json |
+| Mission / work item | `actions` (this repo's migration `20260520120000`) | deployed per project.json |
+| Append-only event history | `events` (Foundry) | deployed per project.json |
+| Routed request | `routed_requests` — legacy-codex migration `20260804010000_routing_control_plane.sql` | migration pending, not applied |
+| Evidence | `evidence_items` — same migration | migration pending, not applied |
+| Agent run | recorded as `events` rows; dedicated table deferred | decision recorded |
+| Generated status summary | derived only (`foundry-console/src/lib/derived-state.ts` in legacy-codex); never stored | decision recorded |
+
+Known contradictions awaiting owner decision:
+
+- `actions` carries public RLS (`USING (true)`, full CRUD) while every
+  Foundry table is owner-only with anon revoked. Tightening it would break
+  the deployed Control Panel read path — flagged, deliberately not changed.
+- legacy-codex `CLAUDE.md` still claims its Supabase project is separate;
+  both repos point at `pkydkbuodikttfeawqsw`.
+- legacy-codex draft PR #37 proposes `missions` / `mission_events` /
+  `evidence_snapshots`, which would parallel `actions` / `events` /
+  `evidence_items`. Reconciliation here chose the deployed tables; PR #37
+  needs rework or an explicit owner override before merge.
