@@ -19,6 +19,14 @@ interface ParticleFieldProps {
   className?: string;
 }
 
+const particleColors = [
+  'rgba(59, 130, 246, 0.8)',
+  'rgba(14, 165, 233, 0.8)',
+  'rgba(6, 182, 212, 0.8)',
+  'rgba(20, 184, 166, 0.8)',
+  'rgba(99, 102, 241, 0.6)',
+];
+
 export function ParticleField({
   particleCount = 80,
   connectionDistance = 150,
@@ -31,14 +39,6 @@ export function ParticleField({
   const animationRef = useRef<number>(0);
   const dimensionsRef = useRef({ width: 0, height: 0 });
 
-  const colors = [
-    'rgba(59, 130, 246, 0.8)',
-    'rgba(14, 165, 233, 0.8)',
-    'rgba(6, 182, 212, 0.8)',
-    'rgba(20, 184, 166, 0.8)',
-    'rgba(99, 102, 241, 0.6)',
-  ];
-
   const initParticles = useCallback((width: number, height: number) => {
     const particles: Particle[] = [];
     for (let i = 0; i < particleCount; i++) {
@@ -50,7 +50,7 @@ export function ParticleField({
         vy: (Math.random() - 0.5) * 0.5,
         radius: baseRadius,
         baseRadius,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: particleColors[Math.floor(Math.random() * particleColors.length)],
         alpha: Math.random() * 0.5 + 0.3,
         connections: []
       });

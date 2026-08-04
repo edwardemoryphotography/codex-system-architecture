@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   cognitionSlides,
@@ -64,13 +64,13 @@ export function CognitionDeck() {
     return `${formatSlideNumber(currentIndex)} / ${formatSlideNumber(totalSlides - 1)}`;
   }, [currentIndex, totalSlides]);
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setCurrentIndex((index) => clampSlideIndex(index - 1, totalSlides));
-  };
+  }, [totalSlides]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentIndex((index) => clampSlideIndex(index + 1, totalSlides));
-  };
+  }, [totalSlides]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -99,7 +99,7 @@ export function CognitionDeck() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [totalSlides]);
+  }, [goToNext, goToPrevious]);
 
   const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
     if (isInteractiveTarget(event.target)) {
