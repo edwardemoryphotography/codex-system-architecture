@@ -52,10 +52,20 @@ function depthFromPath(path: string): number {
   return path.split('/').filter(Boolean).length;
 }
 
+function stripMarkdown(line: string): string {
+  return line
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .trim();
+}
+
 function excerptFor(doc: CodexDocument): string {
   const lines = doc.content
     .split('\n')
-    .map((line) => line.trim())
+    .map((line) => stripMarkdown(line.trim()))
     .filter(Boolean);
 
   for (const line of lines) {
@@ -76,7 +86,7 @@ function excerptFor(doc: CodexDocument): string {
     return line.length <= 140 ? line : `${line.slice(0, 137)}…`;
   }
 
-  const text = doc.content.replace(/\s+/g, ' ').trim();
+  const text = stripMarkdown(doc.content.replace(/\s+/g, ' ').trim());
   if (text.length <= 120) return text;
   return `${text.slice(0, 117)}…`;
 }

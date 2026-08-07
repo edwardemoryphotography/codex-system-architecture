@@ -14,30 +14,34 @@ vi.mock('../hooks/useMediaQuery', () => ({
   useIsMobileLayout: () => true,
 }));
 
+function createCanvasContextMock() {
+  return new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if (prop === 'createRadialGradient' || prop === 'createLinearGradient') {
+          return () => ({ addColorStop: () => {} });
+        }
+        if (prop === 'measureText') {
+          return (text: string) => ({ width: text.length * 7 });
+        }
+        if (prop === 'getLineDash') {
+          return () => [];
+        }
+        return () => {};
+      },
+      set() {
+        return true;
+      },
+    },
+  );
+}
+
 describe('KnowledgeGraph', () => {
   beforeEach(() => {
     Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
       configurable: true,
-      value: vi.fn(() => ({
-        setTransform: vi.fn(),
-        clearRect: vi.fn(),
-        createRadialGradient: vi.fn(() => ({
-          addColorStop: vi.fn(),
-        })),
-        fillRect: vi.fn(),
-        beginPath: vi.fn(),
-        moveTo: vi.fn(),
-        lineTo: vi.fn(),
-        stroke: vi.fn(),
-        arc: vi.fn(),
-        fill: vi.fn(),
-        fillText: vi.fn(),
-        setLineDash: vi.fn(),
-        translate: vi.fn(),
-        scale: vi.fn(),
-        save: vi.fn(),
-        restore: vi.fn(),
-      })),
+      value: vi.fn(createCanvasContextMock),
     });
 
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
@@ -53,7 +57,7 @@ describe('KnowledgeGraph', () => {
     });
   });
 
-  it('renders the full Codex graph metadata on mobile', async () => {
+  it('renders the atlas header with graph metadata', async () => {
     render(
       <KnowledgeGraph
         isOpen
@@ -67,11 +71,11 @@ describe('KnowledgeGraph', () => {
     expect(
       await screen.findByText(new RegExp(`${CORPUS_DOCUMENTS.length} nodes`, 'i')),
     ).toBeInTheDocument();
-    expect(screen.getByText(/full codex map/i)).toBeInTheDocument();
+    expect(screen.getByText(/corpus map/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /close knowledge graph/i })).toBeInTheDocument();
   });
 
-  it('opens filters with territory chips', async () => {
+  it('opens the territory index with search and territory rows', async () => {
     const user = userEvent.setup();
 
     render(
@@ -83,11 +87,31 @@ describe('KnowledgeGraph', () => {
       />,
     );
 
-    await screen.findByText(/full codex map/i);
-    await user.click(screen.getByRole('button', { name: /toggle filters/i }));
+    await screen.findByText(/corpus map/i);
+    await user.click(screen.getByRole('button', { name: /toggle territory index/i }));
 
-    expect(screen.getByPlaceholderText(/search nodes/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/search the codex/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /all territories/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /artistic systems/i })).toBeInTheDocument();
+  });
+
+  it('filters search results as you type', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KnowledgeGraph
+        isOpen
+        onClose={() => {}}
+        onSelectDocument={() => {}}
+        isDarkMode
+      />,
+    );
+
+    await screen.findByText(/corpus map/i);
+    await user.click(screen.getByRole('button', { name: /toggle territory index/i }));
+    await user.type(screen.getByPlaceholderText(/search the codex/i), 'architect');
+
+    expect(await screen.findByRole('listbox', { name: /search results/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
   });
 });
