@@ -36,3 +36,38 @@ Canonical documents must satisfy all of these invariants:
 - Existing non-canonical rows with a null `path` are preserved and are not mislabeled as reviewed personal information.
 
 The public `SELECT` policy on `codex_documents` is intentional. Anonymous bookmark, note, reading-progress, update, insert, and delete policies are not.
+
+## Routing control plane — canonical ownership (recorded 2026-08-04, updated 2026-08-07)
+
+Provenance: `repository_evidence` for every row below — `routed_requests` and
+`evidence_items` were confirmed live against the `foundry-console`
+(`pkydkbuodikttfeawqsw`) Supabase project on 2026-08-07 (RLS, anon-zero-
+privilege, delete guards, correction-chain integrity, idempotency-key
+uniqueness, and `persist_route_atomic` grants all checked directly).
+
+The Legacy Codex Autonomous Project Hygiene work (Lane A) fixed one
+authoritative owner per operational record type. Do not introduce parallel
+stores for any of these:
+
+| Record type | Canonical owner | Status |
+|---|---|---|
+| Project/workspace registry | `workspaces` (Foundry, `foundry-console/SCHEMA.sql` in legacy-codex) | deployed per project.json |
+| Mission / work item | `actions` (this repo's migration `20260520120000`) | deployed per project.json |
+| Append-only event history | `events` (Foundry) | deployed per project.json |
+| Routed request | `routed_requests` — legacy-codex migrations `20260804010000_routing_control_plane.sql` + `20260804020000_routing_control_plane_hardening.sql` (merged via legacy-codex#47) | deployed and verified live 2026-08-07 |
+| Evidence | `evidence_items` — same migrations | deployed and verified live 2026-08-07 |
+| Agent run | recorded as `events` rows; dedicated table deferred | decision recorded |
+| Generated status summary | derived only (`foundry-console/src/lib/derived-state.ts` in legacy-codex); never stored | decision recorded |
+
+Known contradictions awaiting owner decision (still open as of 2026-08-07):
+
+- `actions` carries public RLS (`USING (true)`, full CRUD) while every
+  Foundry table is owner-only with anon revoked. Tightening it would break
+  the deployed Control Panel read path — flagged, deliberately not changed.
+- legacy-codex `CLAUDE.md` still claims its Supabase project is separate;
+  both repos point at `pkydkbuodikttfeawqsw`.
+- legacy-codex draft PR #37 proposes `missions` / `mission_events` /
+  `evidence_snapshots`, which would parallel `actions` / `events` /
+  `evidence_items`. Still open and draft; reconciliation here chose the
+  deployed tables, so PR #37 needs rework or an explicit owner override
+  before merge.
