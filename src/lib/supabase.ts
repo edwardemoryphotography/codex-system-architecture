@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
+import { corpusDocumentByPath, corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
 import type { CodexAction, CodexDocument, ProvenanceStatus, SessionMode } from '../types';
 
 const allowedProvenanceStatuses = new Set<ProvenanceStatus>([
@@ -106,7 +106,7 @@ export function mergeLiveDocumentsWithCorpus(liveDocs: CodexDocument[]): CodexDo
 /** Canonicalize document rows embedded inside bookmark, recent, and graph responses. */
 export function mergeEmbeddedCanonicalDocument(row: Record<string, unknown>): CodexDocument {
   const liveDocument = normalizeDocument(row);
-  const canonical = corpusToDocuments().find((document) => document.path === liveDocument.path);
+  const canonical = corpusDocumentByPath(liveDocument.path);
   return canonical ? mergeCanonicalDocument(liveDocument, canonical) : liveDocument;
 }
 
