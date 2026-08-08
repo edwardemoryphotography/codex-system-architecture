@@ -1,6 +1,19 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, Session, SupabaseClient } from '@supabase/supabase-js';
 import { corpusDocumentByPath, corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
-import type { CodexAction, CodexDocument, ProvenanceStatus, SessionMode } from '../types';
+import type {
+  CodexAction,
+  CodexDocument,
+  PersistRouteResult,
+  ProvenanceStatus,
+  RouteProposal,
+  SessionMode,
+  Workspace,
+} from '../types';
+
+// The routing control plane (routed_requests / evidence_items) is owner-only.
+// persist_route_owner() re-checks this server-side against auth.jwt(), so
+// nothing client-side needs to be kept secret — it just has to match.
+export const ROUTING_OWNER_EMAIL = 'freddyv@duck.com';
 
 const allowedProvenanceStatuses = new Set<ProvenanceStatus>([
   'verified',
@@ -469,4 +482,58 @@ export async function initializeSessionStart(sessionMode: SessionMode = 'high') 
 
   if (error) throw error;
   return (data ?? []) as CodexAction[];
+}
+
+// ─── Routing control plane auth + persistence ──────────────────────────
+// Real writes go through persist_route_owner (SECURITY DEFINER), which
+// checks auth.jwt() email server-side and forwards to persist_route_atomic.
+// There is no service-role key in this client — the owner's own session is
+// the only credential, so a magic link to ROUTING_OWNER_EMAIL is the entire
+// auth flow.
+
+export async function getSession(): Promise<Session | null> {
+  if (!supabase) return null;
+  const { data, error } = await client().auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+
+export function onAuthStateChange(callback: (session: Session | null) => void) {
+  if (!supabase) return { unsubscribe: () => {} };
+  const { data } = client().auth.onAuthStateChange((_event, session) => callback(session));
+  return data.subscription;
+}
+
+export async function signInOwnerWithMagicLink(): Promise<void> {
+  const { error } = await client().auth.signInWithOtp({
+    email: ROUTING_OWNER_EMAIL,
+    options: { emailRedirectTo: window.location.origin },
+  });
+  if (error) throw error;
+}
+
+export async function signOutOwner(): Promise<void> {
+  if (!supabase) return;
+  const { error } = await client().auth.signOut();
+  if (error) throw error;
+}
+
+export async function getWorkspaces(): Promise<Workspace[]> {
+  if (!supabase) return [];
+  const { data, error } = await client()
+    .from('workspaces')
+    .select('id, name')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Workspace[];
+}
+
+export async function persistRouteOwner(proposal: RouteProposal): Promise<PersistRouteResult> {
+  const { data, error } = await client().rpc('persist_route_owner', {
+    p_proposal: proposal,
+  });
+
+  if (error) throw error;
+  return data as PersistRouteResult;
 }

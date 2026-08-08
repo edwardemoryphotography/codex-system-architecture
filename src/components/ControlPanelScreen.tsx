@@ -1,32 +1,67 @@
-import { useState } from 'react';
-import { initializeSessionStart, isSupabaseConfigured } from '../lib/supabase';
-import type { CodexAction, SessionMode } from '../types';
+import { useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import {
+  getSession,
+  getWorkspaces,
+  isSupabaseConfigured,
+  onAuthStateChange,
+  persistRouteOwner,
+  ROUTING_OWNER_EMAIL,
+  signInOwnerWithMagicLink,
+} from '../lib/supabase';
+import type { ExecutionLane, EvidenceKind, RouteProposal, RoutedRequestRecord, Workspace } from '../types';
 import { Loader2, Sparkles } from 'lucide-react';
+import { useToast } from './Toast';
 
-const CHIPS = [
-  { id: 'execute', label: 'Execute now', mode: 'high' as SessionMode },
-  { id: 'research', label: 'Research live', mode: 'high' as SessionMode },
-  { id: 'architect', label: 'Architect it', mode: 'high' as SessionMode },
-  { id: 'ship', label: 'Ship it', mode: 'high' as SessionMode },
-  { id: 'document', label: 'Document it', mode: 'low' as SessionMode },
-  { id: 'status', label: 'Check status', mode: 'low' as SessionMode },
-] as const;
-
-function sessionModeForChip(chipId: string | null): SessionMode {
-  const chip = CHIPS.find((c) => c.id === chipId);
-  return chip?.mode ?? 'high';
-}
+const CHIPS: Array<{
+  id: string;
+  label: string;
+  lane: ExecutionLane;
+  evidenceKind: EvidenceKind;
+}> = [
+  { id: 'execute', label: 'Execute now', lane: 'execution', evidenceKind: 'merged_pr' },
+  { id: 'research', label: 'Research live', lane: 'research', evidenceKind: 'custom' },
+  { id: 'architect', label: 'Architect it', lane: 'architecture', evidenceKind: 'custom' },
+  { id: 'ship', label: 'Ship it', lane: 'deployment', evidenceKind: 'live_deployment' },
+  { id: 'document', label: 'Document it', lane: 'documentation', evidenceKind: 'published_artifact' },
+  { id: 'status', label: 'Check status', lane: 'system_state', evidenceKind: 'confirmed_action' },
+];
 
 interface ControlPanelScreenProps {
   isDarkMode?: boolean;
 }
 
 export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProps) {
+  const toast = useToast();
   const [task, setTask] = useState('');
   const [chip, setChip] = useState<string | null>(null);
+  const [repository, setRepository] = useState('');
+  const [requiredEvidence, setRequiredEvidence] = useState('');
   const [routing, setRouting] = useState(false);
-  const [routedActions, setRoutedActions] = useState<CodexAction[] | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [lastRoute, setLastRoute] = useState<RoutedRequestRecord | null>(null);
+
+  const [session, setSession] = useState<Session | null>(null);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [sendingMagicLink, setSendingMagicLink] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    getSession()
+      .then(setSession)
+      .catch(() => setSession(null));
+    getWorkspaces()
+      .then((rows) => setWorkspace(rows[0] ?? null))
+      .catch(() => setWorkspace(null));
+
+    const subscription = onAuthStateChange((nextSession) => {
+      setSession(nextSession);
+      if (nextSession) setMagicLinkSent(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const shell = isDarkMode
     ? 'bg-neutral-950 text-neutral-100'
@@ -43,37 +78,78 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
   const secondaryBtn = isDarkMode
     ? 'bg-neutral-900 border-neutral-800 text-neutral-300'
     : 'bg-white border-neutral-200 text-neutral-700';
+  const inputCls = `w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-neutral-600 ${panel} ${
+    isDarkMode ? 'placeholder:text-neutral-500' : 'placeholder:text-neutral-400'
+  }`;
+
+  const selectedChip = CHIPS.find((c) => c.id === chip) ?? null;
+
+  const handleSendMagicLink = async () => {
+    setSendingMagicLink(true);
+    try {
+      await signInOwnerWithMagicLink();
+      setMagicLinkSent(true);
+      toast.success('Magic link sent', `Check ${ROUTING_OWNER_EMAIL} to finish signing in.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send magic link';
+      toast.error('Sign-in failed', message);
+    } finally {
+      setSendingMagicLink(false);
+    }
+  };
 
   const routeTask = async () => {
-    if (!task.trim()) return;
+    if (!task.trim() || !selectedChip) return;
     setRouteError(null);
 
     if (!isSupabaseConfigured) {
-      window.alert(
-        `Routed (${chip ?? 'auto'}) — Supabase not configured.\n\n${task}\n\nAdd VITE_SUPABASE_* on Vercel to load actions from the database.`
-      );
+      toast.error('Supabase not configured', 'Add VITE_SUPABASE_* on Vercel to enable routing.');
+      return;
+    }
+    if (!session) {
+      toast.info('Sign in required', `Send a magic link to ${ROUTING_OWNER_EMAIL} below, then try again.`);
+      return;
+    }
+    if (!repository.trim() || !requiredEvidence.trim()) {
+      toast.error('Missing details', 'Fill in the repository and what will prove this is done.');
+      return;
+    }
+    if (!workspace) {
+      toast.error('No workspace found', 'The Foundry workspace registry is empty — nothing to route into.');
       return;
     }
 
     setRouting(true);
     try {
-      const mode = sessionModeForChip(chip);
-      const actions = await initializeSessionStart(mode);
-      setRoutedActions(actions);
+      const proposal: RouteProposal = {
+        workspace_id: workspace.id,
+        idempotency_key: crypto.randomUUID(),
+        intent: task.trim(),
+        task_type: selectedChip.id,
+        execution_lane: selectedChip.lane,
+        selected_agent: 'unassigned',
+        repository: repository.trim(),
+        risk: 'medium',
+        sensitivity: 'internal',
+        required_evidence: requiredEvidence.trim(),
+        rationale: `Routed via Codex Control Panel — owner selected "${selectedChip.label}" manually; no automated agent scoring yet.`,
+        confidence: 100,
+        route_source: 'user',
+        evidence_kind: selectedChip.evidenceKind,
+      };
 
-      const next = actions.find((a) => a.is_next_action) ?? actions[0];
-      const lines = actions.length
-        ? actions.map((a) => `• ${a.action_title}${a.is_next_action ? ' ← next' : ''}`).join('\n')
-        : '(no verified TODO actions are available)';
-
-      window.alert(
-        `Routed: ${chip ?? 'auto'} (${mode})\n\nYour task:\n${task}\n\nSession actions:\n${lines}${
-          next ? `\n\nFocus: ${next.action_title}` : ''
-        }`
+      const result = await persistRouteOwner(proposal);
+      setLastRoute(result.routedRequest);
+      toast.success(
+        result.replayed ? 'Already routed' : 'Routed',
+        `${selectedChip.label} → ${proposal.repository} (${result.routedRequest.status})`,
       );
+      setTask('');
+      setChip(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to route task';
       setRouteError(message);
+      toast.error('Route failed', message);
     } finally {
       setRouting(false);
     }
@@ -81,8 +157,10 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
 
   const fastExecute = () => {
     if (!task.trim()) return;
-    window.alert(`Executing here:\n\n${task}`);
+    toast.info('Executing here', `${task}\n\nThis is a local reminder only — it does not persist anywhere yet.`);
   };
+
+  const canRoute = Boolean(task.trim() && selectedChip && repository.trim() && requiredEvidence.trim() && !routing);
 
   return (
     <div className={`relative flex-1 flex flex-col min-h-0 overflow-hidden ${shell}`}>
@@ -115,6 +193,20 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
           </header>
 
           <section className="flex flex-col gap-5 md:gap-6 pb-4">
+            {isSupabaseConfigured && !session && (
+              <div className={`rounded-2xl border p-3.5 flex items-center justify-between gap-3 ${panel}`}>
+                <p className="text-sm">Sign in as owner to route tasks for real.</p>
+                <button
+                  type="button"
+                  onClick={() => void handleSendMagicLink()}
+                  disabled={sendingMagicLink || magicLinkSent}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border disabled:opacity-50 ${secondaryBtn}`}
+                >
+                  {magicLinkSent ? 'Link sent' : sendingMagicLink ? 'Sending…' : 'Sign in'}
+                </button>
+              </div>
+            )}
+
             <textarea
               value={task}
               onChange={(e) => setTask(e.target.value)}
@@ -140,19 +232,51 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className={`block mb-1.5 text-xs uppercase tracking-[0.14em] ${muted}`}>Repository</label>
+                <input
+                  value={repository}
+                  onChange={(e) => setRepository(e.target.value)}
+                  placeholder="e.g. codex-system-architecture"
+                  className={inputCls}
+                  list="control-panel-repos"
+                />
+                <datalist id="control-panel-repos">
+                  <option value="codex-system-architecture" />
+                  <option value="legacy-codex" />
+                  <option value="managed-agents-memory" />
+                </datalist>
+              </div>
+              <div>
+                <label className={`block mb-1.5 text-xs uppercase tracking-[0.14em] ${muted}`}>
+                  What proves it&apos;s done?
+                </label>
+                <input
+                  value={requiredEvidence}
+                  onChange={(e) => setRequiredEvidence(e.target.value)}
+                  placeholder="PR link, deployed URL…"
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            <p className={`text-xs ${muted}`}>
+              Recorded as medium risk, internal sensitivity, owner-routed — no automated risk
+              scoring or agent assignment yet.
+            </p>
+
             {routeError && (
               <p className="text-sm text-red-400" role="alert">{routeError}</p>
             )}
 
-            {routedActions && routedActions.length > 0 && (
-              <ul className={`text-sm space-y-2 rounded-xl border p-3 ${panel}`}>
-                {routedActions.map((a) => (
-                  <li key={a.id} className={a.is_next_action ? 'font-medium' : muted}>
-                    {a.action_title}
-                    {a.is_next_action ? ' · next' : ''}
-                  </li>
-                ))}
-              </ul>
+            {lastRoute && (
+              <div className={`text-sm rounded-xl border p-3 ${panel}`}>
+                <p className="font-medium">Last routed</p>
+                <p className={muted}>
+                  {lastRoute.execution_lane} → {lastRoute.repository} · {lastRoute.status}
+                </p>
+              </div>
             )}
           </section>
         </div>
@@ -165,7 +289,7 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
           <div className="flex flex-col gap-2.5">
             <button
               type="button"
-              disabled={!task.trim() || routing}
+              disabled={!canRoute}
               onClick={() => void routeTask()}
               className="w-full py-3.5 md:py-4 rounded-2xl bg-white text-neutral-900 font-medium disabled:opacity-30 flex items-center justify-center gap-2"
             >
