@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Filter,
-  Loader2,
-  Maximize2,
-  RefreshCw,
+  ArrowRight,
+  ArrowUpRight,
+  Layers,
+  RotateCcw,
+  Scan,
   Search,
   X,
   ZoomIn,
@@ -12,7 +13,6 @@ import {
 
 import { useIsMobileLayout } from '../hooks/useMediaQuery';
 import {
-  GRAPH_CATEGORY_COLORS,
   buildKnowledgeGraph,
   getConnectedNodeIds,
   type GraphEdgeData,
@@ -20,6 +20,267 @@ import {
   type KnowledgeGraphData,
 } from '../lib/knowledgeGraph';
 import { getDocumentLinks, getDocuments } from '../lib/supabase';
+
+/* ------------------------------------------------------------------ */
+/* Design system — "System Atlas"                                      */
+/* ------------------------------------------------------------------ */
+
+type NodeShape =
+  | 'starburst'
+  | 'hexagon'
+  | 'diamond'
+  | 'triangle'
+  | 'pentagon'
+  | 'square'
+  | 'plus'
+  | 'circle'
+  | 'ring'
+  | 'lens';
+
+/** Every territory gets a glyph *and* a color — shape carries meaning even
+ *  for color-blind users and at tiny radii. */
+const CATEGORY_SHAPES: Record<string, NodeShape> = {
+  root: 'starburst',
+  council: 'hexagon',
+  territory: 'diamond',
+  artistic_systems: 'triangle',
+  neuro: 'pentagon',
+  automation: 'square',
+  business: 'plus',
+  personal_os: 'circle',
+  convergence: 'ring',
+  onboarding: 'lens',
+};
+
+const CATEGORY_ORDER = [
+  'root',
+  'council',
+  'territory',
+  'artistic_systems',
+  'neuro',
+  'automation',
+  'business',
+  'personal_os',
+  'convergence',
+  'onboarding',
+];
+
+interface CategoryPalette {
+  dark: string;
+  light: string;
+}
+
+const CATEGORY_COLORS: Record<string, CategoryPalette> = {
+  root: { dark: '#34d399', light: '#047857' },
+  council: { dark: '#fbbf24', light: '#b45309' },
+  territory: { dark: '#60a5fa', light: '#1d4ed8' },
+  artistic_systems: { dark: '#fb7185', light: '#be123c' },
+  neuro: { dark: '#a78bfa', light: '#6d28d9' },
+  automation: { dark: '#22d3ee', light: '#0e7490' },
+  business: { dark: '#fb923c', light: '#c2410c' },
+  personal_os: { dark: '#2dd4bf', light: '#0f766e' },
+  convergence: { dark: '#94a3b8', light: '#475569' },
+  onboarding: { dark: '#c084fc', light: '#7e22ce' },
+};
+
+function categoryColor(category: string, dark: boolean): string {
+  const entry = CATEGORY_COLORS[category];
+  if (entry) return dark ? entry.dark : entry.light;
+  return dark ? '#94a3b8' : '#475569';
+}
+
+function categoryShape(category: string): NodeShape {
+  return CATEGORY_SHAPES[category] ?? 'circle';
+}
+
+interface ModePalette {
+  bgInner: string;
+  bgOuter: string;
+  speck: string;
+  speckAlpha: number;
+  grid: boolean;
+  ink: string;
+  inkSoft: string;
+  edgeHierarchy: string;
+  edgeBridges: string;
+  edgeRelated: string;
+  edgeSibling: string;
+  edgeDim: string;
+  clusterLabel: string;
+  haloAlpha: number;
+  crosshair: string;
+  labelHalo: string;
+}
+
+const DARK_PALETTE: ModePalette = {
+  bgInner: '#0c1220',
+  bgOuter: '#050810',
+  speck: '#cdd9ee',
+  speckAlpha: 0.5,
+  grid: false,
+  ink: '#e6edf7',
+  inkSoft: 'rgba(148, 163, 184, 0.85)',
+  edgeHierarchy: 'rgba(148, 163, 184, 0.42)',
+  edgeBridges: 'rgba(96, 165, 250, 0.6)',
+  edgeRelated: 'rgba(167, 139, 250, 0.45)',
+  edgeSibling: 'rgba(100, 116, 139, 0.16)',
+  edgeDim: 'rgba(55, 65, 81, 0.08)',
+  clusterLabel: 'rgba(230, 237, 247, 0.34)',
+  haloAlpha: 0.055,
+  crosshair: 'rgba(230, 237, 247, 0.9)',
+  labelHalo: 'rgba(5, 8, 16, 0.85)',
+};
+
+const LIGHT_PALETTE: ModePalette = {
+  bgInner: '#f5f6f2',
+  bgOuter: '#eceee6',
+  speck: '#9aa092',
+  speckAlpha: 0.35,
+  grid: true,
+  ink: '#111111',
+  inkSoft: 'rgba(17, 17, 17, 0.55)',
+  edgeHierarchy: 'rgba(17, 17, 17, 0.28)',
+  edgeBridges: 'rgba(29, 78, 216, 0.45)',
+  edgeRelated: 'rgba(109, 40, 217, 0.35)',
+  edgeSibling: 'rgba(17, 17, 17, 0.08)',
+  edgeDim: 'rgba(17, 17, 17, 0.04)',
+  clusterLabel: 'rgba(17, 17, 17, 0.3)',
+  haloAlpha: 0.06,
+  crosshair: 'rgba(17, 17, 17, 0.8)',
+  labelHalo: 'rgba(245, 246, 242, 0.9)',
+};
+
+const MONO_STACK = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const SANS_STACK = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+
+const TAU = Math.PI * 2;
+const VISITED_STORAGE_KEY = 'codex-atlas-visited-v1';
+
+/* ------------------------------------------------------------------ */
+/* Small deterministic helpers                                         */
+/* ------------------------------------------------------------------ */
+
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashString(input: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function easeOutExpo(t: number): number {
+  return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
+
+function loadVisited(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(VISITED_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed.filter((v) => typeof v === 'string')) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function persistVisited(visited: Set<string>) {
+  try {
+    window.localStorage.setItem(VISITED_STORAGE_KEY, JSON.stringify([...visited]));
+  } catch {
+    /* storage unavailable — visited state simply won't persist */
+  }
+}
+
+function formatCategory(category: string): string {
+  return category.replace(/_/g, ' ');
+}
+
+/* ------------------------------------------------------------------ */
+/* Canvas glyph drawing                                                */
+/* ------------------------------------------------------------------ */
+
+function tracePolygon(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, sides: number, rotation: number) {
+  for (let i = 0; i < sides; i += 1) {
+    const angle = rotation + (i / sides) * TAU;
+    const px = x + Math.cos(angle) * r;
+    const py = y + Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function traceGlyph(
+  ctx: CanvasRenderingContext2D,
+  shape: NodeShape,
+  x: number,
+  y: number,
+  r: number,
+  rotation: number,
+) {
+  ctx.beginPath();
+  switch (shape) {
+    case 'circle':
+      ctx.arc(x, y, r, 0, TAU);
+      break;
+    case 'ring':
+      ctx.arc(x, y, r * 0.7, 0, TAU);
+      break;
+    case 'square':
+      ctx.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6);
+      break;
+    case 'diamond':
+      tracePolygon(ctx, x, y, r * 1.05, 4, rotation - Math.PI / 2);
+      break;
+    case 'triangle':
+      tracePolygon(ctx, x, y, r * 1.12, 3, rotation - Math.PI / 2);
+      break;
+    case 'pentagon':
+      tracePolygon(ctx, x, y, r * 1.05, 5, rotation - Math.PI / 2);
+      break;
+    case 'hexagon':
+      tracePolygon(ctx, x, y, r, 6, rotation);
+      break;
+    case 'plus':
+      ctx.rect(x - r * 0.28, y - r * 0.95, r * 0.56, r * 1.9);
+      ctx.rect(x - r * 0.95, y - r * 0.28, r * 1.9, r * 0.56);
+      break;
+    case 'lens':
+      ctx.arc(x, y, r, rotation + Math.PI * 0.15, rotation + Math.PI * 1.85);
+      break;
+    case 'starburst': {
+      const spikes = 8;
+      for (let i = 0; i < spikes * 2; i += 1) {
+        const radius = i % 2 === 0 ? r * 1.35 : r * 0.5;
+        const angle = rotation + (i / (spikes * 2)) * TAU;
+        const px = x + Math.cos(angle) * radius;
+        const py = y + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    }
+    default:
+      ctx.arc(x, y, r, 0, TAU);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Types                                                               */
+/* ------------------------------------------------------------------ */
 
 interface KnowledgeGraphProps {
   isOpen: boolean;
@@ -34,6 +295,8 @@ interface SimNode extends GraphNodeData {
   vx: number;
   vy: number;
   radius: number;
+  scale: number;
+  phase: number;
 }
 
 interface PointerState {
@@ -42,42 +305,27 @@ interface PointerState {
   y: number;
 }
 
-function nodeRadius(node: GraphNodeData, isMobile: boolean): number {
-  const base = isMobile ? 7 : 8;
-  if (node.path === '/codex') return base + 8;
-  if (node.isHub) return base + 4 + Math.min(node.childCount, 5);
-  return base + Math.min(node.degree, 4) * 0.45;
+interface CameraAnim {
+  start: number;
+  duration: number;
+  fromZoom: number;
+  toZoom: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
 }
 
-function edgeStyle(
-  kind: GraphEdgeData['kind'],
-  darkMode: boolean,
-): { color: string; width: number; dash?: number[] } {
-  if (kind === 'hierarchy') {
-    return {
-      color: darkMode ? 'rgba(148, 163, 184, 0.55)' : 'rgba(100, 116, 139, 0.45)',
-      width: 1.6,
-    };
-  }
-  if (kind === 'bridges') {
-    return {
-      color: darkMode ? 'rgba(96, 165, 250, 0.55)' : 'rgba(37, 99, 235, 0.4)',
-      width: 1.4,
-      dash: [6, 5],
-    };
-  }
-  if (kind === 'related') {
-    return {
-      color: darkMode ? 'rgba(167, 139, 250, 0.45)' : 'rgba(124, 58, 237, 0.35)',
-      width: 1.2,
-      dash: [3, 4],
-    };
-  }
-  return {
-    color: darkMode ? 'rgba(75, 85, 99, 0.35)' : 'rgba(156, 163, 175, 0.35)',
-    width: 1,
-  };
+function nodeRadius(node: GraphNodeData, isMobile: boolean): number {
+  const base = isMobile ? 6.5 : 7.5;
+  if (node.path === '/codex') return base + 7;
+  if (node.isHub) return base + 3.5 + Math.min(node.childCount, 5) * 0.8;
+  return base + Math.min(node.degree, 4) * 0.4;
 }
+
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
 
 export function KnowledgeGraph({
   isOpen,
@@ -87,10 +335,15 @@ export function KnowledgeGraph({
 }: KnowledgeGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const nodesRef = useRef<SimNode[]>([]);
+  const nodeByIdRef = useRef<Map<string, SimNode>>(new Map());
   const edgesRef = useRef<GraphEdgeData[]>([]);
+  const adjacencyRef = useRef<Map<string, GraphEdgeData[]>>(new Map());
   const zoomRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
+  const cameraAnimRef = useRef<CameraAnim | null>(null);
   const hoveredNodeRef = useRef<SimNode | null>(null);
   const focusedNodeRef = useRef<SimNode | null>(null);
   const draggingNodeRef = useRef<SimNode | null>(null);
@@ -104,6 +357,11 @@ export function KnowledgeGraph({
   const isMobileRef = useRef(false);
   const activeCategoriesRef = useRef<Set<string> | null>(null);
   const searchQueryRef = useRef('');
+  const spotlightCategoryRef = useRef<string | null>(null);
+  const visitedRef = useRef<Set<string>>(new Set());
+  const reducedMotionRef = useRef(false);
+  const specksRef = useRef<Array<{ x: number; y: number; r: number; tw: number }>>([]);
+  const startTimeRef = useRef(0);
 
   const isMobile = useIsMobileLayout();
   const [isLoading, setIsLoading] = useState(true);
@@ -117,7 +375,9 @@ export function KnowledgeGraph({
   const [focusedNode, setFocusedNode] = useState<SimNode | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategories, setActiveCategories] = useState<Set<string> | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showIndex, setShowIndex] = useState(false);
+  const [searchActiveIndex, setSearchActiveIndex] = useState(0);
+  const [visitedVersion, setVisitedVersion] = useState(0);
 
   isDarkModeRef.current = isDarkMode;
   isMobileRef.current = isMobile;
@@ -125,6 +385,116 @@ export function KnowledgeGraph({
   searchQueryRef.current = searchQuery;
 
   const categoryList = useMemo(() => graphMeta.categories, [graphMeta.categories]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    nodesRef.current.forEach((node) => {
+      counts.set(node.category, (counts.get(node.category) ?? 0) + 1);
+    });
+    return counts;
+    // nodeCount changes exactly when the node set is (re)built
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeCount]);
+
+  const searchResults = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return nodesRef.current
+      .filter(
+        (node) =>
+          node.title.toLowerCase().includes(query) ||
+          node.path.toLowerCase().includes(query) ||
+          node.category.toLowerCase().includes(query),
+      )
+      .slice(0, 8);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, nodeCount]);
+
+  useEffect(() => {
+    setSearchActiveIndex(0);
+  }, [searchQuery]);
+
+  const isDesktopIndexVisible = !isMobile || showIndex;
+
+  /* ------------------------------------------------------------ */
+  /* Camera                                                        */
+  /* ------------------------------------------------------------ */
+
+  const cancelCameraAnim = useCallback(() => {
+    cameraAnimRef.current = null;
+  }, []);
+
+  const animateCameraTo = useCallback(
+    (toZoom: number, toX: number, toY: number, duration = 650) => {
+      if (reducedMotionRef.current || duration <= 0) {
+        zoomRef.current = toZoom;
+        offsetRef.current = { x: toX, y: toY };
+        cameraAnimRef.current = null;
+        return;
+      }
+      cameraAnimRef.current = {
+        start: performance.now(),
+        duration,
+        fromZoom: zoomRef.current,
+        toZoom,
+        fromX: offsetRef.current.x,
+        fromY: offsetRef.current.y,
+        toX,
+        toY,
+      };
+    },
+    [],
+  );
+
+  const offsetFor = useCallback((worldX: number, worldY: number, zoom: number, screenX: number, screenY: number) => {
+    const { width, height } = dimensionsRef.current;
+    return {
+      x: screenX - (worldX - width / 2) * zoom - width / 2,
+      y: screenY - (worldY - height / 2) * zoom - height / 2,
+    };
+  }, []);
+
+  const focusNodeCamera = useCallback(
+    (node: SimNode) => {
+      const { width, height } = dimensionsRef.current;
+      const zoom = Math.min(2.1, Math.max(zoomRef.current, isMobileRef.current ? 1.25 : 1.45));
+      // keep the node clear of the territory index (desktop left) and the detail card
+      const targetX = width * (isMobileRef.current ? 0.5 : 0.68);
+      const targetY = height * (isMobileRef.current ? 0.3 : 0.4);
+      const offset = offsetFor(node.x, node.y, zoom, targetX, targetY);
+      animateCameraTo(zoom, offset.x, offset.y);
+    },
+    [animateCameraTo, offsetFor],
+  );
+
+  const fitToView = useCallback(() => {
+    const nodes = nodesRef.current;
+    if (nodes.length === 0) return;
+    const { width, height } = dimensionsRef.current;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    nodes.forEach((node) => {
+      minX = Math.min(minX, node.x);
+      minY = Math.min(minY, node.y);
+      maxX = Math.max(maxX, node.x);
+      maxY = Math.max(maxY, node.y);
+    });
+    const pad = isMobileRef.current ? 60 : 110;
+    const spanX = Math.max(maxX - minX, 1);
+    const spanY = Math.max(maxY - minY, 1);
+    const zoom = Math.max(
+      0.3,
+      Math.min(1.5, Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanY)),
+    );
+    const offset = offsetFor((minX + maxX) / 2, (minY + maxY) / 2, zoom, width / 2, height / 2);
+    animateCameraTo(zoom, offset.x, offset.y);
+  }, [animateCameraTo, offsetFor]);
+
+  /* ------------------------------------------------------------ */
+  /* Canvas lifecycle                                              */
+  /* ------------------------------------------------------------ */
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -134,6 +504,19 @@ export function KnowledgeGraph({
     if (!canvas || !container) return undefined;
 
     let mounted = true;
+    visitedRef.current = loadVisited();
+    reducedMotionRef.current =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    startTimeRef.current = performance.now();
+
+    const rand = mulberry32(20260807);
+    specksRef.current = Array.from({ length: 110 }, () => ({
+      x: rand(),
+      y: rand(),
+      r: 0.4 + rand() * 1.1,
+      tw: rand() * TAU,
+    }));
 
     const initCanvas = () => {
       const rect = container.getBoundingClientRect();
@@ -146,70 +529,87 @@ export function KnowledgeGraph({
     };
 
     const placeNodes = (nodes: GraphNodeData[], width: number, height: number): SimNode[] => {
-      const categories = [...new Set(nodes.map((node) => node.category))];
+      const categories = CATEGORY_ORDER.filter((c) => nodes.some((n) => n.category === c));
+      const extra = [...new Set(nodes.map((n) => n.category))].filter((c) => !categories.includes(c));
+      const ordered = [...categories, ...extra];
       const centerX = width / 2;
       const centerY = height / 2;
-      const orbit = Math.min(width, height) * (isMobileRef.current ? 0.28 : 0.34);
+      const orbit = Math.min(width, height) * (isMobileRef.current ? 0.38 : 0.46);
 
       return nodes.map((node) => {
-        const categoryIndex = Math.max(0, categories.indexOf(node.category));
-        const categoryAngle = (categoryIndex / Math.max(categories.length, 1)) * Math.PI * 2;
-        const depthFactor = Math.max(0.2, Math.min(1, node.depth / 4));
-        const jitter = (Math.random() - 0.5) * 36;
-        const radius = orbit * (0.25 + depthFactor) + jitter;
+        const categoryIndex = Math.max(0, ordered.indexOf(node.category));
+        const categoryAngle = (categoryIndex / Math.max(ordered.length, 1)) * TAU - Math.PI / 2;
+        const depthFactor = Math.max(0.15, Math.min(1, node.depth / 4));
+        const jitterSeed = mulberry32(hashString(node.id));
+        const jitter = (jitterSeed() - 0.5) * 40;
+        const radius = orbit * (0.18 + depthFactor) + jitter;
         return {
           ...node,
-          x: centerX + Math.cos(categoryAngle) * radius + (Math.random() - 0.5) * 24,
-          y: centerY + Math.sin(categoryAngle) * radius + (Math.random() - 0.5) * 24,
+          x: centerX + Math.cos(categoryAngle) * radius + (jitterSeed() - 0.5) * 28,
+          y: centerY + Math.sin(categoryAngle) * radius + (jitterSeed() - 0.5) * 28,
           vx: 0,
           vy: 0,
           radius: nodeRadius(node, isMobileRef.current),
+          scale: 1,
+          phase: jitterSeed() * TAU,
         };
       });
+    };
+
+    const rebuildAdjacency = () => {
+      const adjacency = new Map<string, GraphEdgeData[]>();
+      edgesRef.current.forEach((edge) => {
+        const list = adjacency.get(edge.source) ?? [];
+        list.push(edge);
+        adjacency.set(edge.source, list);
+        const listB = adjacency.get(edge.target) ?? [];
+        listB.push(edge);
+        adjacency.set(edge.target, listB);
+      });
+      adjacencyRef.current = adjacency;
+    };
+
+    const applyGraph = (graph: KnowledgeGraphData) => {
+      const { width, height } = dimensionsRef.current;
+      const simNodes = placeNodes(graph.nodes, width, height);
+      nodesRef.current = simNodes;
+      nodeByIdRef.current = new Map(simNodes.map((node) => [node.id, node]));
+      edgesRef.current = graph.edges;
+      rebuildAdjacency();
+      setNodeCount(graph.nodes.length);
+      setEdgeCount(graph.edges.length);
+      setGraphMeta({ source: graph.source, categories: graph.categories });
     };
 
     const loadData = async () => {
       initCanvas();
       setIsLoading(true);
-
       try {
         const [docs, links] = await Promise.all([getDocuments(), getDocumentLinks()]);
         if (!mounted) return;
-
-        const graph = buildKnowledgeGraph(docs, links ?? []);
-        const { width, height } = dimensionsRef.current;
-        nodesRef.current = placeNodes(graph.nodes, width, height);
-        edgesRef.current = graph.edges;
-        setNodeCount(graph.nodes.length);
-        setEdgeCount(graph.edges.length);
-        setGraphMeta({ source: graph.source, categories: graph.categories });
-        setActiveCategories(null);
-        setFocusedNode(null);
-        focusedNodeRef.current = null;
-        zoomRef.current = isMobileRef.current ? 0.85 : 1;
-        offsetRef.current = { x: 0, y: 0 };
-        setIsLoading(false);
-        startAnimation();
+        applyGraph(buildKnowledgeGraph(docs, links ?? []));
       } catch (error) {
         console.error('Failed to load graph:', error);
         if (!mounted) return;
-        const graph = buildKnowledgeGraph([]);
-        const { width, height } = dimensionsRef.current;
-        nodesRef.current = placeNodes(graph.nodes, width, height);
-        edgesRef.current = graph.edges;
-        setNodeCount(graph.nodes.length);
-        setEdgeCount(graph.edges.length);
-        setGraphMeta({ source: graph.source, categories: graph.categories });
-        setIsLoading(false);
-        startAnimation();
+        applyGraph(buildKnowledgeGraph([]));
       }
+      setActiveCategories(null);
+      setFocusedNode(null);
+      focusedNodeRef.current = null;
+      zoomRef.current = isMobileRef.current ? 0.85 : 1;
+      offsetRef.current = { x: 0, y: 0 };
+      setIsLoading(false);
+      startAnimation();
     };
 
-    const isNodeVisible = (node: SimNode) => {
+    /* ---------------- visibility model ---------------- */
+
+    const categoryDimmed = (node: SimNode) => {
       const categories = activeCategoriesRef.current;
-      if (categories && categories.size > 0 && !categories.has(node.category)) {
-        return false;
-      }
+      return Boolean(categories && categories.size > 0 && !categories.has(node.category));
+    };
+
+    const matchesQuery = (node: SimNode) => {
       const query = searchQueryRef.current.trim().toLowerCase();
       if (!query) return true;
       return (
@@ -219,40 +619,56 @@ export function KnowledgeGraph({
       );
     };
 
+    /* ---------------- simulation ---------------- */
+
     const simulate = () => {
       const nodes = nodesRef.current;
       const edges = edgesRef.current;
+      const byId = nodeByIdRef.current;
       if (nodes.length === 0) return;
 
       const { width, height } = dimensionsRef.current;
       const centerX = width / 2;
       const centerY = height / 2;
-      const visible = nodes.filter(isNodeVisible);
-      const visibleIds = new Set(visible.map((node) => node.id));
 
-      visible.forEach((node) => {
-        const dx = centerX - node.x;
-        const dy = centerY - node.y;
-        node.vx += dx * 0.0008;
-        node.vy += dy * 0.0008;
+      // category centroids for gentle cluster cohesion
+      const centroid = new Map<string, { x: number; y: number; n: number }>();
+      nodes.forEach((node) => {
+        const entry = centroid.get(node.category) ?? { x: 0, y: 0, n: 0 };
+        entry.x += node.x;
+        entry.y += node.y;
+        entry.n += 1;
+        centroid.set(node.category, entry);
       });
 
-      for (let i = 0; i < visible.length; i += 1) {
-        for (let j = i + 1; j < visible.length; j += 1) {
-          const a = visible[i];
-          const b = visible[j];
+      nodes.forEach((node) => {
+        const dx = centerX - node.x;
+        const dy = centerY - node.y;
+        node.vx += dx * 0.00025;
+        node.vy += dy * 0.00025;
+        const c = centroid.get(node.category);
+        if (c && c.n > 2) {
+          node.vx += (c.x / c.n - node.x) * 0.0016;
+          node.vy += (c.y / c.n - node.y) * 0.0016;
+        }
+      });
+
+      for (let i = 0; i < nodes.length; i += 1) {
+        for (let j = i + 1; j < nodes.length; j += 1) {
+          const a = nodes[i];
+          const b = nodes[j];
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const minDist = a.radius + b.radius + (a.isHub || b.isHub ? 42 : 28);
+          const minDist = a.radius + b.radius + (a.isHub || b.isHub ? 72 : 42);
           if (dist < minDist) {
             const force = ((minDist - dist) / dist) * 0.12;
             a.vx -= dx * force;
             a.vy -= dy * force;
             b.vx += dx * force;
             b.vy += dy * force;
-          } else if (dist < 180) {
-            const force = 0.01 / dist;
+          } else if (dist < 260) {
+            const force = 0.014 / dist;
             a.vx -= dx * force;
             a.vy -= dy * force;
             b.vx += dx * force;
@@ -262,16 +678,14 @@ export function KnowledgeGraph({
       }
 
       edges.forEach((edge) => {
-        if (!visibleIds.has(edge.source) || !visibleIds.has(edge.target)) return;
-        const source = nodes.find((node) => node.id === edge.source);
-        const target = nodes.find((node) => node.id === edge.target);
+        const source = byId.get(edge.source);
+        const target = byId.get(edge.target);
         if (!source || !target) return;
-
         const dx = target.x - source.x;
         const dy = target.y - source.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const ideal =
-          edge.kind === 'hierarchy' ? 78 : edge.kind === 'bridges' ? 120 : edge.kind === 'related' ? 110 : 64;
+          edge.kind === 'hierarchy' ? 100 : edge.kind === 'bridges' ? 165 : edge.kind === 'related' ? 148 : 85;
         const force = ((dist - ideal) / dist) * 0.012 * edge.weight;
         source.vx += dx * force;
         source.vy += dy * force;
@@ -281,125 +695,333 @@ export function KnowledgeGraph({
 
       const dragging = draggingNodeRef.current;
       nodes.forEach((node) => {
-        if (node === dragging || !visibleIds.has(node.id)) return;
+        if (node === dragging) return;
         node.vx *= 0.86;
         node.vy *= 0.86;
         node.x += node.vx;
         node.y += node.vy;
         node.x = Math.max(24, Math.min(width - 24, node.x));
         node.y = Math.max(24, Math.min(height - 24, node.y));
+
+        const hovered = hoveredNodeRef.current?.id === node.id || focusedNodeRef.current?.id === node.id;
+        const targetScale = hovered ? 1.18 : 1;
+        node.scale += (targetScale - node.scale) * 0.22;
       });
     };
 
-    const draw = () => {
+    /* ---------------- drawing ---------------- */
+
+    const draw = (now: number) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      // camera animation
+      const anim = cameraAnimRef.current;
+      if (anim) {
+        const p = Math.min(1, (now - anim.start) / anim.duration);
+        const eased = easeOutExpo(p);
+        zoomRef.current = anim.fromZoom + (anim.toZoom - anim.fromZoom) * eased;
+        offsetRef.current = {
+          x: anim.fromX + (anim.toX - anim.fromX) * eased,
+          y: anim.fromY + (anim.toY - anim.fromY) * eased,
+        };
+        if (p >= 1) cameraAnimRef.current = null;
+      }
+
       const nodes = nodesRef.current;
       const edges = edgesRef.current;
+      const byId = nodeByIdRef.current;
       const { width, height } = dimensionsRef.current;
-      const currentZoom = zoomRef.current;
-      const currentOffset = offsetRef.current;
-      const darkMode = isDarkModeRef.current;
+      const zoom = zoomRef.current;
+      const offset = offsetRef.current;
+      const dark = isDarkModeRef.current;
+      const palette = dark ? DARK_PALETTE : LIGHT_PALETTE;
       const dpr = window.devicePixelRatio || 1;
+      const t = reducedMotionRef.current ? 0 : (now - startTimeRef.current) / 1000;
       const hovered = hoveredNodeRef.current;
       const focused = focusedNodeRef.current;
-      const connected = focused ? getConnectedNodeIds(focused.id, edges) : null;
+      const spotlight = spotlightCategoryRef.current;
+      const query = searchQueryRef.current.trim();
+      const connected = focused ? getConnectedNodeIds(focused.id, edges) : hovered ? getConnectedNodeIds(hovered.id, edges) : null;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      // background wash
       const gradient = ctx.createRadialGradient(
         width * 0.5,
-        height * 0.35,
-        20,
+        height * 0.4,
+        24,
         width * 0.5,
         height * 0.5,
-        Math.max(width, height) * 0.7,
+        Math.max(width, height) * 0.75,
       );
-      gradient.addColorStop(0, darkMode ? 'rgba(30, 41, 59, 0.55)' : 'rgba(226, 232, 240, 0.7)');
-      gradient.addColorStop(1, 'transparent');
+      gradient.addColorStop(0, palette.bgInner);
+      gradient.addColorStop(1, palette.bgOuter);
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
-      ctx.translate(currentOffset.x + width / 2, currentOffset.y + height / 2);
-      ctx.scale(currentZoom, currentZoom);
+      // star specks (dark) / graph-paper dots (light), with slight parallax
+      ctx.save();
+      specksRef.current.forEach((speck) => {
+        const px = (((speck.x * width + offset.x * 0.06) % width) + width) % width;
+        const py = (((speck.y * height + offset.y * 0.06) % height) + height) % height;
+        const twinkle = reducedMotionRef.current ? 0.7 : 0.45 + 0.3 * Math.sin(t * 1.3 + speck.tw);
+        ctx.globalAlpha = palette.speckAlpha * twinkle * (palette.grid ? 0.55 : 1);
+        ctx.fillStyle = palette.speck;
+        ctx.beginPath();
+        ctx.arc(px, py, palette.grid ? 0.7 : speck.r, 0, TAU);
+        ctx.fill();
+      });
+      ctx.restore();
+
+      ctx.translate(offset.x + width / 2, offset.y + height / 2);
+      ctx.scale(zoom, zoom);
       ctx.translate(-width / 2, -height / 2);
 
-      const visibleNodes = nodes.filter(isNodeVisible);
-      const visibleIds = new Set(visibleNodes.map((node) => node.id));
+      const nodeState = (node: SimNode) => {
+        let alpha = 1;
+        if (categoryDimmed(node)) alpha = 0.07;
+        else if (query && !matchesQuery(node)) alpha = 0.1;
+        else if (spotlight && node.category !== spotlight) alpha = 0.12;
+        else if (connected && !connected.has(node.id)) alpha = 0.16;
+        const interactive = alpha > 0.08;
+        return { alpha, interactive };
+      };
 
+      // cluster halos + territory labels at bird's-eye zoom
+      const clusters = new Map<string, { x: number; y: number; n: number; spread: number }>();
+      nodes.forEach((node) => {
+        const entry = clusters.get(node.category) ?? { x: 0, y: 0, n: 0, spread: 0 };
+        entry.x += node.x;
+        entry.y += node.y;
+        entry.n += 1;
+        clusters.set(node.category, entry);
+      });
+      clusters.forEach((entry) => {
+        entry.x /= entry.n;
+        entry.y /= entry.n;
+      });
+      nodes.forEach((node) => {
+        const entry = clusters.get(node.category);
+        if (!entry) return;
+        const d = Math.hypot(node.x - entry.x, node.y - entry.y);
+        entry.spread = Math.max(entry.spread, d);
+      });
+
+      clusters.forEach((entry, category) => {
+        if (entry.n < 2) return;
+        const color = categoryColor(category, dark);
+        const haloRadius = entry.spread + 90;
+        const halo = ctx.createRadialGradient(entry.x, entry.y, 0, entry.x, entry.y, haloRadius);
+        halo.addColorStop(0, `${color}${Math.round(palette.haloAlpha * 255).toString(16).padStart(2, '0')}`);
+        halo.addColorStop(1, 'transparent');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(entry.x, entry.y, haloRadius, 0, TAU);
+        ctx.fill();
+
+        // territory name, only readable at low zoom — the map's legend in place
+        const labelAlpha = Math.max(0, Math.min(1, (1.12 - zoom) / 0.5));
+        if (labelAlpha > 0.03 && entry.n >= 2) {
+          const fontSize = 12 / zoom;
+          ctx.font = `600 ${fontSize}px ${MONO_STACK}`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.globalAlpha = labelAlpha * (spotlight && spotlight !== category ? 0.25 : 1);
+          ctx.fillStyle = color;
+          const labelY = entry.y - entry.spread - 34 / zoom;
+          ctx.fillText(formatCategory(category).toUpperCase().split('').join(' '), entry.x, labelY);
+          ctx.globalAlpha = 1;
+        }
+      });
+
+      // edges
       edges.forEach((edge) => {
-        if (!visibleIds.has(edge.source) || !visibleIds.has(edge.target)) return;
-        const source = nodes.find((node) => node.id === edge.source);
-        const target = nodes.find((node) => node.id === edge.target);
+        const source = byId.get(edge.source);
+        const target = byId.get(edge.target);
         if (!source || !target) return;
+        const sa = nodeState(source).alpha;
+        const ta = nodeState(target).alpha;
+        const edgeAlpha = Math.min(sa, ta);
+        if (edgeAlpha < 0.05) return;
 
-        const isHot =
-          !connected ||
-          (connected.has(edge.source) && connected.has(edge.target));
-        const style = edgeStyle(edge.kind, darkMode);
+        const isHot = !connected || (connected.has(edge.source) && connected.has(edge.target));
+        let color: string;
+        let widthPx: number;
+        let dash: number[] = [];
+        let flow = 0;
 
+        if (edge.kind === 'hierarchy') {
+          color = palette.edgeHierarchy;
+          widthPx = 1.4;
+        } else if (edge.kind === 'bridges') {
+          color = palette.edgeBridges;
+          widthPx = 1.4;
+          dash = [9, 7];
+          flow = 26;
+        } else if (edge.kind === 'related') {
+          color = palette.edgeRelated;
+          widthPx = 1.1;
+          dash = [2.5, 5.5];
+          flow = 12;
+        } else {
+          color = palette.edgeSibling;
+          widthPx = 1;
+        }
+
+        const hotBoost = connected && isHot ? 1.9 : 1;
         ctx.beginPath();
         ctx.moveTo(source.x, source.y);
         ctx.lineTo(target.x, target.y);
-        ctx.strokeStyle = isHot ? style.color : darkMode ? 'rgba(55,65,81,0.12)' : 'rgba(148,163,184,0.12)';
-        ctx.lineWidth = style.width;
-        ctx.setLineDash(style.dash ?? []);
+        ctx.strokeStyle = isHot ? color : palette.edgeDim;
+        ctx.globalAlpha = edgeAlpha * (connected && isHot ? 1 : 0.9);
+        ctx.lineWidth = widthPx * hotBoost;
+        ctx.setLineDash(dash);
+        if (dash.length > 0 && flow > 0) {
+          ctx.lineDashOffset = -((t * flow) % (dash[0] + dash[1]));
+        }
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
       });
 
-      visibleNodes.forEach((node) => {
-        const color = GRAPH_CATEGORY_COLORS[node.category] || '#64748b';
+      // nodes
+      nodes.forEach((node) => {
+        const { alpha } = nodeState(node);
+        if (alpha < 0.04) return;
+        const color = categoryColor(node.category, dark);
+        const shape = categoryShape(node.category);
         const isHovered = hovered?.id === node.id;
         const isFocused = focused?.id === node.id;
-        const isDimmed = Boolean(connected && !connected.has(node.id));
-        const radius = node.radius * (isHovered || isFocused ? 1.45 : 1);
+        const isVisited = visitedRef.current.has(node.path);
+        const radius = node.radius * node.scale;
+        const isNeighborOfActive = Boolean(connected && connected.has(node.id) && node.id !== focused?.id && node.id !== hovered?.id);
 
-        ctx.globalAlpha = isDimmed ? 0.18 : 1;
+        ctx.globalAlpha = alpha * (isVisited && !isHovered && !isFocused ? 0.5 : 1);
 
+        // halo glow
         ctx.beginPath();
-        ctx.arc(node.x, node.y, radius * 2.8, 0, Math.PI * 2);
-        const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, radius * 2.8);
-        glow.addColorStop(0, `${color}55`);
+        ctx.arc(node.x, node.y, radius * 3, 0, TAU);
+        const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, radius * 3);
+        glow.addColorStop(0, `${color}3d`);
         glow.addColorStop(1, 'transparent');
         ctx.fillStyle = glow;
         ctx.fill();
 
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
+        // hub pulse ring
+        if (node.isHub && !reducedMotionRef.current && alpha > 0.5) {
+          const pulse = (Math.sin(t * (TAU / 1.5) + node.phase) + 1) / 2;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, radius * (1.5 + pulse * 0.9), 0, TAU);
+          ctx.strokeStyle = color;
+          ctx.globalAlpha = alpha * (0.34 - pulse * 0.3);
+          ctx.lineWidth = 1.1 / zoom;
+          ctx.stroke();
+          ctx.globalAlpha = alpha * (isVisited && !isHovered && !isFocused ? 0.5 : 1);
+        }
 
+        // glyph
+        const rotation =
+          shape === 'starburst'
+            ? node.phase + (reducedMotionRef.current ? 0 : t * 0.25)
+            : node.phase * 0.3;
+        traceGlyph(ctx, shape, node.x, node.y, radius, rotation);
+        if (shape === 'ring') {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = radius * 0.5;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+
+        // ink rim on hover / focus / hub
         if (isHovered || isFocused || node.isHub) {
-          ctx.strokeStyle = darkMode ? '#f8fafc' : '#0f172a';
-          ctx.lineWidth = isFocused ? 2.4 : 1.5;
+          traceGlyph(ctx, shape, node.x, node.y, radius, rotation);
+          ctx.strokeStyle = dark ? '#f8fafc' : '#111111';
+          ctx.lineWidth = (isFocused ? 2 : 1.3) / Math.sqrt(zoom);
           ctx.stroke();
         }
 
-        const showLabel =
-          isHovered ||
-          isFocused ||
-          node.isHub ||
-          currentZoom > (isMobileRef.current ? 0.95 : 0.75) ||
-          Boolean(searchQueryRef.current.trim());
-
-        if (showLabel && !isDimmed) {
-          const fontSize = Math.max(10, (isMobileRef.current ? 11 : 12) / currentZoom);
-          ctx.font = `${node.isHub ? 600 : 500} ${fontSize}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillStyle = darkMode ? '#f8fafc' : '#0f172a';
-          const label =
-            node.title.length > 28 && !isHovered && !isFocused
-              ? `${node.title.slice(0, 26)}…`
-              : node.title;
-          ctx.fillText(label, node.x, node.y + radius + 5);
+        // crosshair reticle on hover / focus
+        if (isHovered || isFocused) {
+          const rr = radius * 2.15;
+          const tick = radius * 0.55;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, rr, 0, TAU);
+          [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach((angle) => {
+            ctx.moveTo(node.x + Math.cos(angle) * rr, node.y + Math.sin(angle) * rr);
+            ctx.lineTo(node.x + Math.cos(angle) * (rr + tick), node.y + Math.sin(angle) * (rr + tick));
+          });
+          ctx.strokeStyle = palette.crosshair;
+          ctx.lineWidth = 1 / zoom;
+          ctx.globalAlpha = alpha * 0.85;
+          ctx.stroke();
+          ctx.globalAlpha = alpha;
         }
 
-        ctx.globalAlpha = 1;
+        // labels — title always for hubs and at close zoom; category only on hover
+        const showLabel =
+          alpha > 0.4 &&
+          (isHovered ||
+            isFocused ||
+            isNeighborOfActive ||
+            node.isHub ||
+            zoom > (isMobileRef.current ? 1.7 : 1.5) ||
+            Boolean(query && matchesQuery(node)));
+
+        if (showLabel) {
+          const fontSize = Math.max(9, 11.5 / zoom);
+          const label =
+            node.title.length > 30 && !isHovered && !isFocused
+              ? `${node.title.slice(0, 28)}…`
+              : node.title;
+          const labelY = node.y + radius + 7 / zoom;
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.font = `${node.isHub ? 600 : 500} ${fontSize}px ${SANS_STACK}`;
+
+          // text halo for legibility over edges
+          const metrics = typeof ctx.measureText === 'function' ? ctx.measureText(label) : { width: label.length * fontSize * 0.6 };
+          const padX = 4 / zoom;
+          const padY = 2.5 / zoom;
+          ctx.fillStyle = palette.labelHalo;
+          ctx.globalAlpha = alpha * 0.82;
+          ctx.fillRect(
+            node.x - metrics.width / 2 - padX,
+            labelY - padY,
+            metrics.width + padX * 2,
+            fontSize * 1.25 + padY * 2,
+          );
+
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = palette.ink;
+          ctx.fillText(label, node.x, labelY);
+
+          // visited strikethrough
+          if (isVisited && !isHovered && !isFocused) {
+            ctx.beginPath();
+            ctx.moveTo(node.x - metrics.width / 2, labelY + fontSize * 0.55);
+            ctx.lineTo(node.x + metrics.width / 2, labelY + fontSize * 0.55);
+            ctx.strokeStyle = palette.inkSoft;
+            ctx.lineWidth = 1 / zoom;
+            ctx.stroke();
+          }
+
+          // category subtitle only on hover / focus (progressive disclosure)
+          if (isHovered || isFocused) {
+            ctx.font = `500 ${Math.max(8, 9 / zoom)}px ${MONO_STACK}`;
+            ctx.fillStyle = color;
+            ctx.globalAlpha = alpha * 0.95;
+            ctx.fillText(formatCategory(node.category).toUpperCase(), node.x, labelY + fontSize * 1.45);
+          }
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.globalAlpha = 1;
+        }
       });
 
       simulate();
@@ -417,14 +1039,36 @@ export function KnowledgeGraph({
       initCanvas();
     };
 
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : null;
+    resizeObserver?.observe(container);
     window.addEventListener('resize', handleResize);
 
     return () => {
       mounted = false;
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  /* ------------------------------------------------------------ */
+  /* Pointer + keyboard                                            */
+  /* ------------------------------------------------------------ */
+
+  const screenToWorld = useCallback((clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const { width, height } = dimensionsRef.current;
+    const zoom = zoomRef.current;
+    const offset = offsetRef.current;
+    return {
+      x: (clientX - rect.left - offset.x - width / 2) / zoom + width / 2,
+      y: (clientY - rect.top - offset.y - height / 2) / zoom + height / 2,
+    };
+  }, []);
 
   const getNodeAtPosition = useCallback((clientX: number, clientY: number): SimNode | null => {
     const canvas = canvasRef.current;
@@ -432,10 +1076,10 @@ export function KnowledgeGraph({
 
     const rect = canvas.getBoundingClientRect();
     const { width, height } = dimensionsRef.current;
-    const currentZoom = zoomRef.current;
-    const currentOffset = offsetRef.current;
-    const x = (clientX - rect.left - currentOffset.x - width / 2) / currentZoom + width / 2;
-    const y = (clientY - rect.top - currentOffset.y - height / 2) / currentZoom + height / 2;
+    const zoom = zoomRef.current;
+    const offset = offsetRef.current;
+    const x = (clientX - rect.left - offset.x - width / 2) / zoom + width / 2;
+    const y = (clientY - rect.top - offset.y - height / 2) / zoom + height / 2;
 
     let best: SimNode | null = null;
     let bestDist = Infinity;
@@ -444,7 +1088,7 @@ export function KnowledgeGraph({
       const categories = activeCategoriesRef.current;
       if (categories && categories.size > 0 && !categories.has(node.category)) continue;
       const dist = Math.sqrt((x - node.x) ** 2 + (y - node.y) ** 2);
-      if (dist < node.radius * 3.2 && dist < bestDist) {
+      if (dist < node.radius * 3 && dist < bestDist) {
         best = node;
         bestDist = dist;
       }
@@ -453,18 +1097,32 @@ export function KnowledgeGraph({
     return best;
   }, []);
 
-  const updatePointerWorld = useCallback((clientX: number, clientY: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const { width, height } = dimensionsRef.current;
-    const currentZoom = zoomRef.current;
-    const currentOffset = offsetRef.current;
-    return {
-      x: (clientX - rect.left - currentOffset.x - width / 2) / currentZoom + width / 2,
-      y: (clientY - rect.top - currentOffset.y - height / 2) / currentZoom + height / 2,
-    };
+  const selectNode = useCallback(
+    (node: SimNode, moveCamera: boolean) => {
+      focusedNodeRef.current = node;
+      setFocusedNode(node);
+      hoveredNodeRef.current = node;
+      setHoveredNode(node);
+      if (moveCamera) focusNodeCamera(node);
+    },
+    [focusNodeCamera],
+  );
+
+  const markVisited = useCallback((path: string) => {
+    if (visitedRef.current.has(path)) return;
+    visitedRef.current = new Set([...visitedRef.current, path]);
+    persistVisited(visitedRef.current);
+    setVisitedVersion((v) => v + 1);
   }, []);
+
+  const openNode = useCallback(
+    (node: SimNode) => {
+      markVisited(node.path);
+      onSelectDocument(node.path);
+      onClose();
+    },
+    [markVisited, onClose, onSelectDocument],
+  );
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -476,6 +1134,7 @@ export function KnowledgeGraph({
         x: event.clientX,
         y: event.clientY,
       });
+      cancelCameraAnim();
 
       if (pointersRef.current.size === 2) {
         const points = [...pointersRef.current.values()];
@@ -489,16 +1148,13 @@ export function KnowledgeGraph({
       const node = getNodeAtPosition(event.clientX, event.clientY);
       if (node) {
         draggingNodeRef.current = node;
-        focusedNodeRef.current = node;
-        setFocusedNode(node);
-        hoveredNodeRef.current = node;
-        setHoveredNode(node);
+        selectNode(node, false);
       } else {
         isPanningRef.current = true;
         panStartRef.current = { x: event.clientX, y: event.clientY };
       }
     },
-    [getNodeAtPosition],
+    [cancelCameraAnim, getNodeAtPosition, selectNode],
   );
 
   const handlePointerMove = useCallback(
@@ -515,13 +1171,13 @@ export function KnowledgeGraph({
         const points = [...pointersRef.current.values()];
         const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
         const scale = distance / Math.max(pinchStartRef.current.distance, 1);
-        zoomRef.current = Math.max(0.35, Math.min(3.2, pinchStartRef.current.zoom * scale));
+        zoomRef.current = Math.max(0.3, Math.min(3.4, pinchStartRef.current.zoom * scale));
         return;
       }
 
       const dragging = draggingNodeRef.current;
       if (dragging) {
-        const world = updatePointerWorld(event.clientX, event.clientY);
+        const world = screenToWorld(event.clientX, event.clientY);
         dragging.x = world.x;
         dragging.y = world.y;
         dragging.vx = 0;
@@ -542,7 +1198,7 @@ export function KnowledgeGraph({
       hoveredNodeRef.current = node;
       setHoveredNode(node);
     },
-    [getNodeAtPosition, updatePointerWorld],
+    [getNodeAtPosition, screenToWorld],
   );
 
   const handlePointerUp = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -557,319 +1213,537 @@ export function KnowledgeGraph({
   const handleDoubleClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       const node = getNodeAtPosition(event.clientX, event.clientY);
-      if (node) {
-        onSelectDocument(node.path);
-        onClose();
-      }
+      if (node) openNode(node);
     },
-    [getNodeAtPosition, onClose, onSelectDocument],
+    [getNodeAtPosition, openNode],
   );
 
-  const handleWheel = useCallback((event: React.WheelEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    const delta = event.deltaY > 0 ? 0.9 : 1.1;
-    zoomRef.current = Math.max(0.35, Math.min(3.2, zoomRef.current * delta));
-  }, []);
+  const handleWheel = useCallback(
+    (event: React.WheelEvent<HTMLCanvasElement>) => {
+      event.preventDefault();
+      cancelCameraAnim();
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const { width, height } = dimensionsRef.current;
+      const cursorX = event.clientX - rect.left;
+      const cursorY = event.clientY - rect.top;
+      const oldZoom = zoomRef.current;
+      const delta = event.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.3, Math.min(3.4, oldZoom * delta));
+
+      // zoom toward the cursor: keep the world point under the cursor fixed
+      const worldX = (cursorX - offsetRef.current.x - width / 2) / oldZoom + width / 2;
+      const worldY = (cursorY - offsetRef.current.y - height / 2) / oldZoom + height / 2;
+      zoomRef.current = newZoom;
+      offsetRef.current = {
+        x: cursorX - (worldX - width / 2) * newZoom - width / 2,
+        y: cursorY - (worldY - height / 2) * newZoom - height / 2,
+      };
+    },
+    [cancelCameraAnim],
+  );
 
   const handleZoomIn = useCallback(() => {
-    zoomRef.current = Math.min(3.2, zoomRef.current * 1.2);
-  }, []);
+    cancelCameraAnim();
+    const { width, height } = dimensionsRef.current;
+    const newZoom = Math.min(3.4, zoomRef.current * 1.25);
+    const offset = offsetFor(
+      (width / 2 - offsetRef.current.x - width / 2) / zoomRef.current + width / 2,
+      (height / 2 - offsetRef.current.y - height / 2) / zoomRef.current + height / 2,
+      newZoom,
+      width / 2,
+      height / 2,
+    );
+    animateCameraTo(newZoom, offset.x, offset.y, 220);
+  }, [animateCameraTo, cancelCameraAnim, offsetFor]);
 
   const handleZoomOut = useCallback(() => {
-    zoomRef.current = Math.max(0.35, zoomRef.current * 0.8);
-  }, []);
+    cancelCameraAnim();
+    const { width, height } = dimensionsRef.current;
+    const newZoom = Math.max(0.3, zoomRef.current * 0.8);
+    const offset = offsetFor(
+      (width / 2 - offsetRef.current.x - width / 2) / zoomRef.current + width / 2,
+      (height / 2 - offsetRef.current.y - height / 2) / zoomRef.current + height / 2,
+      newZoom,
+      width / 2,
+      height / 2,
+    );
+    animateCameraTo(newZoom, offset.x, offset.y, 220);
+  }, [animateCameraTo, cancelCameraAnim, offsetFor]);
 
   const resetView = useCallback(() => {
-    zoomRef.current = isMobile ? 0.85 : 1;
-    offsetRef.current = { x: 0, y: 0 };
+    animateCameraTo(isMobile ? 0.85 : 1, 0, 0, 450);
     focusedNodeRef.current = null;
     setFocusedNode(null);
-  }, [isMobile]);
+    setSearchQuery('');
+    setActiveCategories(null);
+  }, [animateCameraTo, isMobile]);
 
-  const openFocused = useCallback(() => {
-    if (!focusedNode) return;
-    onSelectDocument(focusedNode.path);
-    onClose();
-  }, [focusedNode, onClose, onSelectDocument]);
+  const clearFocus = useCallback(() => {
+    focusedNodeRef.current = null;
+    setFocusedNode(null);
+  }, []);
 
   const toggleCategory = useCallback((category: string) => {
     setActiveCategories((current) => {
-      if (!current) {
-        return new Set([category]);
-      }
+      if (!current) return new Set([category]);
       const next = new Set(current);
-      if (next.has(category)) {
-        next.delete(category);
-      } else {
-        next.add(category);
-      }
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
       return next.size === 0 ? null : next;
     });
   }, []);
 
+  const focusSearchResult = useCallback(
+    (index: number) => {
+      const node = searchResults[index];
+      if (!node) return;
+      selectNode(node, true);
+    },
+    [searchResults, selectNode],
+  );
+
+  const handleSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setSearchActiveIndex((i) => Math.min(searchResults.length - 1, i + 1));
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setSearchActiveIndex((i) => Math.max(0, i - 1));
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (searchResults.length > 0) focusSearchResult(searchActiveIndex);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+      }
+    },
+    [focusSearchResult, searchActiveIndex, searchResults.length],
+  );
+
+  // global shortcuts while the atlas is open
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && document.activeElement !== searchInputRef.current) {
+        onClose();
+      }
+      if (event.key === '/' && document.activeElement !== searchInputRef.current) {
+        event.preventDefault();
+        if (isMobileRef.current) setShowIndex(true);
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
+  /* ------------------------------------------------------------ */
+  /* Derived UI state                                              */
+  /* ------------------------------------------------------------ */
+
   const detailNode = focusedNode ?? hoveredNode;
-  const sourceLabel = graphMeta.source === 'corpus' ? 'Full Codex map' : 'Live database';
+  const dark = isDarkMode;
+  const query = searchQuery.trim();
+  const matchCount = query ? searchResults.length : 0;
+
+  const detailConnections = detailNode
+    ? (adjacencyRef.current.get(detailNode.id) ?? [])
+        .slice()
+        .sort((a, b) => b.weight - a.weight)
+        .slice(0, 5)
+        .map((edge) => {
+          const otherId = edge.source === detailNode.id ? edge.target : edge.source;
+          const other = nodeByIdRef.current.get(otherId);
+          return other ? { node: other, kind: edge.kind } : null;
+        })
+        .filter((entry): entry is { node: SimNode; kind: GraphEdgeData['kind'] } => Boolean(entry))
+    : [];
+
+  const visitedCount = nodesRef.current.filter((node) => visitedRef.current.has(node.path)).length;
+  void visitedVersion;
+
+  /* ------------------------------------------------------------ */
+  /* Style tokens                                                  */
+  /* ------------------------------------------------------------ */
+
+  const chrome = dark
+    ? {
+        panel: 'bg-[#0c1220]/92 border-[#1a2540]',
+        panelStrong: 'bg-[#0c1220]/96 border-[#22304f]',
+        btn: 'border-[#1a2540] bg-[#0c1220]/90 text-slate-300 hover:text-white hover:border-[#31436b] hover:bg-[#111a2b]',
+        btnActive: 'border-cyan-400/60 bg-cyan-400/10 text-cyan-300',
+        text: 'text-slate-100',
+        sub: 'text-slate-400',
+        faint: 'text-slate-500',
+        rule: 'border-[#1a2540]',
+        input: 'border-[#1a2540] bg-[#0a0f1c] text-slate-100 placeholder:text-slate-600',
+        rowHover: 'hover:bg-white/[0.04]',
+      }
+    : {
+        panel: 'bg-white/92 border-[#d9dbd2]',
+        panelStrong: 'bg-white/96 border-[#c8cabf]',
+        btn: 'border-[#d9dbd2] bg-white/90 text-neutral-500 hover:text-neutral-900 hover:border-neutral-400 hover:bg-white',
+        btnActive: 'border-neutral-900 bg-neutral-900/5 text-neutral-900',
+        text: 'text-neutral-900',
+        sub: 'text-neutral-500',
+        faint: 'text-neutral-400',
+        rule: 'border-[#e3e4dc]',
+        input: 'border-[#d9dbd2] bg-[#f5f6f2] text-neutral-900 placeholder:text-neutral-400',
+        rowHover: 'hover:bg-black/[0.03]',
+      };
+
+  const monoClass = 'kg-mono';
+
+  /* ------------------------------------------------------------ */
+  /* Render                                                        */
+  /* ------------------------------------------------------------ */
 
   return (
-    <div ref={containerRef} className="fixed inset-0 z-50">
-      <div
-        className={`absolute inset-0 ${
-          isDarkMode
-            ? 'bg-[radial-gradient(ellipse_at_top,#1e293b_0%,#020617_55%)]'
-            : 'bg-[radial-gradient(ellipse_at_top,#e2e8f0_0%,#f8fafc_55%)]'
-        }`}
-      />
+    <div ref={containerRef} className="fixed inset-0 z-50 overflow-hidden">
+      {/* backdrop — canvas paints over this */}
+      <div className={`absolute inset-0 ${dark ? 'bg-[#050810]' : 'bg-[#f5f6f2]'}`} />
+      {dark && <div className="kg-scanlines absolute inset-0 pointer-events-none" aria-hidden />}
 
-      <div className="absolute top-0 inset-x-0 z-20 pointer-events-none">
+      {/* ------------ header ------------ */}
+      <header className="absolute top-0 inset-x-0 z-20 pointer-events-none">
         <div className="flex items-start justify-between gap-3 p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <div className="pointer-events-auto flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className={`pointer-events-auto border backdrop-blur-md px-4 py-3 ${chrome.panel} rounded-md`}>
+            <p className={`${monoClass} text-[9px] tracking-[0.28em] ${chrome.faint}`}>
+              CODEX / SYSTEM ATLAS
+            </p>
+            <h2 className={`mt-1 text-base sm:text-lg font-semibold leading-none ${chrome.text}`}>
+              Knowledge Graph
+            </h2>
+            <p className={`mt-1.5 ${monoClass} text-[10px] tracking-[0.08em] tabular-nums ${chrome.sub}`}>
+              {String(nodeCount).padStart(3, '0')} NODES · {String(edgeCount).padStart(3, '0')} EDGES
+              {visitedCount > 0 && ` · ${visitedCount} READ`}
+            </p>
+            <p className={`mt-1 flex items-center gap-1.5 ${monoClass} text-[9px] tracking-[0.18em] ${chrome.faint}`}>
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full ${
+                  graphMeta.source === 'corpus' ? 'bg-emerald-400' : 'bg-cyan-400'
+                } ${reducedMotionRef.current ? '' : 'animate-pulse'}`}
+              />
+              {graphMeta.source === 'corpus' ? 'CORPUS MAP' : 'LIVE DB'}
+            </p>
+          </div>
+
+          {/* icon rail */}
+          <nav className="pointer-events-auto flex flex-row sm:flex-col gap-1.5" aria-label="Atlas controls">
             <button
               type="button"
               aria-label="Close knowledge graph"
+              title="Close (Esc)"
               onClick={onClose}
-              className={`p-2.5 sm:p-3 rounded-2xl backdrop-blur-xl transition-all border ${
-                isDarkMode
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/10'
-                  : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200/50 shadow-lg'
-              }`}
+              className={`kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <div
-              className={`min-w-0 px-3 py-2 sm:px-4 rounded-2xl backdrop-blur-xl border ${
-                isDarkMode ? 'bg-white/10 border-white/10' : 'bg-white/80 border-gray-200/50 shadow-lg'
-              }`}
-            >
-              <h2 className={`text-base sm:text-lg font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                Knowledge Graph
-              </h2>
-              <p className={`text-[11px] sm:text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {nodeCount} nodes · {edgeCount} links · {sourceLabel}
-              </p>
-            </div>
-          </div>
-
-          <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
-              aria-label="Toggle filters"
-              onClick={() => setShowFilters((value) => !value)}
-              className={`p-2.5 sm:p-3 rounded-2xl backdrop-blur-xl transition-all border ${
-                isDarkMode
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/10'
-                  : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200/50 shadow-lg'
+              aria-label="Toggle territory index"
+              title="Territory index"
+              onClick={() => setShowIndex((v) => !v)}
+              className={`kg-btn border backdrop-blur-md rounded-md ${
+                showIndex || (!isMobile && showIndex) ? chrome.btnActive : chrome.btn
               }`}
             >
-              <Filter className="w-5 h-5" />
+              <Layers className="w-4 h-4" />
             </button>
             <button
               type="button"
               aria-label="Zoom in"
+              title="Zoom in"
               onClick={handleZoomIn}
-              className={`p-2.5 sm:p-3 rounded-2xl backdrop-blur-xl transition-all border ${
-                isDarkMode
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/10'
-                  : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200/50 shadow-lg'
-              }`}
+              className={`kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
             >
-              <ZoomIn className="w-5 h-5" />
+              <ZoomIn className="w-4 h-4" />
             </button>
             <button
               type="button"
               aria-label="Zoom out"
+              title="Zoom out"
               onClick={handleZoomOut}
-              className={`hidden xs:inline-flex p-2.5 sm:p-3 rounded-2xl backdrop-blur-xl transition-all border sm:inline-flex ${
-                isDarkMode
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/10'
-                  : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200/50 shadow-lg'
-              }`}
+              className={`hidden xs:inline-flex sm:inline-flex kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
             >
-              <ZoomOut className="w-5 h-5" />
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Fit graph to view"
+              title="Fit to view"
+              onClick={fitToView}
+              className={`hidden xs:inline-flex sm:inline-flex kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
+            >
+              <Scan className="w-4 h-4" />
             </button>
             <button
               type="button"
               aria-label="Reset view"
+              title="Reset view"
               onClick={resetView}
-              className={`p-2.5 sm:p-3 rounded-2xl backdrop-blur-xl transition-all border ${
-                isDarkMode
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/10'
-                  : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200/50 shadow-lg'
-              }`}
+              className={`kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
             >
-              <RefreshCw className="w-5 h-5" />
+              <RotateCcw className="w-4 h-4" />
             </button>
-          </div>
+          </nav>
         </div>
-      </div>
+      </header>
 
-      {showFilters && (
-        <div
-          className={`absolute z-30 left-3 right-3 sm:left-4 sm:right-auto sm:w-[22rem] top-[5.5rem] sm:top-24 rounded-2xl backdrop-blur-xl border p-3 sm:p-4 ${
-            isDarkMode ? 'bg-slate-950/90 border-white/10 text-white' : 'bg-white/95 border-gray-200 text-gray-900 shadow-xl'
-          }`}
+      {/* ------------ territory index ------------ */}
+      {isDesktopIndexVisible && (
+        <aside
+          className={`absolute z-30 left-3 sm:left-4 top-[6.5rem] sm:top-[7.5rem] w-[calc(100%-1.5rem)] sm:w-[19rem] max-h-[calc(100%-10rem)] flex flex-col border backdrop-blur-md rounded-md ${chrome.panelStrong}`}
         >
-          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-            <Search className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search nodes…"
-              className={`w-full bg-transparent outline-none text-sm ${isDarkMode ? 'placeholder:text-gray-500' : 'placeholder:text-gray-400'}`}
-            />
+          {/* search */}
+          <div className={`p-3 border-b ${chrome.rule}`}>
+            <div className={`flex items-center gap-2 border rounded px-2.5 py-2 ${chrome.input}`}>
+              <Search className={`w-3.5 h-3.5 shrink-0 ${chrome.faint}`} />
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search the codex…"
+                aria-label="Search nodes"
+                className={`w-full bg-transparent outline-none text-[13px] ${monoClass} tracking-[0.02em]`}
+              />
+              {query && (
+                <span className={`${monoClass} text-[9px] tabular-nums shrink-0 ${chrome.faint}`}>
+                  {matchCount}
+                </span>
+              )}
+            </div>
+
+            {query && (
+              <ul className="mt-2 max-h-44 overflow-y-auto kg-scroll" role="listbox" aria-label="Search results">
+                {searchResults.length === 0 && (
+                  <li className={`px-2 py-2 text-xs ${chrome.faint}`}>No matches in the codex.</li>
+                )}
+                {searchResults.map((node, index) => (
+                  <li key={node.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={index === searchActiveIndex}
+                      onMouseEnter={() => setSearchActiveIndex(index)}
+                      onClick={() => {
+                        selectNode(node, true);
+                        if (isMobile) setShowIndex(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left ${
+                        index === searchActiveIndex ? (dark ? 'bg-white/[0.07]' : 'bg-black/[0.06]') : ''
+                      }`}
+                    >
+                      <GlyphSwatch category={node.category} dark={dark} />
+                      <span className={`min-w-0 flex-1 truncate text-[12px] ${chrome.text}`}>
+                        {node.title}
+                      </span>
+                      <span className={`${monoClass} text-[8px] tracking-[0.14em] uppercase shrink-0 ${chrome.faint}`}>
+                        {formatCategory(node.category)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+
+          {/* territories */}
+          <div className="flex-1 overflow-y-auto kg-scroll py-1" onMouseLeave={() => { spotlightCategoryRef.current = null; }}>
+            <p className={`px-3 pt-2 pb-1 ${monoClass} text-[9px] tracking-[0.24em] ${chrome.faint}`}>
+              TERRITORIES
+            </p>
             <button
               type="button"
               onClick={() => setActiveCategories(null)}
-              className={`px-2.5 py-1.5 rounded-full text-xs border ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-left border-l-2 ${
                 activeCategories === null
-                  ? isDarkMode
-                    ? 'bg-white text-slate-900 border-white'
-                    : 'bg-slate-900 text-white border-slate-900'
-                  : isDarkMode
-                    ? 'border-white/10 text-gray-300'
-                    : 'border-gray-200 text-gray-600'
-              }`}
+                  ? dark
+                    ? 'border-cyan-400 bg-white/[0.05]'
+                    : 'border-neutral-900 bg-black/[0.04]'
+                  : 'border-transparent'
+              } ${chrome.rowHover}`}
             >
-              All territories
+              <span className={`${monoClass} text-[10px] tracking-[0.06em] flex-1 ${chrome.text}`}>
+                All territories
+              </span>
+              <span className={`${monoClass} text-[9px] tabular-nums ${chrome.faint}`}>{nodeCount}</span>
             </button>
             {categoryList.map((category) => {
-              const active = activeCategories?.has(category);
+              const active = activeCategories?.has(category) ?? false;
+              const dimmed = activeCategories !== null && !active;
+              const color = categoryColor(category, dark);
+              const count = categoryCounts.get(category) ?? 0;
               return (
                 <button
                   key={category}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => toggleCategory(category)}
-                  className={`px-2.5 py-1.5 rounded-full text-xs border inline-flex items-center gap-1.5 ${
-                    active
-                      ? isDarkMode
-                        ? 'bg-white/15 border-white/20 text-white'
-                        : 'bg-slate-900/5 border-slate-300 text-slate-900'
-                      : isDarkMode
-                        ? 'border-white/10 text-gray-300'
-                        : 'border-gray-200 text-gray-600'
-                  }`}
+                  onMouseEnter={() => { spotlightCategoryRef.current = category; }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left border-l-2 ${chrome.rowHover} ${
+                    active ? '' : 'border-transparent'
+                  } ${dimmed ? 'opacity-40' : ''}`}
+                  style={active ? { borderLeftColor: color, background: `${color}14` } : undefined}
                 >
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: GRAPH_CATEGORY_COLORS[category] || '#64748b' }}
-                  />
-                  {category.replace(/_/g, ' ')}
+                  <GlyphSwatch category={category} dark={dark} />
+                  <span className={`${monoClass} text-[10px] tracking-[0.06em] flex-1 truncate ${chrome.text}`}>
+                    {formatCategory(category)}
+                  </span>
+                  <span className={`${monoClass} text-[9px] tabular-nums ${chrome.faint}`}>
+                    {String(count).padStart(2, '0')}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <p className={`mt-3 text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Solid = hierarchy · Dashed blue = bridges · Purple = related
-          </p>
-        </div>
+
+          {/* legend */}
+          <div className={`border-t ${chrome.rule} px-3 py-2`}>
+            <p className={`${monoClass} text-[8.5px] leading-relaxed tracking-[0.08em] ${chrome.faint}`}>
+              SOLID — HIERARCHY · FLOWING — BRIDGES · DOTTED — RELATED
+            </p>
+          </div>
+        </aside>
       )}
 
+      {/* ------------ detail card ------------ */}
       {detailNode && (
-        <div
-          className={`absolute z-20 left-3 right-3 sm:left-4 sm:right-auto sm:max-w-sm bottom-[max(1rem,env(safe-area-inset-bottom))] rounded-2xl backdrop-blur-xl border p-4 ${
-            isDarkMode ? 'bg-slate-950/90 border-white/10 text-white' : 'bg-white/95 border-gray-200 text-gray-900 shadow-xl'
-          }`}
+        <section
+          aria-label="Node details"
+          className={`absolute z-20 left-3 right-3 sm:left-[21.5rem] sm:right-auto sm:w-[22rem] bottom-[max(1rem,env(safe-area-inset-bottom))] border backdrop-blur-md rounded-md overflow-hidden ${chrome.panelStrong}`}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: GRAPH_CATEGORY_COLORS[detailNode.category] || '#64748b' }}
-            />
-            <span className={`text-[11px] uppercase tracking-[0.14em] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              {detailNode.category.replace(/_/g, ' ')}
-            </span>
-            {detailNode.isHub && (
-              <span className={`text-[11px] px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                hub
+          <div
+            className="h-[3px] w-full"
+            style={{ backgroundColor: categoryColor(detailNode.category, dark) }}
+          />
+          <div className="p-4">
+            <div className="flex items-center gap-2">
+              <GlyphSwatch category={detailNode.category} dark={dark} />
+              <span className={`${monoClass} text-[9px] tracking-[0.22em] uppercase ${chrome.sub}`}>
+                {formatCategory(detailNode.category)}
               </span>
-            )}
-          </div>
-          <h3 className="font-semibold text-lg leading-tight">{detailNode.title}</h3>
-          <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{detailNode.path}</p>
-          <p className={`text-sm mt-3 leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            {detailNode.excerpt}
-          </p>
-          <div className="mt-4 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={openFocused}
-              className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ${
-                isDarkMode ? 'bg-white text-slate-900' : 'bg-slate-900 text-white'
-              }`}
-            >
-              <Maximize2 className="w-4 h-4" />
-              Open document
-            </button>
-            {focusedNode && (
-              <button
-                type="button"
-                onClick={() => {
-                  focusedNodeRef.current = null;
-                  setFocusedNode(null);
-                }}
-                className={`px-3 py-2.5 rounded-xl text-sm border ${
-                  isDarkMode ? 'border-white/10 text-gray-300' : 'border-gray-200 text-gray-600'
-                }`}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <p className={`mt-2 text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            {isMobile ? 'Pinch to zoom · drag to pan · tap a node to focus' : 'Scroll to zoom · drag to pan · double-click to open'}
-          </p>
-        </div>
-      )}
-
-      {!detailNode && !showFilters && (
-        <div
-          className={`absolute z-10 left-3 right-3 sm:left-auto sm:right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-4 rounded-2xl backdrop-blur-xl border p-3 sm:p-4 ${
-            isDarkMode ? 'bg-white/10 border-white/10' : 'bg-white/90 border-gray-200/50 shadow-lg'
-          }`}
-        >
-          <p className={`text-xs font-medium mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Territories
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible">
-            {categoryList.map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={() => toggleCategory(category)}
-                className={`shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs border ${
-                  isDarkMode ? 'border-white/10 text-gray-300' : 'border-gray-200 text-gray-600'
-                }`}
-              >
+              {detailNode.isHub && (
                 <span
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: GRAPH_CATEGORY_COLORS[category] || '#64748b' }}
-                />
-                {category.replace(/_/g, ' ')}
+                  className={`${monoClass} text-[8px] tracking-[0.16em] px-1.5 py-0.5 border rounded-sm ${
+                    dark ? 'border-[#2a3a5f] text-slate-400' : 'border-neutral-300 text-neutral-500'
+                  }`}
+                >
+                  HUB
+                </span>
+              )}
+              <span className={`ml-auto ${monoClass} text-[9px] tabular-nums ${chrome.faint}`}>
+                {String(detailNode.degree).padStart(2, '0')} LINKS
+              </span>
+            </div>
+
+            <h3 className={`mt-2.5 font-semibold text-lg leading-tight ${chrome.text}`}>
+              {detailNode.title}
+            </h3>
+            <p className={`mt-1 ${monoClass} text-[10px] tracking-[0.04em] truncate ${chrome.faint}`}>
+              {detailNode.path}
+            </p>
+            <p className={`mt-2.5 text-[13px] leading-relaxed ${chrome.sub}`}>{detailNode.excerpt}</p>
+
+            {detailConnections.length > 0 && (
+              <div className={`mt-3 pt-3 border-t ${chrome.rule}`}>
+                <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>CONNECTIONS</p>
+                <ul className="mt-1.5">
+                  {detailConnections.map(({ node, kind }) => (
+                    <li key={node.id}>
+                      <button
+                        type="button"
+                        onClick={() => selectNode(node, true)}
+                        className={`group w-full flex items-center gap-2 px-1.5 py-1.5 -mx-1.5 rounded text-left ${chrome.rowHover}`}
+                      >
+                        <GlyphSwatch category={node.category} dark={dark} small />
+                        <span className={`min-w-0 flex-1 truncate text-[12px] ${chrome.text} ${visitedRef.current.has(node.path) ? 'line-through opacity-50' : ''}`}>
+                          {node.title}
+                        </span>
+                        <span className={`${monoClass} text-[8px] tracking-[0.12em] uppercase shrink-0 ${chrome.faint}`}>
+                          {kind}
+                        </span>
+                        <ArrowUpRight className={`w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${chrome.faint}`} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openNode(detailNode)}
+                className={`group flex-1 inline-flex items-center justify-center gap-2 rounded px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                  dark
+                    ? 'bg-slate-100 text-[#0c1220] hover:bg-white'
+                    : 'bg-neutral-900 text-white hover:bg-black'
+                }`}
+              >
+                Open document
+                <span className="relative w-4 h-4 overflow-hidden" aria-hidden>
+                  <ArrowRight className="absolute inset-0 w-4 h-4 transition-transform duration-200 group-hover:translate-x-4" />
+                  <ArrowRight className="absolute inset-0 w-4 h-4 -translate-x-4 transition-transform duration-200 group-hover:translate-x-0" />
+                </span>
               </button>
-            ))}
+              {focusedNode && (
+                <button
+                  type="button"
+                  onClick={clearFocus}
+                  className={`kg-btn border rounded-md px-3 text-[13px] ${chrome.btn}`}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <p className={`mt-3 ${monoClass} text-[8.5px] tracking-[0.1em] ${chrome.faint}`}>
+              {isMobile
+                ? 'PINCH ZOOM · DRAG PAN · TAP NODE TO FOCUS'
+                : 'SCROLL ZOOM · DRAG PAN · DOUBLE-CLICK TO OPEN · / TO SEARCH'}
+            </p>
           </div>
+        </section>
+      )}
+
+      {/* ------------ hint when idle ------------ */}
+      {!detailNode && !isDesktopIndexVisible && !isLoading && (
+        <div
+          className={`absolute z-10 left-3 right-3 sm:left-auto sm:right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] border backdrop-blur-md rounded-md px-3.5 py-2.5 ${chrome.panel}`}
+        >
+          <p className={`${monoClass} text-[9px] tracking-[0.14em] ${chrome.faint}`}>
+            {isMobile ? 'TAP A NODE TO INSPECT' : 'HOVER A NODE TO INSPECT · / TO SEARCH'}
+          </p>
         </div>
       )}
 
+      {/* ------------ loading ------------ */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center z-30">
-          <div
-            className={`flex flex-col items-center gap-4 p-8 rounded-3xl backdrop-blur-xl border ${
-              isDarkMode ? 'bg-white/10 border-white/10' : 'bg-white/90 border-gray-200/50 shadow-xl'
-            }`}
-          >
-            <Loader2 className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
-            <p className={isDarkMode ? 'text-white' : 'text-gray-900'}>Mapping the Codex…</p>
+          <div className={`flex flex-col items-center gap-5 p-8 border backdrop-blur-md rounded-md ${chrome.panelStrong}`}>
+            <div className="kg-radar" aria-hidden />
+            <div className="text-center">
+              <p className={`${monoClass} text-[10px] tracking-[0.3em] ${chrome.sub}`}>CHARTING THE CODEX</p>
+              <p className={`mt-1.5 ${monoClass} text-[8.5px] tracking-[0.16em] ${chrome.faint}`}>
+                RESOLVING TERRITORIES…
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 touch-none ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-500 cursor-grab active:cursor-grabbing`}
+        aria-label="Knowledge graph canvas"
+        className={`absolute inset-0 touch-none ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-700 cursor-grab active:cursor-grabbing`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -878,5 +1752,82 @@ export function KnowledgeGraph({
         onWheel={handleWheel}
       />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Glyph swatch — canvas shapes echoed in the DOM chrome               */
+/* ------------------------------------------------------------------ */
+
+function GlyphSwatch({ category, dark, small = false }: { category: string; dark: boolean; small?: boolean }) {
+  const color = categoryColor(category, dark);
+  const shape = categoryShape(category);
+  const size = small ? 10 : 12;
+  const c = size / 2;
+  const r = size / 2 - 1;
+
+  const polygon = (sides: number, rotation: number) =>
+    Array.from({ length: sides }, (_, i) => {
+      const angle = rotation + (i / sides) * TAU;
+      return `${c + Math.cos(angle) * r},${c + Math.sin(angle) * r}`;
+    }).join(' ');
+
+  let element: React.ReactNode;
+  switch (shape) {
+    case 'starburst':
+      element = (
+        <polygon
+          points={Array.from({ length: 16 }, (_, i) => {
+            const radius = i % 2 === 0 ? r : r * 0.45;
+            const angle = (i / 16) * TAU - Math.PI / 2;
+            return `${c + Math.cos(angle) * radius},${c + Math.sin(angle) * radius}`;
+          }).join(' ')}
+          fill={color}
+        />
+      );
+      break;
+    case 'hexagon':
+      element = <polygon points={polygon(6, 0)} fill={color} />;
+      break;
+    case 'diamond':
+      element = <polygon points={polygon(4, -Math.PI / 2)} fill={color} />;
+      break;
+    case 'triangle':
+      element = <polygon points={polygon(3, -Math.PI / 2)} fill={color} />;
+      break;
+    case 'pentagon':
+      element = <polygon points={polygon(5, -Math.PI / 2)} fill={color} />;
+      break;
+    case 'square':
+      element = <rect x={c - r * 0.8} y={c - r * 0.8} width={r * 1.6} height={r * 1.6} fill={color} />;
+      break;
+    case 'plus':
+      element = (
+        <g fill={color}>
+          <rect x={c - r * 0.28} y={c - r * 0.95} width={r * 0.56} height={r * 1.9} />
+          <rect x={c - r * 0.95} y={c - r * 0.28} width={r * 1.9} height={r * 0.56} />
+        </g>
+      );
+      break;
+    case 'ring':
+      element = <circle cx={c} cy={c} r={r * 0.7} fill="none" stroke={color} strokeWidth={r * 0.55} />;
+      break;
+    case 'lens':
+      element = (
+        <path
+          d={`M ${c + Math.cos(0.15 * Math.PI) * r} ${c + Math.sin(0.15 * Math.PI) * r} A ${r} ${r} 0 1 1 ${c + Math.cos(-0.15 * Math.PI) * r} ${c + Math.sin(-0.15 * Math.PI) * r} Z`}
+          fill={color}
+          transform={`rotate(-90 ${c} ${c})`}
+        />
+      );
+      break;
+    default:
+      element = <circle cx={c} cy={c} r={r} fill={color} />;
+  }
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0" aria-hidden>
+      {element}
+    </svg>
   );
 }
