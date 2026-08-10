@@ -55,7 +55,7 @@ npm run build
 
 See [`.env.example`](./.env.example). Never commit `.env.local`.
 
-The production viewer is connected to `foundry-console` (`pkydkbuodikttfeawqsw`). The reviewed document corpus is public and read-only; per-user bookmarks, notes, and reading history are not enabled. Details: [`supabase/SCHEMA.md`](./supabase/SCHEMA.md).
+The production viewer is connected to `foundry-console` (`pkydkbuodikttfeawqsw`). The reviewed document corpus is public and read-only. Personal bookmarks, notes, and reading progress require an authenticated owner session and the owner-scoped interaction migration (`20260810090000`). Details: [`supabase/SCHEMA.md`](./supabase/SCHEMA.md).
 
 Canonical public document copy is reviewed in [`src/content/codexDocumentBodies.ts`](./src/content/codexDocumentBodies.ts). Every document carries machine-readable `provenance_status`, `evidence_basis`, and `last_reviewed` fields. Allowed provenance values are `verified`, `repository_evidence`, `concept`, and `unknown`. Supabase supplies live row identity and application state; stale database copy is not allowed to override the reviewed corpus.
 
