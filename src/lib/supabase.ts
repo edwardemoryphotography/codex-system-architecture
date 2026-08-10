@@ -278,14 +278,26 @@ export async function getTags() {
   return data;
 }
 
+/** Resolve the authenticated user id, or null when signed out. */
+async function getAuthenticatedUserId(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await client().auth.getUser();
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
 export async function getRecentDocuments(limit = 10) {
   if (!supabase) return [];
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return [];
+
   const { data, error } = await client()
     .from('reading_progress')
     .select(`
       *,
       codex_documents (*)
     `)
+    .eq('user_id', userId)
     .order('last_read_at', { ascending: false })
     .limit(limit);
 
@@ -301,15 +313,22 @@ export async function getRecentDocuments(limit = 10) {
 
 export async function updateReadingProgress(documentId: string, scrollPosition: number, timeSpent: number) {
   if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return null;
+
   const { data, error } = await client()
     .from('reading_progress')
-    .upsert({
-      document_id: documentId,
-      scroll_position: scrollPosition,
-      time_spent_seconds: timeSpent,
-      last_read_at: new Date().toISOString(),
-      completed: scrollPosition > 90
-    }, { onConflict: 'document_id' })
+    .upsert(
+      {
+        user_id: userId,
+        document_id: documentId,
+        scroll_position: scrollPosition,
+        time_spent_seconds: timeSpent,
+        last_read_at: new Date().toISOString(),
+        completed: scrollPosition > 90,
+      },
+      { onConflict: 'user_id,document_id' },
+    )
     .select()
     .maybeSingle();
 
@@ -320,9 +339,13 @@ export async function updateReadingProgress(documentId: string, scrollPosition: 
 
 export async function getReadingProgress(documentId: string) {
   if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return null;
+
   const { data, error } = await client()
     .from('reading_progress')
     .select('*')
+    .eq('user_id', userId)
     .eq('document_id', documentId)
     .maybeSingle();
 
@@ -333,12 +356,16 @@ export async function getReadingProgress(documentId: string) {
 
 export async function getBookmarks() {
   if (!supabase) return [];
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return [];
+
   const { data, error } = await client()
     .from('bookmarks')
     .select(`
       *,
       codex_documents (*)
     `)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (isMissingRelationError(error)) return [];
@@ -353,9 +380,12 @@ export async function getBookmarks() {
 
 export async function addBookmark(documentId: string) {
   if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { data, error } = await client()
     .from('bookmarks')
-    .insert({ document_id: documentId })
+    .insert({ user_id: userId, document_id: documentId })
     .select()
     .maybeSingle();
 
@@ -366,9 +396,13 @@ export async function addBookmark(documentId: string) {
 
 export async function removeBookmark(documentId: string) {
   if (!supabase || !isPersistableDocumentId(documentId)) return;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { error } = await client()
     .from('bookmarks')
     .delete()
+    .eq('user_id', userId)
     .eq('document_id', documentId);
 
   if (isMissingRelationError(error)) return;
@@ -377,9 +411,13 @@ export async function removeBookmark(documentId: string) {
 
 export async function isBookmarked(documentId: string) {
   if (!supabase || !isPersistableDocumentId(documentId)) return false;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return false;
+
   const { data, error } = await client()
     .from('bookmarks')
     .select('id')
+    .eq('user_id', userId)
     .eq('document_id', documentId)
     .maybeSingle();
 
@@ -390,9 +428,13 @@ export async function isBookmarked(documentId: string) {
 
 export async function getDocumentNotes(documentId: string) {
   if (!supabase || !isPersistableDocumentId(documentId)) return [];
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return [];
+
   const { data, error } = await client()
     .from('document_notes')
     .select('*')
+    .eq('user_id', userId)
     .eq('document_id', documentId)
     .order('created_at', { ascending: false });
 
@@ -403,9 +445,12 @@ export async function getDocumentNotes(documentId: string) {
 
 export async function addDocumentNote(documentId: string, content: string, position?: string) {
   if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { data, error } = await client()
     .from('document_notes')
-    .insert({ document_id: documentId, content, position })
+    .insert({ user_id: userId, document_id: documentId, content, position })
     .select()
     .maybeSingle();
 
@@ -416,10 +461,14 @@ export async function addDocumentNote(documentId: string, content: string, posit
 
 export async function deleteDocumentNote(noteId: string) {
   if (!supabase) return;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { error } = await client()
     .from('document_notes')
     .delete()
-    .eq('id', noteId);
+    .eq('id', noteId)
+    .eq('user_id', userId);
 
   if (isMissingRelationError(error)) return;
   if (error) throw error;

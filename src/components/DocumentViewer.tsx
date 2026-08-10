@@ -1,5 +1,17 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { getDocumentByPath, updateReadingProgress, getReadingProgress, isBookmarked, addBookmark, removeBookmark, getDocumentNotes, addDocumentNote, deleteDocumentNote } from '../lib/supabase';
+import {
+  getDocumentByPath,
+  updateReadingProgress,
+  getReadingProgress,
+  isBookmarked,
+  addBookmark,
+  removeBookmark,
+  getDocumentNotes,
+  addDocumentNote,
+  deleteDocumentNote,
+  isPersistableDocumentId,
+} from '../lib/supabase';
+import { useAuthSession } from '../hooks/useAuthSession';
 import { CodexDocument } from '../types';
 import { Calendar, FileText, ChevronRight, Star, Maximize2, MessageSquare, X, Send, Download, Columns } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -35,6 +47,7 @@ const categoryColors: Record<string, { bg: string; text: string; border: string;
 };
 
 export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, onToggleFocusMode, onOpenSplitView }: DocumentViewerProps) {
+  const { isAuthenticated } = useAuthSession();
   const [document, setDocument] = useState<CodexDocument | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +59,15 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   const [newNote, setNewNote] = useState('');
   const [startTime, setStartTime] = useState<number>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const canPersistPersonal =
+    isAuthenticated && Boolean(document && isPersistableDocumentId(document.id));
+
+  const personalControlsDisabledReason = !isAuthenticated
+    ? 'Sign in from the Control Panel to save personal bookmarks and notes'
+    : document && !isPersistableDocumentId(document.id)
+      ? 'Personal storage requires a live document UUID'
+      : null;
 
   useEffect(() => {
     if (!path) {
@@ -63,11 +85,11 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
         const doc = await getDocumentByPath(path);
         setDocument(doc);
 
-        if (doc) {
+        if (doc && isAuthenticated && isPersistableDocumentId(doc.id)) {
           const [isMarked, progress, docNotes] = await Promise.all([
             isBookmarked(doc.id),
             getReadingProgress(doc.id),
-            getDocumentNotes(doc.id)
+            getDocumentNotes(doc.id),
           ]);
           setBookmarked(isMarked);
           setNotes(docNotes || []);
@@ -80,6 +102,9 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
               }
             }, 100);
           }
+        } else {
+          setBookmarked(false);
+          setNotes([]);
         }
       } catch (err) {
         setError('Failed to load document');
@@ -88,7 +113,7 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
         setLoading(false);
       }
     })();
-  }, [path]);
+  }, [path, isAuthenticated]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || !document) return;
@@ -106,17 +131,20 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   }, [handleScroll]);
 
   useEffect(() => {
-    if (!document || document.is_read_only) return;
+    if (!document || !canPersistPersonal) return;
     const saveProgress = () => {
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
       updateReadingProgress(document.id, scrollProgress, timeSpent).catch(console.error);
     };
     const interval = setInterval(saveProgress, 5000);
-    return () => { saveProgress(); clearInterval(interval); };
-  }, [document, scrollProgress, startTime]);
+    return () => {
+      saveProgress();
+      clearInterval(interval);
+    };
+  }, [document, canPersistPersonal, scrollProgress, startTime]);
 
   const toggleBookmark = async () => {
-    if (!document || document.is_read_only) return;
+    if (!document || !canPersistPersonal) return;
     try {
       if (bookmarked) await removeBookmark(document.id);
       else await addBookmark(document.id);
@@ -127,18 +155,26 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
   };
 
   const handleAddNote = async () => {
-    if (!document || document.is_read_only || !newNote.trim()) return;
+    if (!document || !canPersistPersonal || !newNote.trim()) return;
     try {
       const note = await addDocumentNote(document.id, newNote.trim());
-      if (note) { setNotes([note, ...notes]); setNewNote(''); }
-    } catch (error) { console.error('Failed to add note:', error); }
+      if (note) {
+        setNotes([note, ...notes]);
+        setNewNote('');
+      }
+    } catch (error) {
+      console.error('Failed to add note:', error);
+    }
   };
 
   const handleDeleteNote = async (noteId: string) => {
+    if (!canPersistPersonal) return;
     try {
       await deleteDocumentNote(noteId);
-      setNotes(notes.filter(n => n.id !== noteId));
-    } catch (error) { console.error('Failed to delete note:', error); }
+      setNotes(notes.filter((n) => n.id !== noteId));
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+    }
   };
 
   if (!path) {
@@ -170,23 +206,46 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
     );
   }
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   const colors = categoryColors[document.category] || categoryColors.root;
   const pathParts = document.path.split('/').filter(Boolean);
+  const personalDisabled = !canPersistPersonal;
 
   return (
     <div className={`flex-1 flex flex-col overflow-hidden relative ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`}>
-      <div className="absolute top-0 left-0 right-0 h-1 z-20" style={{ background: `linear-gradient(to right, #3b82f6 ${scrollProgress}%, ${isDarkMode ? '#1f2937' : '#e5e7eb'} ${scrollProgress}%)` }} />
+      <div
+        className="absolute top-0 left-0 right-0 h-1 z-20"
+        style={{
+          background: `linear-gradient(to right, #3b82f6 ${scrollProgress}%, ${isDarkMode ? '#1f2937' : '#e5e7eb'} ${scrollProgress}%)`,
+        }}
+      />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className={`sticky top-0 z-10 backdrop-blur-xl transition-all duration-300 ${isDarkMode ? colors.darkBg + ' border-b ' + colors.darkBorder : colors.bg + ' border-b ' + colors.border}`}>
+        <div
+          className={`sticky top-0 z-10 backdrop-blur-xl transition-all duration-300 ${
+            isDarkMode
+              ? colors.darkBg + ' border-b ' + colors.darkBorder
+              : colors.bg + ' border-b ' + colors.border
+          }`}
+        >
           <div className={`max-w-4xl mx-auto px-4 py-4 md:px-8 md:py-6 ${isFocusMode ? 'max-w-3xl' : ''}`}>
             <div className="flex items-start md:items-center justify-between gap-3 mb-4">
-              <div className={`flex items-center gap-1 text-xs md:text-sm overflow-x-auto max-w-full ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+              <div
+                className={`flex items-center gap-1 text-xs md:text-sm overflow-x-auto max-w-full ${
+                  isDarkMode ? 'text-gray-500' : 'text-gray-500'
+                }`}
+              >
                 {pathParts.map((part, idx) => (
                   <span key={idx} className="flex items-center">
                     {idx > 0 && <ChevronRight className="w-4 h-4 mx-1" />}
-                    <span className={idx === pathParts.length - 1 ? (isDarkMode ? colors.darkText : colors.text) + ' font-medium' : ''}>
+                    <span
+                      className={
+                        idx === pathParts.length - 1
+                          ? (isDarkMode ? colors.darkText : colors.text) + ' font-medium'
+                          : ''
+                      }
+                    >
                       {part.replace('.md', '').replace(/_/g, ' ')}
                     </span>
                   </span>
@@ -194,37 +253,103 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
               </div>
 
               <div className="flex items-center gap-1">
-                <button disabled={document.is_read_only} onClick={toggleBookmark} className={`p-2 rounded-xl transition-all ${document.is_read_only ? 'cursor-not-allowed opacity-40' : ''} ${bookmarked ? 'text-amber-500 bg-amber-500/10' : isDarkMode ? 'text-gray-500 hover:text-amber-500 hover:bg-gray-800' : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100'}`} title={document.is_read_only ? 'Personal bookmark storage is not enabled' : bookmarked ? 'Remove bookmark' : 'Add bookmark'}>
+                <button
+                  disabled={personalDisabled}
+                  onClick={toggleBookmark}
+                  className={`p-2 rounded-xl transition-all ${personalDisabled ? 'cursor-not-allowed opacity-40' : ''} ${
+                    bookmarked
+                      ? 'text-amber-500 bg-amber-500/10'
+                      : isDarkMode
+                        ? 'text-gray-500 hover:text-amber-500 hover:bg-gray-800'
+                        : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100'
+                  }`}
+                  title={personalControlsDisabledReason ?? (bookmarked ? 'Remove bookmark' : 'Add bookmark')}
+                >
                   <Star className={`w-5 h-5 ${bookmarked ? 'fill-current' : ''}`} />
                 </button>
-                <button disabled={document.is_read_only} onClick={() => setShowNotes(!showNotes)} className={`p-2 rounded-xl transition-all relative ${document.is_read_only ? 'cursor-not-allowed opacity-40' : ''} ${showNotes ? isDarkMode ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50' : isDarkMode ? 'text-gray-500 hover:text-blue-400 hover:bg-gray-800' : 'text-gray-400 hover:text-blue-600 hover:bg-gray-100'}`} title={document.is_read_only ? 'Personal note storage is not enabled' : 'Notes'}>
+                <button
+                  disabled={personalDisabled}
+                  onClick={() => setShowNotes(!showNotes)}
+                  className={`p-2 rounded-xl transition-all relative ${personalDisabled ? 'cursor-not-allowed opacity-40' : ''} ${
+                    showNotes
+                      ? isDarkMode
+                        ? 'text-blue-400 bg-blue-500/10'
+                        : 'text-blue-600 bg-blue-50'
+                      : isDarkMode
+                        ? 'text-gray-500 hover:text-blue-400 hover:bg-gray-800'
+                        : 'text-gray-400 hover:text-blue-600 hover:bg-gray-100'
+                  }`}
+                  title={personalControlsDisabledReason ?? 'Notes'}
+                >
                   <MessageSquare className="w-5 h-5" />
-                  {notes.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">{notes.length}</span>}
+                  {notes.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {notes.length}
+                    </span>
+                  )}
                 </button>
                 <div className="relative">
-                  <button onClick={() => setShowExport(!showExport)} className={`p-2 rounded-xl transition-all ${showExport ? isDarkMode ? 'text-green-400 bg-green-500/10' : 'text-green-600 bg-green-50' : isDarkMode ? 'text-gray-500 hover:text-green-400 hover:bg-gray-800' : 'text-gray-400 hover:text-green-600 hover:bg-gray-100'}`} title="Export">
+                  <button
+                    onClick={() => setShowExport(!showExport)}
+                    className={`p-2 rounded-xl transition-all ${
+                      showExport
+                        ? isDarkMode
+                          ? 'text-green-400 bg-green-500/10'
+                          : 'text-green-600 bg-green-50'
+                        : isDarkMode
+                          ? 'text-gray-500 hover:text-green-400 hover:bg-gray-800'
+                          : 'text-gray-400 hover:text-green-600 hover:bg-gray-100'
+                    }`}
+                    title="Export"
+                  >
                     <Download className="w-5 h-5" />
                   </button>
-                  {showExport && <ExportMenu document={document} isDarkMode={isDarkMode} onClose={() => setShowExport(false)} />}
+                  {showExport && (
+                    <ExportMenu document={document} isDarkMode={isDarkMode} onClose={() => setShowExport(false)} />
+                  )}
                 </div>
                 {onOpenSplitView && (
-                  <button onClick={onOpenSplitView} className={`hidden md:inline-flex p-2 rounded-xl transition-all ${isDarkMode ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`} title="Split view">
+                  <button
+                    onClick={onOpenSplitView}
+                    className={`hidden md:inline-flex p-2 rounded-xl transition-all ${
+                      isDarkMode
+                        ? 'text-gray-500 hover:text-white hover:bg-gray-800'
+                        : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                    title="Split view"
+                  >
                     <Columns className="w-5 h-5" />
                   </button>
                 )}
                 {onToggleFocusMode && (
-                  <button onClick={onToggleFocusMode} className={`p-2 rounded-xl transition-all ${isDarkMode ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`} title="Focus mode">
+                  <button
+                    onClick={onToggleFocusMode}
+                    className={`p-2 rounded-xl transition-all ${
+                      isDarkMode
+                        ? 'text-gray-500 hover:text-white hover:bg-gray-800'
+                        : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                    title="Focus mode"
+                  >
                     <Maximize2 className="w-5 h-5" />
                   </button>
                 )}
               </div>
             </div>
 
-            <div className={`inline-block px-3 py-1 text-xs font-semibold rounded-full mb-3 ${isDarkMode ? colors.darkBg + ' ' + colors.darkText + ' border ' + colors.darkBorder : colors.bg + ' ' + colors.text + ' border ' + colors.border}`}>
+            <div
+              className={`inline-block px-3 py-1 text-xs font-semibold rounded-full mb-3 ${
+                isDarkMode
+                  ? colors.darkBg + ' ' + colors.darkText + ' border ' + colors.darkBorder
+                  : colors.bg + ' ' + colors.text + ' border ' + colors.border
+              }`}
+            >
               {document.category.replace(/_/g, ' ').toUpperCase()}
             </div>
 
-            <h1 className={`text-2xl md:text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{document.title}</h1>
+            <h1 className={`text-2xl md:text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {document.title}
+            </h1>
 
             <div className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
               <Calendar className="w-4 h-4" />
@@ -234,10 +359,19 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
         </div>
 
         <article className={`max-w-4xl mx-auto px-4 py-6 md:px-8 md:py-8 ${isFocusMode ? 'max-w-3xl' : ''}`}>
-          <div className={`mb-6 rounded-xl border p-4 ${isDarkMode ? 'border-gray-700 bg-gray-900/70' : 'border-gray-200 bg-gray-50'}`}>
+          <div
+            className={`mb-6 rounded-xl border p-4 ${
+              isDarkMode ? 'border-gray-700 bg-gray-900/70' : 'border-gray-200 bg-gray-50'
+            }`}
+          >
             <div className="flex flex-wrap gap-2 mb-2" aria-label="Document provenance">
               {document.provenance_status.map((status) => (
-                <span key={status} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isDarkMode ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-blue-800'}`}>
+                <span
+                  key={status}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    isDarkMode ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-blue-800'
+                  }`}
+                >
                   {status.replace(/_/g, ' ').toUpperCase()}
                 </span>
               ))}
@@ -248,42 +382,90 @@ export function DocumentViewer({ path, isDarkMode = false, isFocusMode = false, 
             <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
               Last reviewed: {document.last_reviewed ?? 'Unknown — not yet verified'}
               {document.is_read_only ? ' · Public canonical document · read-only' : ''}
+              {canPersistPersonal ? ' · Personal bookmarks/notes enabled' : ''}
             </p>
           </div>
           <MarkdownRenderer content={document.content} isDarkMode={isDarkMode} />
         </article>
       </div>
 
-      <TableOfContents content={document.content} isDarkMode={isDarkMode} onNavigate={(id) => console.log('Navigate to:', id)} />
+      <TableOfContents
+        content={document.content}
+        isDarkMode={isDarkMode}
+        onNavigate={(id) => console.log('Navigate to:', id)}
+      />
 
-      {showNotes && (
-        <div className={`fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:right-4 md:top-32 md:bottom-auto w-auto md:w-80 rounded-2xl shadow-2xl overflow-hidden z-30 pb-[env(safe-area-inset-bottom)] md:pb-0 ${isDarkMode ? 'bg-gray-800/95 backdrop-blur-xl border border-gray-700' : 'bg-white/95 backdrop-blur-xl border border-gray-200'}`} style={{ animation: 'slideIn 0.2s ease-out' }}>
+      {showNotes && canPersistPersonal && (
+        <div
+          className={`fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:right-4 md:top-32 md:bottom-auto w-auto md:w-80 rounded-2xl shadow-2xl overflow-hidden z-30 pb-[env(safe-area-inset-bottom)] md:pb-0 ${
+            isDarkMode
+              ? 'bg-gray-800/95 backdrop-blur-xl border border-gray-700'
+              : 'bg-white/95 backdrop-blur-xl border border-gray-200'
+          }`}
+          style={{ animation: 'slideIn 0.2s ease-out' }}
+        >
           <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
             <div className="flex items-center justify-between">
               <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notes</h3>
-              <button onClick={() => setShowNotes(false)} className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+              <button
+                onClick={() => setShowNotes(false)}
+                className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+              >
                 <X className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
               </button>
             </div>
           </div>
           <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
             <div className="flex gap-2">
-              <input type="text" value={newNote} onChange={(e) => setNewNote(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddNote()} placeholder="Add a note..." className={`flex-1 px-3 py-2 rounded-xl text-sm outline-none ${isDarkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`} />
-              <button onClick={handleAddNote} disabled={!newNote.trim()} className={`p-2 rounded-xl transition-all ${newNote.trim() ? 'bg-blue-500 text-white hover:bg-blue-600' : isDarkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-200 text-gray-400'}`}>
+              <input
+                type="text"
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
+                placeholder="Add a note..."
+                className={`flex-1 px-3 py-2 rounded-xl text-sm outline-none ${
+                  isDarkMode
+                    ? 'bg-gray-700 text-white placeholder-gray-500'
+                    : 'bg-gray-100 text-gray-900 placeholder-gray-400'
+                }`}
+              />
+              <button
+                onClick={handleAddNote}
+                disabled={!newNote.trim()}
+                className={`p-2 rounded-xl transition-all ${
+                  newNote.trim()
+                    ? 'bg-blue-500 text-white hover:bg-blue-600'
+                    : isDarkMode
+                      ? 'bg-gray-700 text-gray-500'
+                      : 'bg-gray-200 text-gray-400'
+                }`}
+              >
                 <Send className="w-4 h-4" />
               </button>
             </div>
           </div>
           <div className="max-h-64 overflow-y-auto">
             {notes.length === 0 ? (
-              <div className={`p-4 text-center text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No notes yet</div>
+              <div className={`p-4 text-center text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                No notes yet
+              </div>
             ) : (
-              notes.map(note => (
-                <div key={note.id} className={`p-4 border-b last:border-b-0 group ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+              notes.map((note) => (
+                <div
+                  key={note.id}
+                  className={`p-4 border-b last:border-b-0 group ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}
+                >
                   <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{note.content}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{formatDate(note.created_at)}</span>
-                    <button onClick={() => handleDeleteNote(note.id)} className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${isDarkMode ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                    <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {formatDate(note.created_at)}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteNote(note.id)}
+                      className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${
+                        isDarkMode ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'
+                      }`}
+                    >
                       <X className="w-3 h-3" />
                     </button>
                   </div>

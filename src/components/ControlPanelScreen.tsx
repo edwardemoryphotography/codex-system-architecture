@@ -9,6 +9,7 @@ import {
   ROUTING_OWNER_EMAIL,
   signInOwnerWithMagicLink,
 } from '../lib/supabase';
+import { storeUser } from '../lib/auth';
 import type { ExecutionLane, EvidenceKind, RouteProposal, RoutedRequestRecord, Workspace } from '../types';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useToast } from './Toast';
@@ -58,7 +59,16 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
     if (!isSupabaseConfigured) return;
 
     getSession()
-      .then(setSession)
+      .then(async (next) => {
+        setSession(next);
+        if (next) {
+          try {
+            await storeUser(next);
+          } catch (error) {
+            console.error('Failed to store user profile:', error);
+          }
+        }
+      })
       .catch(() => setSession(null));
     getWorkspaces()
       .then((rows) => setWorkspace(rows[0] ?? null))
@@ -66,7 +76,12 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
 
     const subscription = onAuthStateChange((nextSession) => {
       setSession(nextSession);
-      if (nextSession) setMagicLinkSent(false);
+      if (nextSession) {
+        setMagicLinkSent(false);
+        storeUser(nextSession).catch((error) => {
+          console.error('Failed to store user profile:', error);
+        });
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -215,7 +230,7 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
           <section className="flex flex-col gap-5 md:gap-6 pb-4">
             {isSupabaseConfigured && !session && (
               <div className={`rounded-2xl border p-3.5 flex items-center justify-between gap-3 ${panel}`}>
-                <p className="text-sm">Sign in as owner to route tasks for real.</p>
+                <p className="text-sm">Sign in as owner to route tasks and save personal bookmarks/notes.</p>
                 <button
                   type="button"
                   onClick={() => void handleSendMagicLink()}

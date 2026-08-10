@@ -95,7 +95,7 @@ All data access goes through `src/lib/supabase.ts` — never write inline Supaba
 
 **Configured production Supabase project:** `foundry-console` (`pkydkbuodikttfeawqsw`) — see `supabase/project.json` and `supabase/SCHEMA.md`. This was verified from the deployed Vercel bundle and live schema on 2026-07-15.
 
-**RLS**: Canonical documents are public read-only. No per-user bookmark, reading-history, or note tables are deployed; those controls remain disabled until authenticated, owner-scoped storage exists. Do not introduce anonymous shared interaction writes.
+**RLS**: Canonical documents are public read-only. Owner-scoped `profiles`, `bookmarks`, `reading_progress`, and `document_notes` are defined in `supabase/migrations/20260810090000_owner_scoped_document_interactions.sql` (authenticated `user_id` policies only). Do not introduce anonymous shared interaction writes. Apply that migration before treating personal overlays as live.
 
 Migrations are in `supabase/migrations/` as timestamped SQL files. Run them in order; do not edit applied migrations.
 
@@ -104,7 +104,7 @@ Migrations are in `supabase/migrations/` as timestamped SQL files. Run them in o
 - All top-level UI state lives in `App.tsx` as `useState`.
 - `src/content/codexDocumentBodies.ts` is the canonical source for reviewed public document titles and copy.
 - Every document must expose `provenance_status`, `evidence_basis`, and `last_reviewed`. The only allowed provenance values are `verified`, `repository_evidence`, `concept`, and `unknown`.
-- Supabase supplies live document row IDs, hierarchy, timestamps, provenance, and actions. Bookmarks, notes, and reading progress are currently unavailable in production.
+- Supabase supplies live document row IDs, hierarchy, timestamps, provenance, and actions. Bookmarks, notes, and reading progress persist only for authenticated owners after the owner-scoped interaction migration is applied.
 - `src/lib/supabase.ts` merges canonical copy over matching live rows so stale database prose cannot override reviewed facts.
 - Canonical rows without live UUIDs are read-only; persistence functions must reject `corpus-*` and non-UUID document IDs.
 - `localStorage` is used only for dark mode persistence (`darkMode`).

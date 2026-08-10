@@ -4,18 +4,18 @@
   "name": "foundry-console",
   "dashboard_url": "https://supabase.com/dashboard/project/pkydkbuodikttfeawqsw",
   "api_url": "https://pkydkbuodikttfeawqsw.supabase.co",
-  "last_verified": "2026-07-15",
+  "last_verified": "2026-08-10",
   "tables": {
     "knowledge": ["codex_documents"],
-    "interactions": [],
+    "interactions": ["profiles", "bookmarks", "reading_progress", "document_notes"],
     "control_panel": ["actions", "codex_actions", "events", "friction_entries", "manual", "milestones", "settings", "sprints", "workspaces"],
     "edition_manager": []
   },
   "feature_status": {
     "documents": "verified_public_read_only",
-    "bookmarks": "unavailable",
-    "reading_progress": "unavailable",
-    "document_notes": "unavailable",
+    "bookmarks": "migration_ready_owner_scoped",
+    "reading_progress": "migration_ready_owner_scoped",
+    "document_notes": "migration_ready_owner_scoped",
     "edition_manager_events": "unknown"
   },
   "rpc": {
