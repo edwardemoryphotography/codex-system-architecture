@@ -7,9 +7,9 @@ The deployed viewer uses `foundry-console` (`pkydkbuodikttfeawqsw`). This was ve
 | Documents | `codex_documents` contains 59 canonical `/codex` rows plus 5 preserved, unrelated legacy rows | Canonical rows are public read-only |
 | Provenance | `provenance_status`, `evidence_basis`, `last_reviewed`, `is_read_only` | Required whenever `path` is present |
 | Hierarchy | `parent_id` foreign key and covering index | 0 broken canonical parent links |
-| Bookmarks | Table not deployed | Disabled for canonical documents |
-| Recent pages | `reading_progress` table not deployed | No persisted recent history |
-| Notes | `document_notes` table not deployed | Disabled for canonical documents |
+| Bookmarks | Migration `20260810090000` defines owner-scoped `bookmarks` (`user_id` + RLS) | Enabled only for authenticated sessions after migration apply |
+| Recent pages | Migration `20260810090000` defines owner-scoped `reading_progress` | Enabled only for authenticated sessions after migration apply |
+| Notes | Migration `20260810090000` defines owner-scoped `document_notes` | Enabled only for authenticated sessions after migration apply |
 | Control Panel | Foundry tables and `initialize_session_start(session_mode)` exist | Separate from the reviewed document corpus |
 | Edition Manager | Not present in this production project | Status is `unknown`; verify its separate upstream before use |
 
@@ -32,10 +32,21 @@ Canonical documents must satisfy all of these invariants:
 
 - `path`, `content`, `category`, `provenance_status`, `evidence_basis`, `last_reviewed`, and `is_read_only` are complete.
 - `provenance_status` contains one or more of: `verified`, `repository_evidence`, `concept`, `unknown`.
-- `is_read_only` remains true until authenticated, owner-scoped persistence is deliberately designed.
+- `is_read_only` remains true for canonical document **content**. Personal bookmarks, notes, and reading progress are separate owner-scoped rows (`user_id = auth.uid()`), not content edits.
 - Existing non-canonical rows with a null `path` are preserved and are not mislabeled as reviewed personal information.
 
-The public `SELECT` policy on `codex_documents` is intentional. Anonymous bookmark, note, reading-progress, update, insert, and delete policies are not.
+The public `SELECT` policy on `codex_documents` is intentional. Anonymous bookmark, note, and reading-progress policies are not — see `20260810090000_owner_scoped_document_interactions.sql`.
+
+## Auth + personal overlays
+
+| Concern | Mechanism |
+|---|---|
+| Sign-in | Supabase magic link to `ROUTING_OWNER_EMAIL` (Control Panel) |
+| App identity | `profiles` row keyed by `auth.users.id` (`storeUser` on session) |
+| Personal data | `bookmarks`, `reading_progress`, `document_notes` with `user_id` + authenticated-only RLS |
+| Client helpers | `src/lib/auth.ts` (`getCurrentUser`, `storeUser`, `requireOwner`) |
+
+Until the owner-scoped migration is applied to the live project, personal overlays remain unavailable at the database layer; the UI stays disabled while signed out and degrades gracefully if tables are missing.
 
 ## Routing control plane — canonical ownership (recorded 2026-08-04, updated 2026-08-07)
 

@@ -24,6 +24,13 @@ vi.mock('../lib/supabase', () => ({
   persistRouteOwner: mocks.persistRouteOwner,
 }));
 
+vi.mock('../lib/auth', () => ({
+  storeUser: vi.fn().mockResolvedValue('user-id'),
+  getCurrentUser: vi.fn(),
+  getCurrentUserOrNull: vi.fn().mockResolvedValue(null),
+  requireOwner: vi.fn(),
+}));
+
 function renderControlPanel() {
   return render(
     <ToastProvider isDarkMode>
