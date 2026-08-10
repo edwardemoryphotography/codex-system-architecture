@@ -26,4 +26,8 @@ Cursor injects secrets for pre-commit scanning via `CLOUD_AGENT_INJECTED_SECRET_
 
 ## Upstream
 
-Agent behavior is adapted from [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills). Update the **Agent behavior** section in `CLAUDE.md` when pulling substantive changes from upstream; keep `.cursor/rules/` as a thin pointer only.
+Agent behavior is adapted from [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) and now lives canonically in `codex-control-panel/standards/AGENT-BEHAVIOR.md` (Standards Kit 2.1.0) rather than inlined in `CLAUDE.md`; keep `.cursor/rules/` and this file as thin pointers only.
+
+## Cross-repo standards
+
+This repo is named in the Legacy Codex Master Charter (`codex-control-panel/standards/MASTER-CHARTER.md`) §1 for coordination purposes, but does not implement its design-token (§4) or AI-task-lifecycle (§3/§5) sections — this is a Vite/React knowledge-graph SPA with its own established Tailwind design and no AI routing surface. What applies: the shared `AGENT-BEHAVIOR.md` baseline above, and §9 discovery-before-modification if this repo is ever migrated into the design/lifecycle sections.
