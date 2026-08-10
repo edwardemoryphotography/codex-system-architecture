@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   getSession,
@@ -45,6 +45,14 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [sendingMagicLink, setSendingMagicLink] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  // Holds the idempotency key for the in-progress draft, keyed to a
+  // fingerprint of the fields that define it. A retry after an ambiguous
+  // failure (lost response, network error) reuses the same key so the
+  // server replays the original write instead of creating a duplicate.
+  // The key only rotates once the draft materially changes or the route
+  // succeeds.
+  const draftIdempotency = useRef<{ key: string; fingerprint: string } | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -121,9 +129,20 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
 
     setRouting(true);
     try {
+      const fingerprint = JSON.stringify([
+        workspace.id,
+        task.trim(),
+        selectedChip.id,
+        repository.trim(),
+        requiredEvidence.trim(),
+      ]);
+      if (!draftIdempotency.current || draftIdempotency.current.fingerprint !== fingerprint) {
+        draftIdempotency.current = { key: crypto.randomUUID(), fingerprint };
+      }
+
       const proposal: RouteProposal = {
         workspace_id: workspace.id,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: draftIdempotency.current.key,
         intent: task.trim(),
         task_type: selectedChip.id,
         execution_lane: selectedChip.lane,
@@ -144,6 +163,7 @@ export function ControlPanelScreen({ isDarkMode = true }: ControlPanelScreenProp
         result.replayed ? 'Already routed' : 'Routed',
         `${selectedChip.label} → ${proposal.repository} (${result.routedRequest.status})`,
       );
+      draftIdempotency.current = null;
       setTask('');
       setChip(null);
     } catch (err) {
