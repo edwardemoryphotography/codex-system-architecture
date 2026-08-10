@@ -3,12 +3,26 @@
 **Status:** Canonical handoff prompt
 **Purpose:** Wire the Artful Intelligence unified hub (frontend, backend, intelligence) without regressing verified state or doctrine.
 **Created:** August 10, 2026
+**Updated:** August 10, 2026 — hub canonized into its own repo (see below).
 
 ---
 
 You are working on "Artful Intelligence — One Home for the Whole Flock", a unified hub
 for Eddie's ecosystem (Legacy Codex, Foundry Console, Control Panel, System Atlas,
 PocketForge, Goose Cookbook, LLM Wiki).
+
+## Where the hub lives (canonical)
+
+**Repo: `edwardemoryphotography/artful-intelligence-hub`** (private). It contains:
+
+- `src/pages/Home.tsx` — the hub UI (dark-first, Gemini-inspired, theme toggle)
+- `supabase/migrations/20260810000000_constellation_status.sql` — the canonical
+  migration for the live `constellation_status()` function
+- `README.md` — verified-state record and agent rules
+
+Do not rebuild the hub from scratch and do not look for it in codex-control-panel;
+attach `artful-intelligence-hub` and work there. (This note exists because an agent
+correctly refused to guess when the hub existed only outside any reachable repo.)
 
 ## Read first (non-negotiable)
 
@@ -22,7 +36,7 @@ PocketForge, Goose Cookbook, LLM Wiki).
 
 ## Current verified state (do not regress)
 
-- Frontend: React + TS + Vite + Tailwind + shadcn/ui. `src/pages/Home.tsx` is a dark-first,
+- Frontend: React + TS + Vite + Tailwind. `src/pages/Home.tsx` is a dark-first,
   Gemini-inspired hub with a light/dark toggle (`?theme=` override + localStorage).
 - Live data: the hub calls `supabase.rpc('constellation_status')` against foundry-console
   (project ref `pkydkbuodikttfeawqsw`) using the publishable key. That function is
