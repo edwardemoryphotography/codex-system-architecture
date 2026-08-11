@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, FileText, Clock, Command, ArrowRight, Star, Moon, Sun, Maximize2, Network } from 'lucide-react';
 import { searchDocuments, getBookmarks, getRecentDocuments } from '../lib/supabase';
 import { CodexDocument } from '../types';
@@ -41,7 +41,7 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const defaultActions: CommandItem[] = [
+  const defaultActions: CommandItem[] = useMemo(() => [
     {
       id: 'toggle-dark',
       type: 'action',
@@ -66,7 +66,7 @@ export function CommandPalette({
       icon: <Network className="w-4 h-4" />,
       action: () => { onOpenKnowledgeGraph(); onClose(); }
     }
-  ];
+  ], [isDarkMode, onToggleDarkMode, onToggleFocusMode, onOpenKnowledgeGraph, onClose]);
 
   const loadInitialItems = useCallback(async () => {
     setIsLoading(true);
@@ -105,7 +105,7 @@ export function CommandPalette({
     } finally {
       setIsLoading(false);
     }
-  }, [onSelectDocument, onClose, isDarkMode]);
+  }, [onSelectDocument, onClose, defaultActions]);
 
   const searchItems = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -136,7 +136,7 @@ export function CommandPalette({
     } finally {
       setIsLoading(false);
     }
-  }, [onSelectDocument, onClose, loadInitialItems]);
+  }, [onSelectDocument, onClose, loadInitialItems, defaultActions]);
 
   useEffect(() => {
     if (isOpen) {

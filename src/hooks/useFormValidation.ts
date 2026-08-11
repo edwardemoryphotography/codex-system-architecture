@@ -43,13 +43,13 @@ export function useFormValidation<T extends Record<string, string>>(
 
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const createInitialFieldState = (): Record<keyof T, FieldValidation> => {
+  const createInitialFieldState = useCallback((): Record<keyof T, FieldValidation> => {
     const fields = {} as Record<keyof T, FieldValidation>;
     for (const key of Object.keys(initialValues) as (keyof T)[]) {
       fields[key] = { isValid: true, error: null, touched: false, validating: false };
     }
     return fields;
-  };
+  }, [initialValues]);
 
   const [values, setValuesState] = useState<T>(initialValues);
   const [fields, setFields] = useState<Record<keyof T, FieldValidation>>(createInitialFieldState);
@@ -165,7 +165,7 @@ export function useFormValidation<T extends Record<string, string>>(
     setValuesState(initialValues);
     setFields(createInitialFieldState());
     setSubmitCount(0);
-  }, [initialValues]);
+  }, [initialValues, createInitialFieldState]);
 
   const getFieldProps = useCallback(
     (field: keyof T) => ({
