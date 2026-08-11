@@ -149,46 +149,15 @@ When adding a new category:
 
 ## Agent behavior
 
-How AI assistants should work in this repo. Adapted from [Karpathy behavioral guidelines](https://github.com/multica-ai/andrej-karpathy-skills/blob/main/.cursor/rules/karpathy-guidelines.mdc). **Coding Rules** and **Performance Patterns** above win for project-specific facts.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks (typos, comment-only), use judgment.
+Baseline behavior (think-before-coding, simplicity-first, surgical changes, goal-driven execution, verification-before-claiming-done) used to be inlined here — it was generic, not project-specific, adapted from the [Karpathy behavioral guidelines](https://github.com/multica-ai/andrej-karpathy-skills/blob/main/.cursor/rules/karpathy-guidelines.mdc). As of 2026-08-10 it's canonically defined once in `codex-control-panel/standards/AGENT-BEHAVIOR.md` (Standards Kit 2.1.0) — read that. **Coding Rules** and **Performance Patterns** above, and the Verification table below, win for project-specific facts; the Goose Cookbook doctrine referenced from `AGENTS.md` takes precedence over generic guidance where the two overlap.
 
 ### Instruction precedence
 
 1. The user's request for the current task
 2. This file (`CLAUDE.md`) — stack, schema, conventions, and agent behavior
-3. [`AGENTS.md`](./AGENTS.md) — entrypoint and verification checklist
-4. Tool-specific files (e.g. `.cursor/rules/`) — pointers only; must not contradict this file
-
-### Think before coding
-
-- State assumptions explicitly; ask when uncertain.
-- If multiple interpretations exist, present them — do not pick silently.
-- If a simpler approach exists, say so.
-- If something is unclear, stop and name what is confusing.
-
-### Simplicity first
-
-- No features, abstractions, or configurability beyond what was asked.
-- No error handling for impossible scenarios.
-- If the diff is much larger than the task requires, simplify.
-
-### Surgical changes
-
-- Do not "improve" adjacent code, comments, or formatting.
-- Match existing style; every changed line should trace to the request.
-- Remove imports or symbols only if **your** changes made them unused.
-- Mention unrelated dead code; do not delete it unless asked.
-
-### Goal-driven execution
-
-Turn requests into verifiable outcomes, for example:
-
-- "Fix the bug" → reproduce, fix, then confirm with checks below
-- "Add validation" → invalid inputs rejected; `npm run typecheck` passes
-- "Refactor X" → same behavior; `npm run typecheck && npm run lint` pass
-
-For multi-step work, state a short plan with a verify step per step.
+3. [`AGENTS.md`](./AGENTS.md) — entrypoint, Goose Cookbook doctrine pointer, and verification checklist
+4. `codex-control-panel/standards/` — shared baseline (`AGENT-BEHAVIOR.md`) and cross-repo coordination conventions when applicable (this repo doesn't implement the Liquid Intelligence design system or the AI task lifecycle — see its own pointer note)
+5. Tool-specific files (e.g. `.cursor/rules/`) — pointers only; must not contradict this file
 
 ### Verification (before claiming done)
 
