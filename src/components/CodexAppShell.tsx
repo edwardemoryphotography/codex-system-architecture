@@ -124,6 +124,16 @@ export function CodexAppShell() {
     setIsMobileNavOpen(false);
   }, []);
 
+  const handleOpenControlPanel = useCallback(() => {
+    setSelectedPath(null);
+    setIsMobileNavOpen(false);
+    setIsSplitView(false);
+  }, []);
+
+  const handleOpenKnowledgeGraph = useCallback(() => {
+    setIsKnowledgeGraphOpen(true);
+  }, []);
+
   const openSplitView = useCallback(() => {
     if (selectedPath) {
       setSplitLeftPath(selectedPath);
@@ -184,7 +194,13 @@ export function CodexAppShell() {
           >
             <div className={`p-4 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/20">
+                <button
+                  type="button"
+                  onClick={handleOpenControlPanel}
+                  className="codex-press codex-focus-ring w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/20"
+                  title="Open Control Panel"
+                  aria-label="Open Control Panel"
+                >
                   <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                       strokeLinecap="round"
@@ -193,21 +209,26 @@ export function CodexAppShell() {
                       d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                     />
                   </svg>
-                </div>
-                <div className="flex-1 min-w-0">
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenControlPanel}
+                  className="codex-press codex-focus-ring flex-1 min-w-0 text-left rounded-xl -m-1 p-1"
+                  title="Open Control Panel"
+                >
                   <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Codex
                   </h1>
                   <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Knowledge System
+                    {selectedPath ? 'Tap logo for Control Panel' : 'Knowledge System'}
                   </p>
-                </div>
+                </button>
                 {isMobileLayout && (
                   <button
                     type="button"
                     aria-label="Close navigation"
                     onClick={() => setIsMobileNavOpen(false)}
-                    className={`p-2 rounded-xl transition-all ${
+                    className={`codex-press codex-focus-ring p-2 rounded-xl transition-all ${
                       isDarkMode
                         ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-300'
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
@@ -220,7 +241,7 @@ export function CodexAppShell() {
 
               <a
                 href="/cognition"
-                className={`mt-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all border ${
+                className={`codex-press codex-focus-ring mt-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all border ${
                   isDarkMode
                     ? 'border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/15 text-violet-200'
                     : 'border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800'
@@ -235,7 +256,7 @@ export function CodexAppShell() {
 
               <button
                 onClick={() => setIsCommandPaletteOpen(true)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                className={`codex-press codex-focus-ring w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                   isDarkMode
                     ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-400'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
@@ -332,8 +353,8 @@ export function CodexAppShell() {
             <div className={`p-3 border-t shrink-0 ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsKnowledgeGraphOpen(true)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${
+                  onClick={handleOpenKnowledgeGraph}
+                  className={`codex-press codex-focus-ring flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${
                     isDarkMode ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                   }`}
                 >
@@ -408,7 +429,7 @@ export function CodexAppShell() {
           <div className={`flex-1 min-w-0 flex flex-col relative transition-all duration-500 ${isFocusMode ? 'px-0' : ''}`}>
             {isMobileLayout && !isFocusMode && !isSplitView && (
               <header
-                className={`shrink-0 flex items-center gap-3 px-4 py-3 border-b md:hidden pt-[max(0.75rem,env(safe-area-inset-top))] ${
+                className={`shrink-0 flex items-center gap-2 px-3 py-3 border-b md:hidden pt-[max(0.75rem,env(safe-area-inset-top))] ${
                   isDarkMode ? 'border-gray-800 bg-gray-950/95' : 'border-gray-200 bg-white/95'
                 }`}
               >
@@ -416,7 +437,7 @@ export function CodexAppShell() {
                   type="button"
                   aria-label="Open navigation"
                   onClick={() => setIsMobileNavOpen(true)}
-                  className={`p-2.5 rounded-xl transition-all ${
+                  className={`codex-press codex-focus-ring p-2.5 rounded-xl transition-all ${
                     isDarkMode
                       ? 'bg-gray-800/70 text-gray-200'
                       : 'bg-gray-100 text-gray-700'
@@ -424,21 +445,38 @@ export function CodexAppShell() {
                 >
                   <Menu className="w-5 h-5" />
                 </button>
-                <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={handleOpenControlPanel}
+                  className="codex-press codex-focus-ring flex-1 min-w-0 text-left rounded-xl px-1"
+                  aria-label="Open Control Panel"
+                >
                   <p className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     {selectedPath
                       ? selectedPath.split('/').pop()?.replace('.md', '').replace(/_/g, ' ')
                       : 'Codex'}
                   </p>
                   <p className={`text-xs truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {selectedPath ? 'Document' : 'Control Panel'}
+                    {selectedPath ? 'Document · tap for home' : 'Control Panel'}
                   </p>
-                </div>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Open knowledge graph"
+                  onClick={handleOpenKnowledgeGraph}
+                  className={`codex-press codex-focus-ring p-2.5 rounded-xl transition-all ${
+                    isDarkMode
+                      ? 'bg-gray-800/70 text-gray-200'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  <Brain className="w-5 h-5" />
+                </button>
                 <button
                   type="button"
                   aria-label="Open search"
                   onClick={() => setIsCommandPaletteOpen(true)}
-                  className={`p-2.5 rounded-xl transition-all ${
+                  className={`codex-press codex-focus-ring p-2.5 rounded-xl transition-all ${
                     isDarkMode
                       ? 'bg-gray-800/70 text-gray-200'
                       : 'bg-gray-100 text-gray-700'
@@ -489,6 +527,9 @@ export function CodexAppShell() {
                 isFocusMode={isFocusMode}
                 onToggleFocusMode={() => setIsFocusMode(!isFocusMode)}
                 onOpenSplitView={openSplitView}
+                onSelectDocument={handleSelectDocument}
+                onOpenGraph={handleOpenKnowledgeGraph}
+                onOpenControlPanel={handleOpenControlPanel}
               />
             )}
             </div>
@@ -500,7 +541,7 @@ export function CodexAppShell() {
             onSelectDocument={handleSelectDocument}
             onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             onToggleFocusMode={() => setIsFocusMode(!isFocusMode)}
-            onOpenKnowledgeGraph={() => setIsKnowledgeGraphOpen(true)}
+            onOpenKnowledgeGraph={handleOpenKnowledgeGraph}
             isDarkMode={isDarkMode}
           />
 
