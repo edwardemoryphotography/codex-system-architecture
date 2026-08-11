@@ -7,6 +7,12 @@
   --codex-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --codex-duration: 220ms;
   --codex-duration-slow: 420ms;
+  --codex-ink: #070a10;
+  --codex-cyan: #6ed4ff;
+  --codex-amber: #e8b86d;
+  --font-display: 'Syne', 'DM Sans', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
 }
 
 html {
@@ -21,6 +27,7 @@ body,
 
 body {
   margin: 0;
+  font-family: var(--font-body);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -128,7 +135,7 @@ body {
 /* ---------------- Knowledge Graph "System Atlas" chrome ---------------- */
 
 .kg-mono {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
 }
 
 .kg-btn {

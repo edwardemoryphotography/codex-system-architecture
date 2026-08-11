@@ -18,7 +18,7 @@ import {
 } from '../lib/supabase';
 import { storeUser } from '../lib/auth';
 import type { ExecutionLane, EvidenceKind, RouteProposal, RoutedRequestRecord, Workspace } from '../types';
-import { useToast } from './Toast';
+import { useToast } from '../hooks/useToast';
 
 const CHIPS: Array<{
   id: string;

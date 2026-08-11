@@ -31,7 +31,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { TableOfContents } from './TableOfContents';
 import { ControlPanelScreen } from './ControlPanelScreen';
 import { ExportMenu } from './ExportMenu';
-import { useToast } from './Toast';
+import { useToast } from '../hooks/useToast';
 
 interface DocumentViewerProps {
   path: string | null;

@@ -1050,7 +1050,6 @@ export function KnowledgeGraph({
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   /* ------------------------------------------------------------ */
