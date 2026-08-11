@@ -70,15 +70,30 @@ stores for any of these:
 | Agent run | recorded as `events` rows; dedicated table deferred | decision recorded |
 | Generated status summary | derived only (`foundry-console/src/lib/derived-state.ts` in legacy-codex); never stored | decision recorded |
 
-Known contradictions awaiting owner decision (still open as of 2026-08-07):
+Known contradictions awaiting owner decision (still open as of 2026-08-11):
 
 - `actions` carries public RLS (`USING (true)`, full CRUD) while every
   Foundry table is owner-only with anon revoked. Tightening it would break
   the deployed Control Panel read path — flagged, deliberately not changed.
-- legacy-codex `CLAUDE.md` still claims its Supabase project is separate;
-  both repos point at `pkydkbuodikttfeawqsw`.
+  **Close-out decision (2026-08-11):** keep public RLS until Control Panel
+  authenticates every actions read/write; do not invent a parallel table.
+- legacy-codex `CLAUDE.md` historically claimed a separate Supabase project /
+  `supabase-indigo-paddle`; both production paths use `pkydkbuodikttfeawqsw`.
+  Correction prepared in a local `legacy-codex` close-out branch (push blocked
+  from this architecture-only agent — 403). Treat indigo-paddle references as
+  stale until that sibling docs PR lands.
 - legacy-codex draft PR #37 proposes `missions` / `mission_events` /
   `evidence_snapshots`, which would parallel `actions` / `events` /
   `evidence_items`. Still open and draft; reconciliation here chose the
   deployed tables, so PR #37 needs rework or an explicit owner override
   before merge.
+
+## Migration apply gate (owner-scoped overlays)
+
+Repo migration `20260810090000_owner_scoped_document_interactions.sql` is
+**ready in-repo**. Live apply to `foundry-console` (`pkydkbuodikttfeawqsw`)
+is an operator step (Supabase SQL editor or CLI with project credentials).
+Until applied, `feature_status` in `project.json` stays
+`migration_ready_owner_scoped` for bookmarks / reading_progress /
+document_notes; the SPA degrades gracefully while signed out or if tables
+are missing.

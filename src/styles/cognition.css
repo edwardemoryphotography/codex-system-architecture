@@ -66,19 +66,13 @@ body {
   z-index: 0;
 }
 
-.cognition-deck[data-state='throughput'] {
-  --state-primary-rgb: var(--cognition-cyan-rgb);
-  --state-secondary-rgb: 220 230 242;
-  --state-accent-rgb: var(--cognition-violet-rgb);
-}
-
-.cognition-deck[data-state='fragmentation'] {
+.cognition-deck[data-state='overload'] {
   --state-primary-rgb: var(--cognition-red-rgb);
   --state-secondary-rgb: var(--cognition-amber-rgb);
   --state-accent-rgb: var(--cognition-cyan-rgb);
 }
 
-.cognition-deck[data-state='stabilization'] {
+.cognition-deck[data-state='codex'] {
   --state-primary-rgb: var(--cognition-cyan-rgb);
   --state-secondary-rgb: var(--cognition-violet-rgb);
   --state-accent-rgb: 220 230 242;
@@ -90,7 +84,7 @@ body {
   --state-accent-rgb: var(--cognition-amber-rgb);
 }
 
-.cognition-deck[data-state='proof'] {
+.cognition-deck[data-state='reduction'] {
   --state-primary-rgb: 220 230 242;
   --state-secondary-rgb: var(--cognition-cyan-rgb);
   --state-accent-rgb: var(--cognition-violet-rgb);
@@ -340,16 +334,205 @@ body {
   outline-offset: 2px;
 }
 
-.cognition-deck[data-state='fragmentation'] .cognition-deck__body {
+.cognition-deck[data-state='overload'] .cognition-deck__body {
   color: rgb(var(--cognition-text-rgb) / 0.7);
 }
 
-.cognition-deck[data-state='proof'] .cognition-deck__progress-bar {
+.cognition-deck[data-state='reduction'] .cognition-deck__progress-bar {
   box-shadow: none;
 }
 
-.cognition-deck[data-state='proof'] .cognition-deck__controls button {
+.cognition-deck[data-state='reduction'] .cognition-deck__controls button {
   background: rgb(var(--cognition-bg-rgb) / 0.44);
+}
+
+.cognition-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: min(54rem, 100%);
+}
+
+.cognition-proof-card,
+.codex-graph__detail,
+.reality-contact-panel {
+  border: 1px solid rgb(var(--state-primary-rgb) / 0.18);
+  border-radius: 1rem;
+  background: rgb(var(--cognition-bg-rgb) / 0.62);
+  backdrop-filter: blur(18px);
+}
+
+.cognition-proof-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+}
+
+.cognition-proof-card p,
+.cognition-proof-card small,
+.codex-graph__detail p,
+.reality-contact-panel p {
+  margin: 0;
+}
+
+.cognition-proof-card p,
+.cognition-proof-card__status,
+.codex-graph__detail span,
+.reality-contact-panel label,
+.reality-contact-panel__route span {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(var(--state-primary-rgb) / 0.78);
+}
+
+.cognition-proof-card strong {
+  font-size: 1rem;
+}
+
+.cognition-proof-card small,
+.codex-graph__detail p,
+.reality-contact-panel p,
+.reality-contact-panel li {
+  color: rgb(var(--cognition-text-rgb) / 0.64);
+  line-height: 1.5;
+}
+
+.cognition-proof-card__status {
+  justify-self: start;
+  padding: 0.18rem 0.4rem;
+  border: 1px solid rgb(var(--state-primary-rgb) / 0.24);
+  border-radius: 999px;
+}
+
+.codex-graph {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14rem;
+  gap: 0.85rem;
+  width: min(54rem, 100%);
+}
+
+.codex-graph__map {
+  position: relative;
+  min-height: 19rem;
+  border: 1px solid rgb(var(--state-secondary-rgb) / 0.14);
+  border-radius: 1rem;
+  background: rgb(var(--cognition-bg-rgb) / 0.32);
+}
+
+.codex-graph__map svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.codex-graph__map line {
+  stroke: rgb(var(--state-primary-rgb) / 0.22);
+  stroke-width: 0.25;
+}
+
+.codex-graph__node {
+  position: absolute;
+  z-index: 1;
+  max-width: 8rem;
+  padding: 0.38rem 0.55rem;
+  border: 1px solid rgb(var(--state-primary-rgb) / 0.26);
+  border-radius: 999px;
+  background: rgb(var(--cognition-bg-rgb) / 0.9);
+  color: rgb(var(--cognition-text-rgb) / 0.78);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem;
+  line-height: 1.2;
+  transform: translate(-50%, -50%);
+}
+
+.codex-graph__node[aria-pressed='true'],
+.codex-graph__node:hover,
+.codex-graph__node:focus-visible {
+  border-color: rgb(var(--state-primary-rgb) / 0.82);
+  color: var(--cognition-text);
+  box-shadow: 0 0 22px rgb(var(--state-primary-rgb) / 0.18);
+  outline: none;
+}
+
+.codex-graph__detail {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.memory-echo-layer {
+  display: grid;
+  gap: 0.55rem;
+  width: min(48rem, 100%);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.memory-echo-layer li {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0.75rem;
+  padding: 0.72rem 0;
+  border-bottom: 1px solid rgb(var(--state-primary-rgb) / 0.12);
+  color: rgb(var(--cognition-text-rgb) / calc(0.82 - var(--echo-index) * 0.1));
+}
+
+.memory-echo-layer span {
+  font-family: 'DM Mono', monospace;
+  color: rgb(var(--state-primary-rgb) / 0.66);
+}
+
+.reality-contact-panel {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 1rem;
+  width: min(54rem, 100%);
+  padding: 1rem;
+}
+
+.reality-contact-panel > div {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+}
+
+.reality-contact-panel input {
+  width: 7rem;
+  border: 1px solid rgb(var(--state-primary-rgb) / 0.34);
+  border-radius: 0.6rem;
+  background: rgb(var(--cognition-bg-rgb) / 0.82);
+  color: var(--cognition-text);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+.reality-contact-panel input:focus-visible {
+  outline: 2px solid rgb(var(--state-primary-rgb) / 0.72);
+  outline-offset: 2px;
+}
+
+.reality-contact-panel ul {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+}
+
+.cognition-collapse-mark {
+  margin: 0;
+  color: rgb(var(--state-primary-rgb) / 0.82);
+  font-size: 4rem;
+  line-height: 0.5;
+  text-shadow: 0 0 32px rgb(var(--state-primary-rgb) / 0.48);
 }
 
 @keyframes cognition-slide-enter {
@@ -398,6 +581,20 @@ body {
   .cognition-deck__swipe-hint {
     display: block;
   }
+
+  .cognition-proof-grid,
+  .codex-graph,
+  .reality-contact-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .codex-graph__detail {
+    min-height: 7rem;
+  }
+
+  .reality-contact-panel ul {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -432,6 +629,14 @@ body {
 
   .cognition-deck__footer {
     gap: 0.75rem;
+  }
+
+  .codex-graph__map {
+    min-height: 16rem;
+  }
+
+  .reality-contact-panel ul {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -3,7 +3,7 @@ import { Mail, User, MessageSquare, Send, X } from 'lucide-react';
 import { FormInput, FormTextarea, FormSelect, FormButton } from './form';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { validators, getPasswordStrength } from '../lib/validation';
-import { useToast } from './Toast';
+import { useToast } from '../hooks/useToast';
 
 interface FeedbackFormExampleProps {
   isOpen: boolean;

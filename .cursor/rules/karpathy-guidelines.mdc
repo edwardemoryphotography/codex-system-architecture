@@ -5,7 +5,7 @@ alwaysApply: false
 
 # Agent behavior (pointer)
 
-**Canonical rules:** [`CLAUDE.md`](../../CLAUDE.md) → section **Agent behavior**.
+**Canonical rules:** `codex-control-panel/standards/AGENT-BEHAVIOR.md` (Standards Kit 2.1.0). [`CLAUDE.md`](../../CLAUDE.md) → section **Agent behavior** has repo-specific overrides (verification commands, instruction precedence).
 
 Do not treat this file as a separate rule set. It exists so Cursor rule discovery can link to the same guidance used by Claude Code, Codex, and other tools.
 

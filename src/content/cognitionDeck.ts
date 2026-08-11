@@ -1,4 +1,5 @@
 import type { CognitionSlide, DeckSection } from '../types/cognition';
+import { codexGraphNodes, cognitionProofCards, memoryEchoes } from './cognitionProof';
 
 export const sectionRail = [
   { section: 'recognition', label: 'Recognition' },
@@ -15,7 +16,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'recognition-01',
     section: 'recognition',
-    visualState: 'signal',
+    visualState: 'coherence',
     eyebrow: 'Act I · Recognition',
     title: 'Cognition Requires Infrastructure',
     body: 'If serious thinking matters, the environment must carry orientation, memory, and continuity instead of demanding that every person rebuild them alone.',
@@ -24,7 +25,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'recognition-02',
     section: 'recognition',
-    visualState: 'signal',
+    visualState: 'coherence',
     eyebrow: 'Act I · Recognition',
     title: 'This is not a discipline problem.',
     body: 'Configuration shapes cognition. When tools, rituals, and defaults make context fragile, even capable people will look inconsistent inside the system.',
@@ -33,7 +34,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'recognition-03',
     section: 'recognition',
-    visualState: 'throughput',
+    visualState: 'overload',
     eyebrow: 'Act I · Recognition',
     title: 'Throughput is now a cognitive constraint.',
     body: 'The modern bottleneck is not just execution speed. It is how much state a person can carry while switching between decisions, tools, and timelines.',
@@ -42,7 +43,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'recognition-04',
     section: 'recognition',
-    visualState: 'signal',
+    visualState: 'coherence',
     eyebrow: 'Act I · Recognition',
     title: 'We shape our tools and thereafter our tools shape us.',
     body: 'Recognition starts here: our systems are not neutral containers. They actively train what a team can notice, preserve, and prove.',
@@ -51,7 +52,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'mismatch-01',
     section: 'mismatch',
-    visualState: 'fragmentation',
+    visualState: 'overload',
     eyebrow: 'Act II · Mismatch',
     title: 'Our systems mismatch the work we ask minds to do.',
     body: 'We expect long-horizon reasoning, but the surrounding software is optimized for messages, tasks, and artifacts rather than living cognitive state.',
@@ -60,7 +61,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'mismatch-02',
     section: 'mismatch',
-    visualState: 'fragmentation',
+    visualState: 'overload',
     eyebrow: 'Act II · Mismatch',
     title: 'Fragmentation turns ordinary work into state explosion.',
     body: 'Each handoff, tab, thread, and decision branch multiplies the amount of state that must be reconstructed, synchronized, and defended.',
@@ -69,7 +70,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'mismatch-03',
     section: 'mismatch',
-    visualState: 'fragmentation',
+    visualState: 'overload',
     eyebrow: 'Act II · Mismatch',
     title: 'The human cost shows up as exhaustion, drift, and self-doubt.',
     body: 'People feel behind not because they lack care, but because restart tax and context loss quietly consume the energy that should have gone into judgment.',
@@ -78,7 +79,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'mismatch-04',
     section: 'mismatch',
-    visualState: 'fragmentation',
+    visualState: 'reduction',
     eyebrow: 'Act II · Mismatch',
     title: 'Reframe the problem as missing cognitive infrastructure.',
     body: 'Once the failure is seen as systemic, the question changes from “why are people dropping the thread?” to “what should hold the thread for them?”',
@@ -87,7 +88,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'translation-01',
     section: 'translation',
-    visualState: 'stabilization',
+    visualState: 'codex',
     eyebrow: 'Act III · Translation',
     title: 'The Codex begins as a layer that can hold state.',
     body: 'The birth of the Codex is a practical move: give cognition somewhere durable to live between moments of attention, meetings, and drafts.',
@@ -96,16 +97,17 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'translation-02',
     section: 'translation',
-    visualState: 'stabilization',
+    visualState: 'codex',
     eyebrow: 'Act III · Translation',
     title: 'Hold state outside the self.',
     body: 'The system should preserve assumptions, dependencies, open questions, and reasoning so a person does not need to remain the sole runtime for the work.',
     kicker: 'Act III · Externalized state',
+    payload: { kind: 'memory', echoes: memoryEchoes },
   },
   {
     id: 'translation-03',
     section: 'translation',
-    visualState: 'stabilization',
+    visualState: 'codex',
     eyebrow: 'Act III · Translation',
     title: 'Reduce the restart cost.',
     body: 'Good infrastructure makes it cheap to leave and cheap to return, so interruptions stop destroying momentum and handoffs stop requiring total reconstruction.',
@@ -114,7 +116,7 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'translation-04',
     section: 'translation',
-    visualState: 'stabilization',
+    visualState: 'reduction',
     eyebrow: 'Act III · Translation',
     title: 'Separate research from proof.',
     body: 'Exploration needs room for accumulation and uncertainty; proof needs clarity and compression. Treating them as different layers keeps both stronger.',
@@ -123,11 +125,12 @@ export const cognitionSlides: CognitionSlide[] = [
   {
     id: 'translation-05',
     section: 'translation',
-    visualState: 'stabilization',
+    visualState: 'coherence',
     eyebrow: 'Act III · Translation',
     title: 'Design for nonlinear energy.',
     body: 'People do not think in a flat, predictable stream. The deck translates cognition into structures that survive bursts, pauses, returns, and leaps.',
     kicker: 'Act III · Nonlinear energy',
+    payload: { kind: 'reality' },
   },
   {
     id: 'invitation-01',
@@ -137,23 +140,26 @@ export const cognitionSlides: CognitionSlide[] = [
     title: 'Controlled recursive depth.',
     body: 'The point is not infinite complexity. It is to let a reader descend only as far as needed, with each layer preserving orientation for the next.',
     kicker: 'Act IV · Controlled recursive depth',
+    payload: { kind: 'graph', nodes: codexGraphNodes },
   },
   {
     id: 'invitation-02',
     section: 'invitation',
-    visualState: 'proof',
+    visualState: 'codex',
     eyebrow: 'Act IV · Invitation',
     title: 'An invitation to the reader.',
     body: 'Notice where your own work leaks state, forces unnecessary restarts, or collapses research into proof. Those are the first places to build support.',
     kicker: 'Act IV · Reader invitation',
+    payload: { kind: 'proof', cards: cognitionProofCards },
   },
   {
     id: 'invitation-03',
     section: 'invitation',
-    visualState: 'proof',
+    visualState: 'reduction',
     eyebrow: 'Act IV · Invitation',
-    title: 'Closing manifesto.',
-    body: 'Build systems that help people hold state, recover context, and prove what matters. Intelligence compounds when the environment remembers with us.',
+    title: 'Build systems that preserve reality contact.',
+    body: 'Memory, routing, and intelligence only matter when the system keeps returning to lived constraints, executable proof, and the world beyond itself.',
     kicker: 'Act IV · Closing manifesto',
+    payload: { kind: 'collapse' },
   },
 ];

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { CognitionDeck } from './components/cognition/CognitionDeck';
 import { CodexAppShell } from './components/CodexAppShell';
 
@@ -6,11 +7,15 @@ function isCognitionRoute(pathname: string) {
 }
 
 function App() {
-  return isCognitionRoute(window.location.pathname) ? (
-    <CognitionDeck />
-  ) : (
-    <CodexAppShell />
-  );
+  const cognition = isCognitionRoute(window.location.pathname);
+
+  useEffect(() => {
+    document.title = cognition
+      ? 'Cognition Requires Infrastructure'
+      : 'Codex — Knowledge System';
+  }, [cognition]);
+
+  return cognition ? <CognitionDeck /> : <CodexAppShell />;
 }
 
 export default App;

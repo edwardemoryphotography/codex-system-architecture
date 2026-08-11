@@ -73,7 +73,7 @@ describe('CognitionDeck', () => {
     expect(screen.getByText(/16 \/ 16/i)).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
-        name: /closing manifesto/i,
+        name: /build systems that preserve reality contact/i,
       }),
     ).toBeInTheDocument();
   });
@@ -86,7 +86,7 @@ describe('CognitionDeck', () => {
     const nextButton = screen.getByRole('button', { name: /next slide/i });
 
     expect(shell).not.toBeNull();
-    expect(shell).toHaveAttribute('data-state', 'signal');
+    expect(shell).toHaveAttribute('data-state', 'coherence');
 
     for (let index = 0; index < 4; index += 1) {
       await user.click(nextButton);
@@ -97,7 +97,7 @@ describe('CognitionDeck', () => {
         name: /our systems mismatch the work we ask minds to do/i,
       }),
     ).toBeInTheDocument();
-    expect(shell).toHaveAttribute('data-state', 'fragmentation');
+    expect(shell).toHaveAttribute('data-state', 'overload');
   });
 
   it('keeps the signal state while advancing within the recognition act', async () => {
@@ -113,7 +113,7 @@ describe('CognitionDeck', () => {
         name: /this is not a discipline problem/i,
       }),
     ).toBeInTheDocument();
-    expect(shell).toHaveAttribute('data-state', 'signal');
+    expect(shell).toHaveAttribute('data-state', 'coherence');
   });
 
   it('reaches a throughput slide with throughput visual state', async () => {
@@ -131,7 +131,7 @@ describe('CognitionDeck', () => {
         name: /throughput is now a cognitive constraint/i,
       }),
     ).toBeInTheDocument();
-    expect(shell).toHaveAttribute('data-state', 'throughput');
+    expect(shell).toHaveAttribute('data-state', 'overload');
   });
 
   it('reaches a recursion slide with recursion visual state', async () => {
@@ -189,5 +189,51 @@ describe('CognitionDeck', () => {
         name: /this is not a discipline problem/i,
       }),
     ).toBeInTheDocument();
+  });
+
+  it('restores a versioned session from local storage', () => {
+    window.localStorage.setItem(
+      'codex:cognition:v2.1',
+      JSON.stringify({ version: 1, currentIndex: 4, selectedNodeId: null, recoveryScore: 67 }),
+    );
+
+    render(<CognitionDeck />);
+
+    expect(screen.getByText(/05 \/ 16/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /our systems mismatch/i })).toBeInTheDocument();
+  });
+
+  it('exposes the real Codex graph nodes', async () => {
+    const user = userEvent.setup();
+    render(<CognitionDeck />);
+    const nextButton = screen.getByRole('button', { name: /next slide/i });
+    for (let index = 0; index < 13; index += 1) await user.click(nextButton);
+
+    expect(screen.getByRole('button', { name: 'Memory' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Photography Business' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Muse/WHOOP' })).toBeInTheDocument();
+  });
+
+  it('routes a recovery score into a bounded work mode', async () => {
+    const user = userEvent.setup();
+    render(<CognitionDeck />);
+    const nextButton = screen.getByRole('button', { name: /next slide/i });
+    for (let index = 0; index < 12; index += 1) await user.click(nextButton);
+
+    const input = screen.getByLabelText(/recovery score/i);
+    await user.clear(input);
+    await user.type(input, '33');
+
+    expect(screen.getByText('recovery')).toBeInTheDocument();
+    expect(screen.getByText(/20 minute session cap/i)).toBeInTheDocument();
+  });
+
+  it('collapses to the reality-contact manifesto', async () => {
+    const user = userEvent.setup();
+    render(<CognitionDeck />);
+    const nextButton = screen.getByRole('button', { name: /next slide/i });
+    for (let index = 0; index < 15; index += 1) await user.click(nextButton);
+
+    expect(screen.getByRole('heading', { name: 'Build systems that preserve reality contact.' })).toBeInTheDocument();
   });
 });

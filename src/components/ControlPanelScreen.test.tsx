@@ -71,6 +71,28 @@ describe('ControlPanelScreen', () => {
     expect(screen.getByRole('button', { name: /execute now/i })).toBeInTheDocument();
   });
 
+  it('exposes graph and launch actions when callbacks are provided', () => {
+    const onSelectDocument = vi.fn();
+    const onOpenGraph = vi.fn();
+
+    render(
+      <ToastProvider isDarkMode>
+        <ControlPanelScreen
+          isDarkMode
+          onSelectDocument={onSelectDocument}
+          onOpenGraph={onOpenGraph}
+        />
+      </ToastProvider>,
+    );
+
+    expect(screen.getByText(/launch pads/i)).toBeInTheDocument();
+    screen.getByRole('button', { name: /open graph/i }).click();
+    expect(onOpenGraph).toHaveBeenCalledTimes(1);
+
+    screen.getByRole('button', { name: /personal os/i }).click();
+    expect(onSelectDocument).toHaveBeenCalledWith('/codex/personal_os');
+  });
+
   it('requires a repository and evidence answer before a route can be submitted', () => {
     renderControlPanel();
 
