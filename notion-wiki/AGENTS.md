@@ -5,9 +5,10 @@ You work on the user's **full Notion corpus** — every page and project is the 
 ## Bootstrap (every session)
 
 1. Read [`CLAUDE.md`](./CLAUDE.md).
-2. Load IDs from [`config/notion.workspace.json`](./config/notion.workspace.json).
-3. Read [`skills/route.md`](./skills/route.md) and open **one** skill file.
-4. Use **Notion MCP** tools (`notion-search`, `notion-fetch`, `notion-create-pages`, `notion-update-page`, `notion-query-database-view`).
+2. Read [`docs/GOOSE-COOKBOOK.md`](./docs/GOOSE-COOKBOOK.md) — canonical cognitive-transmission doctrine. **Catch the fucking boomerang.**
+3. Load IDs from [`config/notion.workspace.json`](./config/notion.workspace.json).
+4. Read [`skills/route.md`](./skills/route.md) and open **one** skill file.
+5. Use **Notion MCP** tools (`notion-search`, `notion-fetch`, `notion-create-pages`, `notion-update-page`, `notion-query-database-view`).
 
 ## Hard rules
 
@@ -16,6 +17,7 @@ You work on the user's **full Notion corpus** — every page and project is the 
 - **Log every ingest/lint** — append to Wiki Log page (`wiki_log.page_id` in config).
 - **Prefer updating** existing Knowledge Base rows over creating duplicates (search by title first).
 - **Raw capture** — link `Source URL` / `Raw Page`; do not overwrite INBOX originals.
+- **Do not flatten system-level intent into the local component being edited.** Integrate repeated evidence and distinguish new intent from improved observability of existing intent.
 
 ## Hub
 

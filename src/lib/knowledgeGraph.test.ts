@@ -15,6 +15,10 @@ const leanDocs: CodexDocument[] = [
     order: 1,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
+    provenance_status: ['repository_evidence'],
+    evidence_basis: 'Repository test fixture for graph structure only.',
+    last_reviewed: '2026-07-15',
+    is_read_only: true,
   },
   {
     id: '2',
@@ -26,6 +30,10 @@ const leanDocs: CodexDocument[] = [
     order: 2,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
+    provenance_status: ['repository_evidence'],
+    evidence_basis: 'Repository test fixture for graph structure only.',
+    last_reviewed: '2026-07-15',
+    is_read_only: true,
   },
 ];
 

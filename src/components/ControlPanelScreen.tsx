@@ -1,24 +1,38 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import {
   ArrowRight,
-  CheckCircle2,
   Compass,
   Loader2,
   Sparkles,
-  Zap,
 } from 'lucide-react';
 
-import { initializeSessionStart, isSupabaseConfigured } from '../lib/supabase';
-import type { CodexAction, SessionMode } from '../types';
+import {
+  getSession,
+  getWorkspaces,
+  isSupabaseConfigured,
+  onAuthStateChange,
+  persistRouteOwner,
+  ROUTING_OWNER_EMAIL,
+  signInOwnerWithMagicLink,
+} from '../lib/supabase';
+import { storeUser } from '../lib/auth';
+import type { ExecutionLane, EvidenceKind, RouteProposal, RoutedRequestRecord, Workspace } from '../types';
+import { useToast } from './Toast';
 
-const CHIPS = [
-  { id: 'execute', label: 'Execute now', mode: 'high' as SessionMode, hint: 'High energy' },
-  { id: 'research', label: 'Research live', mode: 'high' as SessionMode, hint: 'High energy' },
-  { id: 'architect', label: 'Architect it', mode: 'high' as SessionMode, hint: 'High energy' },
-  { id: 'ship', label: 'Ship it', mode: 'high' as SessionMode, hint: 'High energy' },
-  { id: 'document', label: 'Document it', mode: 'low' as SessionMode, hint: 'Low energy' },
-  { id: 'status', label: 'Check status', mode: 'low' as SessionMode, hint: 'Low energy' },
-] as const;
+const CHIPS: Array<{
+  id: string;
+  label: string;
+  lane: ExecutionLane;
+  evidenceKind: EvidenceKind;
+}> = [
+  { id: 'execute', label: 'Execute now', lane: 'execution', evidenceKind: 'merged_pr' },
+  { id: 'research', label: 'Research live', lane: 'research', evidenceKind: 'custom' },
+  { id: 'architect', label: 'Architect it', lane: 'architecture', evidenceKind: 'custom' },
+  { id: 'ship', label: 'Ship it', lane: 'deployment', evidenceKind: 'live_deployment' },
+  { id: 'document', label: 'Document it', lane: 'documentation', evidenceKind: 'published_artifact' },
+  { id: 'status', label: 'Check status', lane: 'system_state', evidenceKind: 'confirmed_action' },
+];
 
 const LAUNCH_PADS = [
   {
@@ -47,11 +61,6 @@ const LAUNCH_PADS = [
   },
 ] as const;
 
-function sessionModeForChip(chipId: string | null): SessionMode {
-  const chip = CHIPS.find((c) => c.id === chipId);
-  return chip?.mode ?? 'high';
-}
-
 interface ControlPanelScreenProps {
   isDarkMode?: boolean;
   onSelectDocument?: (path: string) => void;
@@ -63,13 +72,58 @@ export function ControlPanelScreen({
   onSelectDocument,
   onOpenGraph,
 }: ControlPanelScreenProps) {
+  const toast = useToast();
   const [task, setTask] = useState('');
   const [chip, setChip] = useState<string | null>(null);
+  const [repository, setRepository] = useState('');
+  const [requiredEvidence, setRequiredEvidence] = useState('');
   const [routing, setRouting] = useState(false);
-  const [routedActions, setRoutedActions] = useState<CodexAction[] | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
-  const [executedFlash, setExecutedFlash] = useState<string | null>(null);
-  const [sessionNote, setSessionNote] = useState<string | null>(null);
+  const [lastRoute, setLastRoute] = useState<RoutedRequestRecord | null>(null);
+
+  const [session, setSession] = useState<Session | null>(null);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [sendingMagicLink, setSendingMagicLink] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  // Holds the idempotency key for the in-progress draft, keyed to a
+  // fingerprint of the fields that define it. A retry after an ambiguous
+  // failure (lost response, network error) reuses the same key so the
+  // server replays the original write instead of creating a duplicate.
+  // The key only rotates once the draft materially changes or the route
+  // succeeds.
+  const draftIdempotency = useRef<{ key: string; fingerprint: string } | null>(null);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    getSession()
+      .then(async (next) => {
+        setSession(next);
+        if (next) {
+          try {
+            await storeUser(next);
+          } catch (error) {
+            console.error('Failed to store user profile:', error);
+          }
+        }
+      })
+      .catch(() => setSession(null));
+    getWorkspaces()
+      .then((rows) => setWorkspace(rows[0] ?? null))
+      .catch(() => setWorkspace(null));
+
+    const subscription = onAuthStateChange((nextSession) => {
+      setSession(nextSession);
+      if (nextSession) {
+        setMagicLinkSent(false);
+        storeUser(nextSession).catch((error) => {
+          console.error('Failed to store user profile:', error);
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const shell = isDarkMode
     ? 'bg-neutral-950 text-neutral-100'
@@ -86,42 +140,91 @@ export function ControlPanelScreen({
   const secondaryBtn = isDarkMode
     ? 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800'
     : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50';
+  const inputCls = `w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-neutral-600 ${panel} ${
+    isDarkMode ? 'placeholder:text-neutral-500' : 'placeholder:text-neutral-400'
+  }`;
 
-  const selectedChip = useMemo(
-    () => CHIPS.find((item) => item.id === chip) ?? null,
-    [chip],
-  );
-
+  const selectedChip = CHIPS.find((c) => c.id === chip) ?? null;
   const readiness = task.trim().length === 0 ? 0 : Math.min(100, Math.round((task.trim().length / 80) * 100));
 
+  const handleSendMagicLink = async () => {
+    setSendingMagicLink(true);
+    try {
+      await signInOwnerWithMagicLink();
+      setMagicLinkSent(true);
+      toast.success('Magic link sent', `Check ${ROUTING_OWNER_EMAIL} to finish signing in.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send magic link';
+      toast.error('Sign-in failed', message);
+    } finally {
+      setSendingMagicLink(false);
+    }
+  };
+
   const routeTask = async () => {
-    if (!task.trim()) return;
+    if (!task.trim() || !selectedChip) return;
     setRouteError(null);
-    setExecutedFlash(null);
-    setSessionNote(null);
 
     if (!isSupabaseConfigured) {
-      setRoutedActions(null);
-      setSessionNote(
-        `Routed as ${chip ?? 'auto'} in offline mode. Add VITE_SUPABASE_* to load live actions.`,
-      );
+      toast.error('Supabase not configured', 'Add VITE_SUPABASE_* on Vercel to enable routing.');
+      return;
+    }
+    if (!session) {
+      toast.info('Sign in required', `Send a magic link to ${ROUTING_OWNER_EMAIL} below, then try again.`);
+      return;
+    }
+    if (!repository.trim() || !requiredEvidence.trim()) {
+      toast.error('Missing details', 'Fill in the repository and what will prove this is done.');
+      return;
+    }
+    if (!workspace) {
+      toast.error('No workspace found', 'The Foundry workspace registry is empty — nothing to route into.');
       return;
     }
 
     setRouting(true);
     try {
-      const mode = sessionModeForChip(chip);
-      const actions = await initializeSessionStart(mode);
-      setRoutedActions(actions);
-      const next = actions.find((a) => a.is_next_action) ?? actions[0];
-      setSessionNote(
-        next
-          ? `Session primed on ${mode} mode. Next focus: ${next.action_title}`
-          : `Session primed on ${mode} mode.`,
+      const fingerprint = JSON.stringify([
+        workspace.id,
+        task.trim(),
+        selectedChip.id,
+        repository.trim(),
+        requiredEvidence.trim(),
+      ]);
+      if (!draftIdempotency.current || draftIdempotency.current.fingerprint !== fingerprint) {
+        draftIdempotency.current = { key: crypto.randomUUID(), fingerprint };
+      }
+
+      const proposal: RouteProposal = {
+        workspace_id: workspace.id,
+        idempotency_key: draftIdempotency.current.key,
+        intent: task.trim(),
+        task_type: selectedChip.id,
+        execution_lane: selectedChip.lane,
+        selected_agent: 'unassigned',
+        repository: repository.trim(),
+        risk: 'medium',
+        sensitivity: 'internal',
+        required_evidence: requiredEvidence.trim(),
+        rationale: `Routed via Codex Control Panel — owner selected "${selectedChip.label}" manually; no automated agent scoring yet.`,
+        confidence: 100,
+        route_source: 'user',
+        evidence_kind: selectedChip.evidenceKind,
+      };
+
+      const result = await persistRouteOwner(proposal);
+      setLastRoute(result.routedRequest);
+      toast.success(
+        result.replayed ? 'Already routed' : 'Routed',
+        `${selectedChip.label} → ${proposal.repository} (${result.routedRequest.status})`,
       );
+      draftIdempotency.current = null;
+      setTask('');
+      setChip(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to route task';
       setRouteError(message);
+      toast.error('Route failed', message);
     } finally {
       setRouting(false);
     }
@@ -129,9 +232,12 @@ export function ControlPanelScreen({
 
   const fastExecute = () => {
     if (!task.trim()) return;
-    setExecutedFlash(task.trim());
-    setSessionNote('Fast execute locked locally. Keep moving.');
+    toast.info('Executing here', `${task}\n\nThis is a local reminder only — it does not persist anywhere yet.`);
   };
+
+  const canRoute = Boolean(
+    task.trim() && selectedChip && repository.trim() && requiredEvidence.trim() && !routing,
+  );
 
   return (
     <div className={`relative flex-1 flex flex-col min-h-0 overflow-hidden ${shell}`}>
@@ -170,47 +276,65 @@ export function ControlPanelScreen({
           </header>
 
           <section className="flex flex-col gap-5 md:gap-6 pb-4">
-            <div className={`codex-enter-delayed rounded-2xl border p-3 ${panel}`}>
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <p className={`text-xs uppercase tracking-[0.14em] ${muted}`}>Launch pads</p>
-                {onOpenGraph && (
-                  <button
-                    type="button"
-                    onClick={onOpenGraph}
-                    className={`codex-press codex-focus-ring inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border ${
-                      isDarkMode
-                        ? 'border-white/10 text-neutral-300 hover:bg-white/5'
-                        : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <Compass className="w-3.5 h-3.5" />
-                    Open graph
-                  </button>
+            {(onSelectDocument || onOpenGraph) && (
+              <div className={`codex-enter-delayed rounded-2xl border p-3 ${panel}`}>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className={`text-xs uppercase tracking-[0.14em] ${muted}`}>Launch pads</p>
+                  {onOpenGraph && (
+                    <button
+                      type="button"
+                      onClick={onOpenGraph}
+                      className={`codex-press codex-focus-ring inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border ${
+                        isDarkMode
+                          ? 'border-white/10 text-neutral-300 hover:bg-white/5'
+                          : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <Compass className="w-3.5 h-3.5" />
+                      Open graph
+                    </button>
+                  )}
+                </div>
+                {onSelectDocument && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {LAUNCH_PADS.map((pad) => (
+                      <button
+                        key={pad.path}
+                        type="button"
+                        onClick={() => onSelectDocument(pad.path)}
+                        className={`codex-press codex-focus-ring text-left rounded-2xl border p-3.5 bg-gradient-to-br ${pad.accent} ${
+                          isDarkMode
+                            ? 'border-white/10 hover:border-white/20'
+                            : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium">{pad.label}</p>
+                            <p className={`text-xs mt-1 ${muted}`}>{pad.blurb}</p>
+                          </div>
+                          <ArrowRight className={`w-4 h-4 mt-0.5 ${muted}`} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {LAUNCH_PADS.map((pad) => (
-                  <button
-                    key={pad.path}
-                    type="button"
-                    onClick={() => onSelectDocument?.(pad.path)}
-                    className={`codex-press codex-focus-ring text-left rounded-2xl border p-3.5 bg-gradient-to-br ${pad.accent} ${
-                      isDarkMode
-                        ? 'border-white/10 hover:border-white/20'
-                        : 'border-neutral-200 hover:border-neutral-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{pad.label}</p>
-                        <p className={`text-xs mt-1 ${muted}`}>{pad.blurb}</p>
-                      </div>
-                      <ArrowRight className={`w-4 h-4 mt-0.5 ${muted}`} />
-                    </div>
-                  </button>
-                ))}
+            )}
+
+            {isSupabaseConfigured && !session && (
+              <div className={`codex-enter rounded-2xl border p-3.5 flex items-center justify-between gap-3 ${panel}`}>
+                <p className="text-sm">Sign in as owner to route tasks and save personal bookmarks/notes.</p>
+                <button
+                  type="button"
+                  onClick={() => void handleSendMagicLink()}
+                  disabled={sendingMagicLink || magicLinkSent}
+                  className={`codex-press codex-focus-ring shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border disabled:opacity-50 ${secondaryBtn}`}
+                >
+                  {magicLinkSent ? 'Link sent' : sendingMagicLink ? 'Sending…' : 'Sign in'}
+                </button>
               </div>
-            </div>
+            )}
 
             <div className={`relative rounded-2xl border overflow-hidden ${panel}`}>
               <textarea
@@ -226,7 +350,7 @@ export function ControlPanelScreen({
                   isDarkMode ? 'border-neutral-800 text-neutral-500' : 'border-neutral-200 text-neutral-400'
                 }`}
               >
-                <span>{selectedChip ? `${selectedChip.label} · ${selectedChip.hint}` : 'Auto route'}</span>
+                <span>{selectedChip ? selectedChip.label : 'Pick a route'}</span>
                 <span className="inline-flex items-center gap-2">
                   <span
                     className="h-1.5 w-16 rounded-full overflow-hidden"
@@ -254,22 +378,47 @@ export function ControlPanelScreen({
                       chip === c.id ? chipActive : chipIdle
                     }`}
                   >
-                    <span className="block">{c.label}</span>
-                    <span
-                      className={`block text-[10px] mt-0.5 uppercase tracking-[0.12em] ${
-                        chip === c.id
-                          ? isDarkMode
-                            ? 'text-neutral-600'
-                            : 'text-neutral-300'
-                          : muted
-                      }`}
-                    >
-                      {c.mode}
-                    </span>
+                    {c.label}
                   </button>
                 ))}
               </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className={`block mb-1.5 text-xs uppercase tracking-[0.14em] ${muted}`}>
+                  Repository
+                </label>
+                <input
+                  value={repository}
+                  onChange={(e) => setRepository(e.target.value)}
+                  placeholder="e.g. codex-system-architecture"
+                  className={`codex-focus-ring ${inputCls}`}
+                  list="control-panel-repos"
+                />
+                <datalist id="control-panel-repos">
+                  <option value="codex-system-architecture" />
+                  <option value="legacy-codex" />
+                  <option value="managed-agents-memory" />
+                </datalist>
+              </div>
+              <div>
+                <label className={`block mb-1.5 text-xs uppercase tracking-[0.14em] ${muted}`}>
+                  What proves it&apos;s done?
+                </label>
+                <input
+                  value={requiredEvidence}
+                  onChange={(e) => setRequiredEvidence(e.target.value)}
+                  placeholder="PR link, deployed URL…"
+                  className={`codex-focus-ring ${inputCls}`}
+                />
+              </div>
+            </div>
+
+            <p className={`text-xs ${muted}`}>
+              Recorded as medium risk, internal sensitivity, owner-routed — no automated risk
+              scoring or agent assignment yet.
+            </p>
 
             {routeError && (
               <p className="text-sm text-red-400 codex-enter" role="alert">
@@ -277,67 +426,12 @@ export function ControlPanelScreen({
               </p>
             )}
 
-            {sessionNote && (
-              <div
-                className={`codex-enter rounded-2xl border px-3.5 py-3 text-sm flex items-start gap-2.5 ${
-                  isDarkMode
-                    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-100'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <p>{sessionNote}</p>
-              </div>
-            )}
-
-            {executedFlash && (
-              <div className={`codex-enter rounded-2xl border p-3.5 ${panel}`}>
-                <p className={`text-xs uppercase tracking-[0.14em] mb-2 ${muted}`}>Executing now</p>
-                <p className="text-sm leading-relaxed">{executedFlash}</p>
-              </div>
-            )}
-
-            {routedActions && routedActions.length > 0 && (
-              <div className={`codex-enter rounded-2xl border overflow-hidden ${panel}`}>
-                <div className={`px-3.5 py-3 border-b flex items-center justify-between ${isDarkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                  <p className="text-sm font-medium">Session queue</p>
-                  <span className={`text-xs ${muted}`}>{routedActions.length} actions</span>
-                </div>
-                <ul className="divide-y divide-neutral-800/80">
-                  {routedActions.map((action, index) => (
-                    <li
-                      key={action.id}
-                      className={`px-3.5 py-3 flex items-start gap-3 ${
-                        action.is_next_action
-                          ? isDarkMode
-                            ? 'bg-white/5'
-                            : 'bg-neutral-50'
-                          : ''
-                      }`}
-                      style={{ animationDelay: `${index * 40}ms` }}
-                    >
-                      <span
-                        className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                          action.is_next_action
-                            ? 'bg-sky-400 text-slate-950'
-                            : isDarkMode
-                              ? 'bg-neutral-800 text-neutral-400'
-                              : 'bg-neutral-200 text-neutral-600'
-                        }`}
-                      >
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className={action.is_next_action ? 'font-medium' : muted}>
-                          {action.action_title}
-                        </p>
-                        {action.is_next_action && (
-                          <p className="text-xs mt-1 text-sky-300">Next action</p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+            {lastRoute && (
+              <div className={`codex-enter text-sm rounded-2xl border p-3.5 ${panel}`}>
+                <p className="font-medium">Last routed</p>
+                <p className={muted}>
+                  {lastRoute.execution_lane} → {lastRoute.repository} · {lastRoute.status}
+                </p>
               </div>
             )}
           </section>
@@ -351,11 +445,11 @@ export function ControlPanelScreen({
           <div className="flex flex-col gap-2.5">
             <button
               type="button"
-              disabled={!task.trim() || routing}
+              disabled={!canRoute}
               onClick={() => void routeTask()}
               className="codex-press codex-focus-ring w-full py-3.5 md:py-4 rounded-2xl bg-white text-neutral-900 font-medium disabled:opacity-30 flex items-center justify-center gap-2"
             >
-              {routing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {routing && <Loader2 className="w-4 h-4 animate-spin" />}
               Route Task
             </button>
             <button

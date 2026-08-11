@@ -1,6 +1,6 @@
 # codex-system-architecture — CLAUDE.md
 
-Visual knowledge management SPA for the **Codex AI platform**: a neurodivergent execution and knowledge management system. This repo is the design/documentation layer; it visualizes how Codex components connect (AI agents, memory layers, automation workflows, UI shells).
+Visual documentation SPA for Eddie's **Codex ecosystem**. This repo is the architecture and reviewed-public-content layer; it maps how projects and concepts relate without implying that every mapped component is deployed.
 
 ## Tech Stack
 
@@ -63,7 +63,7 @@ public/
 | `DocumentViewer.tsx` | Full document render with markdown, bookmarks, notes, reading progress, export |
 | `KnowledgeGraph.tsx` | Force-directed canvas graph; physics simulation; hover/drag/zoom/double-click |
 | `CommandPalette.tsx` | Cmd+K modal: grouped search (docs, bookmarks, recent, actions), keyboard navigation |
-| `Navigation.tsx` | Sidebar: document tree from Supabase, category sections, current path highlighting |
+| `Navigation.tsx` | Sidebar: canonical document tree merged with live Supabase identity, category sections, current path highlighting |
 | `MarkdownRenderer.tsx` | Custom markdown→JSX with syntax highlighting, dark mode aware |
 | `SplitView.tsx` | Side-by-side document comparison with independent selections |
 | `SearchBar.tsx` | Real-time full-text search with 150 ms debounce, category filter |
@@ -89,26 +89,24 @@ All data access goes through `src/lib/supabase.ts` — never write inline Supaba
 
 | Table | Key Columns | Notes |
 |-------|-------------|-------|
-| `codex_documents` | `id`, `title`, `path` (unique), `content`, `category`, `parent_id`, `order` | Core content table |
-| `codex_tags` | `id`, `name` (unique), `color` | Tag definitions |
-| `codex_document_tags` | `document_id` + `tag_id` (composite PK) | Junction table |
-| `reading_progress` | `document_id` (PK), `scroll_position`, `time_spent_seconds`, `completed` | Upserted every 5 s |
-| `bookmarks` | `id`, `document_id` | User bookmarks |
-| `document_notes` | `id`, `document_id`, `content`, `position` | Inline annotations |
-| `document_links` | `source_document_id`, `target_document_id`, `link_type` | Graph edges |
+| `codex_documents` | `id`, `title`, `path` (unique), `content`, `category`, `parent_id`, `order`, provenance fields | Public, reviewed, read-only content |
 | `actions` | `action_title`, `status`, `context_complexity`, `portfolio_segment`, `priority_weight`, `is_next_action` | Control Panel task queue |
 | `initialize_session_start(session_mode)` | RPC — `'high'` \| `'low'` | Returns prioritized TODO actions; sets one `is_next_action` |
 
-**Canonical Supabase project:** `supabase-indigo-paddle` (`hzzzxmtpkgdmjcbncxjh`) — see `supabase/project.json` and `supabase/SCHEMA.md`. Same URL/anon key for Vercel, local dev, and mobile clients.
+**Configured production Supabase project:** `foundry-console` (`pkydkbuodikttfeawqsw`) — see `supabase/project.json` and `supabase/SCHEMA.md`. This was verified from the deployed Vercel bundle and live schema on 2026-07-15.
 
-**RLS**: All tables allow public access (no auth required) — reads and writes (`addBookmark`, `updateReadingProgress`, `addDocumentNote`, `actions`) work without authentication. No user sign-in is implemented.
+**RLS**: Canonical documents are public read-only. Owner-scoped `profiles`, `bookmarks`, `reading_progress`, and `document_notes` are defined in `supabase/migrations/20260810090000_owner_scoped_document_interactions.sql` (authenticated `user_id` policies only). Do not introduce anonymous shared interaction writes. Apply that migration before treating personal overlays as live.
 
 Migrations are in `supabase/migrations/` as timestamped SQL files. Run them in order; do not edit applied migrations.
 
 ## State Management
 
 - All top-level UI state lives in `App.tsx` as `useState`.
-- Supabase is the sole source of truth for document data — no local cache layer.
+- `src/content/codexDocumentBodies.ts` is the canonical source for reviewed public document titles and copy.
+- Every document must expose `provenance_status`, `evidence_basis`, and `last_reviewed`. The only allowed provenance values are `verified`, `repository_evidence`, `concept`, and `unknown`.
+- Supabase supplies live document row IDs, hierarchy, timestamps, provenance, and actions. Bookmarks, notes, and reading progress persist only for authenticated owners after the owner-scoped interaction migration is applied.
+- `src/lib/supabase.ts` merges canonical copy over matching live rows so stale database prose cannot override reviewed facts.
+- Canonical rows without live UUIDs are read-only; persistence functions must reject `corpus-*` and non-UUID document IDs.
 - `localStorage` is used only for dark mode persistence (`darkMode`).
 - No Redux, Zustand, or other state library — the app is simple enough.
 
@@ -207,6 +205,6 @@ Do not claim success without running the checks that apply to your diff.
 
 | Repo | Role |
 |------|------|
-| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Neurodivergent execution framework (this repo's production front-end) |
+| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Separate Legacy Codex and Foundry Console project; inspect current deployment state before making production claims |
 | `neurocreative-platform` | EEG + WHOOP biometric backend |
 | `mem-layer` | AI memory/conversation aggregation |

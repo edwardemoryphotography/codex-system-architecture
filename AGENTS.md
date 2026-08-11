@@ -5,15 +5,20 @@ Entry point for AI coding assistants working in this repo (Cursor, Claude Code, 
 ## Start here
 
 1. Read [`CLAUDE.md`](./CLAUDE.md) for stack, structure, Supabase conventions, and **Agent behavior**.
-2. Follow **Coding Rules** and **Performance Patterns** in `CLAUDE.md` for all implementation work.
-3. Before claiming a task is done, run the **Verification** table in `CLAUDE.md` → Agent behavior.
+2. Read [`notion-wiki/docs/GOOSE-COOKBOOK.md`](./notion-wiki/docs/GOOSE-COOKBOOK.md) for canonical Legacy Codex cognitive-transmission doctrine. **Catch the fucking boomerang.**
+3. Follow **Coding Rules** and **Performance Patterns** in `CLAUDE.md` for all implementation work.
+4. Before claiming a task is done, run the **Verification** table in `CLAUDE.md` → Agent behavior.
 
 ## Tool-specific notes
 
 | Tool | How this repo is wired |
 |------|-------------------------|
-| **Claude Code / Codex / generic agents** | Use `CLAUDE.md` as the single source of truth. |
-| **Cursor** | `CLAUDE.md` is loaded as workspace context; `.cursor/rules/karpathy-guidelines.mdc` is an optional pointer to the same Agent behavior section (not a second copy of the rules). |
+| **Claude Code / Codex / generic agents** | Use `CLAUDE.md` plus the Goose Cookbook as shared context. |
+| **Cursor** | `CLAUDE.md` is loaded as workspace context; `.cursor/rules/karpathy-guidelines.mdc` is an optional pointer to the same Agent behavior section (not a second copy of the rules). Read the Goose Cookbook before interpreting system-level intent. |
+
+## Cognitive transmission rule
+
+Do not flatten system-level intent into the local component being edited. When analogies, artifacts, corrections, implementations, or verified evidence repeatedly point toward the same higher-order structure, integrate them. Improved observability of an existing end-state is not automatically a new vision.
 
 ## Cloud Agent secrets (git hooks)
 

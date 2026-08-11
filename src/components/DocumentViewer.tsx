@@ -10,7 +10,9 @@ import {
   getDocumentNotes,
   addDocumentNote,
   deleteDocumentNote,
+  isPersistableDocumentId,
 } from '../lib/supabase';
+import { useAuthSession } from '../hooks/useAuthSession';
 import { CodexDocument } from '../types';
 import {
   Calendar,
@@ -145,6 +147,7 @@ export function DocumentViewer({
   onOpenControlPanel,
 }: DocumentViewerProps) {
   const toast = useToast();
+  const { isAuthenticated } = useAuthSession();
   const [document, setDocument] = useState<CodexDocument | null>(null);
   const [childDocs, setChildDocs] = useState<CodexDocument[]>([]);
   const [loading, setLoading] = useState(false);
@@ -157,6 +160,15 @@ export function DocumentViewer({
   const [newNote, setNewNote] = useState('');
   const [startTime, setStartTime] = useState<number>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const canPersistPersonal =
+    isAuthenticated && Boolean(document && isPersistableDocumentId(document.id));
+
+  const personalControlsDisabledReason = !isAuthenticated
+    ? 'Sign in from the Control Panel to save personal bookmarks and notes'
+    : document && !isPersistableDocumentId(document.id)
+      ? 'Personal storage requires a live document UUID'
+      : null;
 
   useEffect(() => {
     if (!path) {
@@ -177,31 +189,39 @@ export function DocumentViewer({
         setDocument(doc);
 
         if (doc) {
-          const [isMarked, progress, docNotes, allDocs] = await Promise.all([
-            isBookmarked(doc.id),
-            getReadingProgress(doc.id),
-            getDocumentNotes(doc.id),
-            getDocuments(),
-          ]);
-          setBookmarked(isMarked);
-          setNotes(docNotes || []);
+          const allDocs = await getDocuments();
           setChildDocs(
             allDocs
               .filter((d) => d.parent_id === doc.id)
               .sort((a, b) => a.order - b.order),
           );
 
-          if (progress && scrollRef.current) {
-            setTimeout(() => {
-              if (scrollRef.current) {
-                const scrollHeight =
-                  scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
-                scrollRef.current.scrollTop = (progress.scroll_position / 100) * scrollHeight;
-              }
-            }, 100);
+          if (isAuthenticated && isPersistableDocumentId(doc.id)) {
+            const [isMarked, progress, docNotes] = await Promise.all([
+              isBookmarked(doc.id),
+              getReadingProgress(doc.id),
+              getDocumentNotes(doc.id),
+            ]);
+            setBookmarked(isMarked);
+            setNotes(docNotes || []);
+
+            if (progress && scrollRef.current) {
+              setTimeout(() => {
+                if (scrollRef.current) {
+                  const scrollHeight =
+                    scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
+                  scrollRef.current.scrollTop = (progress.scroll_position / 100) * scrollHeight;
+                }
+              }, 100);
+            }
+          } else {
+            setBookmarked(false);
+            setNotes([]);
           }
         } else {
           setChildDocs([]);
+          setBookmarked(false);
+          setNotes([]);
         }
       } catch (err) {
         setError('Failed to load document');
@@ -210,7 +230,7 @@ export function DocumentViewer({
         setLoading(false);
       }
     })();
-  }, [path]);
+  }, [path, isAuthenticated]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || !document) return;
@@ -229,7 +249,7 @@ export function DocumentViewer({
   }, [handleScroll]);
 
   useEffect(() => {
-    if (!document) return;
+    if (!document || !canPersistPersonal) return;
     const saveProgress = () => {
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
       updateReadingProgress(document.id, scrollProgress, timeSpent).catch(console.error);
@@ -239,7 +259,7 @@ export function DocumentViewer({
       saveProgress();
       clearInterval(interval);
     };
-  }, [document, scrollProgress, startTime]);
+  }, [document, canPersistPersonal, scrollProgress, startTime]);
 
   const navigateToHeading = useCallback((id: string) => {
     const el = scrollRef.current?.querySelector(`#${CSS.escape(id)}`);
@@ -249,7 +269,7 @@ export function DocumentViewer({
   }, []);
 
   const toggleBookmark = async () => {
-    if (!document) return;
+    if (!document || !canPersistPersonal) return;
     try {
       if (bookmarked) {
         await removeBookmark(document.id);
@@ -267,7 +287,7 @@ export function DocumentViewer({
   };
 
   const handleAddNote = async () => {
-    if (!document || !newNote.trim()) return;
+    if (!document || !canPersistPersonal || !newNote.trim()) return;
     try {
       const note = await addDocumentNote(document.id, newNote.trim());
       if (note) {
@@ -282,6 +302,7 @@ export function DocumentViewer({
   };
 
   const handleDeleteNote = async (noteId: string) => {
+    if (!canPersistPersonal) return;
     try {
       await deleteDocumentNote(noteId);
       setNotes(notes.filter((n) => n.id !== noteId));
@@ -352,6 +373,7 @@ export function DocumentViewer({
     });
   const colors = categoryColors[document.category] || categoryColors.root;
   const pathParts = document.path.split('/').filter(Boolean);
+  const personalDisabled = !canPersistPersonal;
   const progressLabel =
     scrollProgress >= 98 ? 'Done' : scrollProgress < 2 ? 'Start' : `${Math.round(scrollProgress)}%`;
 
@@ -432,22 +454,31 @@ export function DocumentViewer({
                 </span>
                 <button
                   type="button"
+                  disabled={personalDisabled}
                   onClick={() => void toggleBookmark()}
                   className={`codex-press codex-focus-ring p-2 rounded-xl transition-all ${
+                    personalDisabled ? 'cursor-not-allowed opacity-40' : ''
+                  } ${
                     bookmarked
                       ? 'text-amber-500 bg-amber-500/10'
                       : isDarkMode
                         ? 'text-gray-500 hover:text-amber-500 hover:bg-gray-800'
                         : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100'
                   }`}
-                  title={bookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                  title={
+                    personalControlsDisabledReason ??
+                    (bookmarked ? 'Remove bookmark' : 'Add bookmark')
+                  }
                 >
                   <Star className={`w-5 h-5 ${bookmarked ? 'fill-current' : ''}`} />
                 </button>
                 <button
                   type="button"
+                  disabled={personalDisabled}
                   onClick={() => setShowNotes(!showNotes)}
                   className={`codex-press codex-focus-ring p-2 rounded-xl transition-all relative ${
+                    personalDisabled ? 'cursor-not-allowed opacity-40' : ''
+                  } ${
                     showNotes
                       ? isDarkMode
                         ? 'text-blue-400 bg-blue-500/10'
@@ -456,7 +487,7 @@ export function DocumentViewer({
                         ? 'text-gray-500 hover:text-blue-400 hover:bg-gray-800'
                         : 'text-gray-400 hover:text-blue-600 hover:bg-gray-100'
                   }`}
-                  title="Notes"
+                  title={personalControlsDisabledReason ?? 'Notes'}
                 >
                   <MessageSquare className="w-5 h-5" />
                   {notes.length > 0 && (
@@ -553,6 +584,33 @@ export function DocumentViewer({
             isFocusMode ? 'max-w-3xl' : ''
           }`}
         >
+          <div
+            className={`mb-6 rounded-xl border p-4 ${
+              isDarkMode ? 'border-gray-700 bg-gray-900/70' : 'border-gray-200 bg-gray-50'
+            }`}
+          >
+            <div className="flex flex-wrap gap-2 mb-2" aria-label="Document provenance">
+              {document.provenance_status.map((status) => (
+                <span
+                  key={status}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    isDarkMode ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-blue-800'
+                  }`}
+                >
+                  {status.replace(/_/g, ' ').toUpperCase()}
+                </span>
+              ))}
+            </div>
+            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <span className="font-semibold">Evidence:</span> {document.evidence_basis}
+            </p>
+            <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+              Last reviewed: {document.last_reviewed ?? 'Unknown — not yet verified'}
+              {document.is_read_only ? ' · Public canonical document · read-only' : ''}
+              {canPersistPersonal ? ' · Personal bookmarks/notes enabled' : ''}
+            </p>
+          </div>
+
           {childDocs.length > 0 && onSelectDocument && (
             <div className="mb-8">
               <p
@@ -592,7 +650,7 @@ export function DocumentViewer({
         onNavigate={navigateToHeading}
       />
 
-      {showNotes && (
+      {showNotes && canPersistPersonal && (
         <div
           className={`fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:right-4 md:top-32 md:bottom-auto w-auto md:w-80 rounded-2xl shadow-2xl overflow-hidden z-30 pb-[env(safe-area-inset-bottom)] md:pb-0 codex-enter ${
             isDarkMode

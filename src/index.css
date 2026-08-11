@@ -124,3 +124,84 @@ body {
     transform: none !important;
   }
 }
+
+/* ---------------- Knowledge Graph "System Atlas" chrome ---------------- */
+
+.kg-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.kg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.kg-btn:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+.kg-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+}
+
+.kg-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.kg-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 3px;
+}
+
+.kg-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kg-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.kg-radar {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: conic-gradient(from 0deg, rgba(34, 211, 238, 0.55), transparent 28%);
+  animation: kg-radar-spin 4.2s linear infinite;
+}
+
+.kg-radar::after {
+  content: '';
+  position: absolute;
+  inset: 30%;
+  border-radius: 9999px;
+  border: 1px solid rgba(34, 211, 238, 0.5);
+}
+
+@keyframes kg-radar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kg-radar {
+    animation: none;
+  }
+}

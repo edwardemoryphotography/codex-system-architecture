@@ -4,5 +4,8 @@
   "url": "https://codex-system-architecture.vercel.app/api/edition-ingest",
   "content_type": "application/json",
   "upstream": "https://hzzzxmtpkgdmjcbncxjh.supabase.co/rest/v1/edition_manager_events",
-  "notes": "Agent calls Vercel API; server uses VITE_SUPABASE_* from Vercel env and writes edition_manager_events."
+  "provenance_status": ["unknown"],
+  "evidence_basis": "Legacy upstream configuration; not present in or verified against the production viewer database on 2026-07-15.",
+  "last_reviewed": "2026-07-15",
+  "notes": "Do not treat this endpoint as live until its separate upstream project and table are verified."
 }

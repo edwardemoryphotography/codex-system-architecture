@@ -1,6 +1,35 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
-import type { CodexAction, CodexDocument, SessionMode } from '../types';
+import { createClient, Session, SupabaseClient } from '@supabase/supabase-js';
+import { corpusDocumentByPath, corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
+import type {
+  CodexAction,
+  CodexDocument,
+  PersistRouteResult,
+  ProvenanceStatus,
+  RouteProposal,
+  SessionMode,
+  Workspace,
+} from '../types';
+
+// The routing control plane (routed_requests / evidence_items) is owner-only.
+// persist_route_owner() re-checks this server-side against auth.jwt(), so
+// nothing client-side needs to be kept secret — it just has to match.
+export const ROUTING_OWNER_EMAIL = 'freddyv@duck.com';
+
+const allowedProvenanceStatuses = new Set<ProvenanceStatus>([
+  'verified',
+  'repository_evidence',
+  'concept',
+  'unknown',
+]);
+
+function normalizeProvenanceStatuses(value: unknown): ProvenanceStatus[] {
+  if (!Array.isArray(value)) return ['unknown'];
+  const statuses = value.filter(
+    (status): status is ProvenanceStatus =>
+      typeof status === 'string' && allowedProvenanceStatuses.has(status as ProvenanceStatus),
+  );
+  return statuses.length > 0 ? [...new Set(statuses)] : ['unknown'];
+}
 
 // VITE_SUPABASE_URL has been seen set to the dashboard page
 // (https://supabase.com/dashboard/project/<ref>) instead of the API URL,
@@ -35,7 +64,70 @@ export function normalizeDocument(row: Record<string, unknown>): CodexDocument {
     order: typeof row.order === 'number' ? row.order : 0,
     created_at: String(row.created_at ?? new Date().toISOString()),
     updated_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString()),
+    provenance_status: normalizeProvenanceStatuses(row.provenance_status),
+    evidence_basis:
+      typeof row.evidence_basis === 'string' && row.evidence_basis.trim().length > 0
+        ? row.evidence_basis
+        : 'Unknown — no verified evidence basis is stored for this live row.',
+    last_reviewed: typeof row.last_reviewed === 'string' ? row.last_reviewed : null,
+    is_read_only: row.is_read_only === true || id.startsWith('corpus-'),
   };
+}
+
+/** Keep live row identity and relationships while making reviewed corpus copy authoritative. */
+export function mergeCanonicalDocument(
+  live: CodexDocument,
+  canonical: CodexDocument,
+): CodexDocument {
+  return {
+    ...live,
+    title: canonical.title,
+    content: canonical.content,
+    category: canonical.category,
+    order: canonical.order,
+    provenance_status: canonical.provenance_status,
+    evidence_basis: canonical.evidence_basis,
+    last_reviewed: canonical.last_reviewed,
+    is_read_only: live.is_read_only || live.id.startsWith('corpus-'),
+  };
+}
+
+export function mergeLiveDocumentsWithCorpus(liveDocs: CodexDocument[]): CodexDocument[] {
+  const canonicalDocs = corpusToDocuments();
+  const liveByPath = new Map(liveDocs.map((document) => [document.path, document]));
+  const canonicalPaths = new Set(canonicalDocs.map((document) => document.path));
+
+  const corpusIdToResolvedId = new Map<string, string>();
+  canonicalDocs.forEach((canonical) => {
+    const live = liveByPath.get(canonical.path);
+    corpusIdToResolvedId.set(canonical.id, live?.id ?? canonical.id);
+  });
+
+  const mergedCanonical = canonicalDocs.map((canonical) => {
+    const live = liveByPath.get(canonical.path);
+    const merged = live ? mergeCanonicalDocument(live, canonical) : { ...canonical, is_read_only: true };
+    if (merged.parent_id && corpusIdToResolvedId.has(merged.parent_id)) {
+      merged.parent_id = corpusIdToResolvedId.get(merged.parent_id) ?? merged.parent_id;
+    }
+    return merged;
+  });
+  const nonCorpusDocuments = liveDocs.filter((document) => !canonicalPaths.has(document.path));
+
+  return [...mergedCanonical, ...nonCorpusDocuments];
+}
+
+/** Canonicalize document rows embedded inside bookmark, recent, and graph responses. */
+export function mergeEmbeddedCanonicalDocument(row: Record<string, unknown>): CodexDocument {
+  const liveDocument = normalizeDocument(row);
+  const canonical = corpusDocumentByPath(liveDocument.path);
+  return canonical ? mergeCanonicalDocument(liveDocument, canonical) : liveDocument;
+}
+
+const documentUuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isPersistableDocumentId(documentId: string): boolean {
+  return documentUuidPattern.test(documentId) && !documentId.startsWith('corpus-');
 }
 
 function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
@@ -92,7 +184,7 @@ export async function getDocuments() {
     if (isLeanDocumentSet(liveDocs)) {
       return corpusToDocuments();
     }
-    return liveDocs;
+    return mergeLiveDocumentsWithCorpus(liveDocs);
   } catch {
     return corpusToDocuments();
   }
@@ -118,7 +210,8 @@ export async function getDocumentByPath(path: string) {
     .maybeSingle();
 
   if (!byPath.error && byPath.data) {
-    return normalizeDocument(byPath.data as Record<string, unknown>);
+    const liveDocument = normalizeDocument(byPath.data as Record<string, unknown>);
+    return corpusMatch ? mergeCanonicalDocument(liveDocument, corpusMatch) : liveDocument;
   }
 
   // Lean schemas may omit `path` / tag joins — fall back to id lookup.
@@ -135,7 +228,8 @@ export async function getDocumentByPath(path: string) {
       .maybeSingle();
 
     if (!byId.error && byId.data) {
-      return normalizeDocument(byId.data as Record<string, unknown>);
+      const liveDocument = normalizeDocument(byId.data as Record<string, unknown>);
+      return corpusMatch ? mergeCanonicalDocument(liveDocument, corpusMatch) : liveDocument;
     }
   }
 
@@ -184,14 +278,26 @@ export async function getTags() {
   return data;
 }
 
+/** Resolve the authenticated user id, or null when signed out. */
+async function getAuthenticatedUserId(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await client().auth.getUser();
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
 export async function getRecentDocuments(limit = 10) {
   if (!supabase) return [];
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return [];
+
   const { data, error } = await client()
     .from('reading_progress')
     .select(`
       *,
       codex_documents (*)
     `)
+    .eq('user_id', userId)
     .order('last_read_at', { ascending: false })
     .limit(limit);
 
@@ -199,23 +305,30 @@ export async function getRecentDocuments(limit = 10) {
   if (error) throw error;
   return (data ?? []).map((row) => {
     const doc = row.codex_documents
-      ? normalizeDocument(row.codex_documents as Record<string, unknown>)
+      ? mergeEmbeddedCanonicalDocument(row.codex_documents as Record<string, unknown>)
       : null;
     return { ...row, codex_documents: doc };
   });
 }
 
 export async function updateReadingProgress(documentId: string, scrollPosition: number, timeSpent: number) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return null;
+
   const { data, error } = await client()
     .from('reading_progress')
-    .upsert({
-      document_id: documentId,
-      scroll_position: scrollPosition,
-      time_spent_seconds: timeSpent,
-      last_read_at: new Date().toISOString(),
-      completed: scrollPosition > 90
-    }, { onConflict: 'document_id' })
+    .upsert(
+      {
+        user_id: userId,
+        document_id: documentId,
+        scroll_position: scrollPosition,
+        time_spent_seconds: timeSpent,
+        last_read_at: new Date().toISOString(),
+        completed: scrollPosition > 90,
+      },
+      { onConflict: 'user_id,document_id' },
+    )
     .select()
     .maybeSingle();
 
@@ -225,10 +338,14 @@ export async function updateReadingProgress(documentId: string, scrollPosition: 
 }
 
 export async function getReadingProgress(documentId: string) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return null;
+
   const { data, error } = await client()
     .from('reading_progress')
     .select('*')
+    .eq('user_id', userId)
     .eq('document_id', documentId)
     .maybeSingle();
 
@@ -239,12 +356,16 @@ export async function getReadingProgress(documentId: string) {
 
 export async function getBookmarks() {
   if (!supabase) return [];
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return [];
+
   const { data, error } = await client()
     .from('bookmarks')
     .select(`
       *,
       codex_documents (*)
     `)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (isMissingRelationError(error)) return [];
@@ -252,16 +373,19 @@ export async function getBookmarks() {
   return (data ?? []).map((row) => ({
     ...row,
     codex_documents: row.codex_documents
-      ? normalizeDocument(row.codex_documents as Record<string, unknown>)
+      ? mergeEmbeddedCanonicalDocument(row.codex_documents as Record<string, unknown>)
       : null,
   }));
 }
 
 export async function addBookmark(documentId: string) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { data, error } = await client()
     .from('bookmarks')
-    .insert({ document_id: documentId })
+    .insert({ user_id: userId, document_id: documentId })
     .select()
     .maybeSingle();
 
@@ -271,10 +395,14 @@ export async function addBookmark(documentId: string) {
 }
 
 export async function removeBookmark(documentId: string) {
-  if (!supabase) return;
+  if (!supabase || !isPersistableDocumentId(documentId)) return;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { error } = await client()
     .from('bookmarks')
     .delete()
+    .eq('user_id', userId)
     .eq('document_id', documentId);
 
   if (isMissingRelationError(error)) return;
@@ -282,10 +410,14 @@ export async function removeBookmark(documentId: string) {
 }
 
 export async function isBookmarked(documentId: string) {
-  if (!supabase) return false;
+  if (!supabase || !isPersistableDocumentId(documentId)) return false;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return false;
+
   const { data, error } = await client()
     .from('bookmarks')
     .select('id')
+    .eq('user_id', userId)
     .eq('document_id', documentId)
     .maybeSingle();
 
@@ -295,10 +427,14 @@ export async function isBookmarked(documentId: string) {
 }
 
 export async function getDocumentNotes(documentId: string) {
-  if (!supabase) return [];
+  if (!supabase || !isPersistableDocumentId(documentId)) return [];
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return [];
+
   const { data, error } = await client()
     .from('document_notes')
     .select('*')
+    .eq('user_id', userId)
     .eq('document_id', documentId)
     .order('created_at', { ascending: false });
 
@@ -308,10 +444,13 @@ export async function getDocumentNotes(documentId: string) {
 }
 
 export async function addDocumentNote(documentId: string, content: string, position?: string) {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(documentId)) return null;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { data, error } = await client()
     .from('document_notes')
-    .insert({ document_id: documentId, content, position })
+    .insert({ user_id: userId, document_id: documentId, content, position })
     .select()
     .maybeSingle();
 
@@ -322,10 +461,14 @@ export async function addDocumentNote(documentId: string, content: string, posit
 
 export async function deleteDocumentNote(noteId: string) {
   if (!supabase) return;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+
   const { error } = await client()
     .from('document_notes')
     .delete()
-    .eq('id', noteId);
+    .eq('id', noteId)
+    .eq('user_id', userId);
 
   if (isMissingRelationError(error)) return;
   if (error) throw error;
@@ -343,11 +486,21 @@ export async function getDocumentLinks() {
 
   if (isMissingRelationError(error)) return [];
   if (error) throw error;
-  return data;
+  return (data ?? []).map((row) => ({
+    ...row,
+    source: row.source
+      ? mergeEmbeddedCanonicalDocument(row.source as Record<string, unknown>)
+      : null,
+    target: row.target
+      ? mergeEmbeddedCanonicalDocument(row.target as Record<string, unknown>)
+      : null,
+  }));
 }
 
 export async function addDocumentLink(sourceId: string, targetId: string, linkType = 'reference') {
-  if (!supabase) return null;
+  if (!supabase || !isPersistableDocumentId(sourceId) || !isPersistableDocumentId(targetId)) {
+    return null;
+  }
   const { data, error } = await client()
     .from('document_links')
     .insert({ source_document_id: sourceId, target_document_id: targetId, link_type: linkType })
@@ -378,4 +531,58 @@ export async function initializeSessionStart(sessionMode: SessionMode = 'high') 
 
   if (error) throw error;
   return (data ?? []) as CodexAction[];
+}
+
+// ─── Routing control plane auth + persistence ──────────────────────────
+// Real writes go through persist_route_owner (SECURITY DEFINER), which
+// checks auth.jwt() email server-side and forwards to persist_route_atomic.
+// There is no service-role key in this client — the owner's own session is
+// the only credential, so a magic link to ROUTING_OWNER_EMAIL is the entire
+// auth flow.
+
+export async function getSession(): Promise<Session | null> {
+  if (!supabase) return null;
+  const { data, error } = await client().auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+
+export function onAuthStateChange(callback: (session: Session | null) => void) {
+  if (!supabase) return { unsubscribe: () => {} };
+  const { data } = client().auth.onAuthStateChange((_event, session) => callback(session));
+  return data.subscription;
+}
+
+export async function signInOwnerWithMagicLink(): Promise<void> {
+  const { error } = await client().auth.signInWithOtp({
+    email: ROUTING_OWNER_EMAIL,
+    options: { emailRedirectTo: window.location.origin },
+  });
+  if (error) throw error;
+}
+
+export async function signOutOwner(): Promise<void> {
+  if (!supabase) return;
+  const { error } = await client().auth.signOut();
+  if (error) throw error;
+}
+
+export async function getWorkspaces(): Promise<Workspace[]> {
+  if (!supabase) return [];
+  const { data, error } = await client()
+    .from('workspaces')
+    .select('id, name')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Workspace[];
+}
+
+export async function persistRouteOwner(proposal: RouteProposal): Promise<PersistRouteResult> {
+  const { data, error } = await client().rpc('persist_route_owner', {
+    p_proposal: proposal,
+  });
+
+  if (error) throw error;
+  return data as PersistRouteResult;
 }

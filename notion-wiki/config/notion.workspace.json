@@ -45,9 +45,9 @@
     "project_knowledge_intake_database_id": "b10f096c-1ed3-49ae-b6e6-909e66f70379"
   },
   "supabase": {
-    "project_ref": "hzzzxmtpkgdmjcbncxjh",
-    "name": "supabase-indigo-paddle",
-    "dashboard_url": "https://supabase.com/dashboard/project/hzzzxmtpkgdmjcbncxjh",
+    "project_ref": "pkydkbuodikttfeawqsw",
+    "name": "foundry-console",
+    "dashboard_url": "https://supabase.com/dashboard/project/pkydkbuodikttfeawqsw",
     "schema_doc": "supabase/SCHEMA.md"
   }
 }
