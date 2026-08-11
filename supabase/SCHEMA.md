@@ -77,8 +77,11 @@ Known contradictions awaiting owner decision (still open as of 2026-08-11):
   the deployed Control Panel read path — flagged, deliberately not changed.
   **Close-out decision (2026-08-11):** keep public RLS until Control Panel
   authenticates every actions read/write; do not invent a parallel table.
-- legacy-codex `CLAUDE.md` still claims its Supabase project is separate;
-  both repos point at `pkydkbuodikttfeawqsw`.
+- legacy-codex `CLAUDE.md` historically claimed a separate Supabase project /
+  `supabase-indigo-paddle`; both production paths use `pkydkbuodikttfeawqsw`.
+  Correction prepared in a local `legacy-codex` close-out branch (push blocked
+  from this architecture-only agent — 403). Treat indigo-paddle references as
+  stale until that sibling docs PR lands.
 - legacy-codex draft PR #37 proposes `missions` / `mission_events` /
   `evidence_snapshots`, which would parallel `actions` / `events` /
   `evidence_items`. Still open and draft; reconciliation here chose the
