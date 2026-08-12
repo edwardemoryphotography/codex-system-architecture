@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+<title>Cognition Requires Infrastructure — v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --cyan:#00e5ff;--violet:#b57bee;--amber:#ffb347;--red:#ff5d73;--green:#6ee7b7;
+  --bg:#05060f;--text:#e8eaf0;--muted:rgba(232,234,240,.5);--dim:rgba(232,234,240,.22);
+  --surface:rgba(255,255,255,.04);--surface-2:rgba(255,255,255,.07);--border:rgba(255,255,255,.08);
+  --intensity:.22;--fragmentation:.04;--stability:.9;--recursion:.22;--glow:.4;--noise:.035;--fog:.18;--chroma:0px;
+  --cursor-x:50%;--cursor-y:50%;--ease:cubic-bezier(.16,1,.3,1);
+  --density:1;--camera-z:0px;--camera-y:0px;--camera-ry:0deg;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:pan-y;-webkit-font-smoothing:antialiased;perspective:1800px;perspective-origin:50% 50%}
+button,textarea,input{font-family:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+body::before{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;background:radial-gradient(circle at 18% 78%,rgba(0,229,255,calc(.025+var(--glow)*.08)),transparent 34%),radial-gradient(circle at 84% 18%,rgba(181,123,238,calc(.025+var(--glow)*.065)),transparent 36%),radial-gradient(circle at var(--cursor-x) var(--cursor-y),rgba(255,179,71,calc(var(--fragmentation)*.14)),transparent 38%);filter:blur(calc(18px + var(--fog)*46px));opacity:.92;transform:scale(calc(1 + var(--recursion)*.055));transition:filter .8s ease,opacity .8s ease,transform .8s ease}
+body::after{content:"";position:fixed;inset:0;z-index:2;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:3px 3px;opacity:var(--noise);mix-blend-mode:screen}
+#stars{position:fixed;inset:0;z-index:1;pointer-events:none}
+.nebula{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0%,#05060f 100%);opacity:.92}
+#memory-layer{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .8s var(--ease)}
+.memory-ghost{position:absolute;opacity:0;transform:translateZ(-60px) scale(.93);filter:blur(5px);transition:opacity 1.2s var(--ease),transform 1.2s var(--ease)}
+.memory-ghost.show{opacity:.16;transform:translateZ(-30px) scale(.95);filter:blur(2px)}
+#deck{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;transform-style:preserve-3d;transform:translateZ(var(--camera-z)) translateY(var(--camera-y)) rotateY(var(--camera-ry));transition:transform .6s var(--ease)}
+.slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:6vh 7vw;opacity:0;transform:translateY(28px) translateZ(-60px) scale(.97);transition:opacity .58s var(--ease),transform .58s var(--ease),filter .58s ease;pointer-events:none;filter:blur(7px);transform-style:preserve-3d}
+.slide.active{opacity:1;transform:translateY(0) translateZ(0) scale(1);pointer-events:all;filter:blur(0)}
+.slide.exit{opacity:0;transform:translateY(-24px) translateZ(-40px) scale(.98);filter:blur(7px)}
+.slide-inner{width:100%;max-width:1080px;display:flex;flex-direction:column;gap:calc(2rem * var(--density));transform-style:preserve-3d}
+.label{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);opacity:.72}
+h1.title{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,5.5vw,4.2rem);line-height:1.05;letter-spacing:-.025em}
+.accent{color:var(--cyan);text-shadow:0 0 calc(15px + var(--glow)*22px) rgba(0,229,255,.32)}
+.violet{color:var(--violet)}.amber{color:var(--amber)}.green{color:var(--green)}
+p.body{font-size:clamp(.92rem,1.45vw,1.05rem);line-height:calc(1.7 * var(--density));color:var(--muted);max-width:740px}
+p.body strong{color:var(--text);font-weight:500}
+.center{align-items:center;text-align:center}.center .body{margin-left:auto;margin-right:auto}
+.tags{display:flex;flex-wrap:wrap;gap:.55rem}
+.tag{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.1em;padding:.35rem .85rem;border-radius:100px;border:1px solid var(--border);color:var(--muted);background:var(--surface);backdrop-filter:blur(10px);transition:.25s var(--ease)}
+.tag.c{border-color:rgba(0,229,255,.35);color:var(--cyan);background:rgba(0,229,255,.06)}
+.tag.v{border-color:rgba(181,123,238,.35);color:var(--violet);background:rgba(181,123,238,.07)}
+.tag.a{border-color:rgba(255,179,71,.35);color:var(--amber);background:rgba(255,179,71,.06)}
+.tag.g{border-color:rgba(110,231,183,.35);color:var(--green);background:rgba(110,231,183,.05)}
+.tag:hover{transform:translateY(-2px);filter:brightness(1.2)}
+.flow{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.node{padding:.5rem 1rem;border-radius:7px;font-family:'DM Mono';font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.055);color:var(--cyan);white-space:nowrap;transition:.2s var(--ease)}
+.node:hover{transform:translateY(-2px);box-shadow:0 0 18px rgba(0,229,255,.22)}
+.node.v{color:var(--violet);border-color:rgba(181,123,238,.4);background:rgba(181,123,238,.08)}
+.node.a{color:var(--amber);border-color:rgba(255,179,71,.4);background:rgba(255,179,71,.06)}
+.node.g{color:var(--green);border-color:rgba(110,231,183,.4);background:rgba(110,231,183,.05)}
+.node.r{color:var(--red);border-color:rgba(255,93,115,.4);background:rgba(255,93,115,.05)}
+.node.dim{opacity:.55}
+.arrow{font-size:.72rem;color:var(--dim);padding:0 .1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:calc(14px * var(--density));max-width:720px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(10px * var(--density));max-width:880px}
+.card{padding:1.1rem 1.2rem;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);backdrop-filter:blur(12px);transition:.3s var(--ease);overflow:hidden}
+.card:hover{transform:translateY(-3px);background:rgba(255,255,255,.06)}
+.card .k{font-family:'DM Mono';font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.45rem;color:var(--cyan)}
+.card.v .k{color:var(--violet)}.card.a .k{color:var(--amber)}.card.g .k{color:var(--green)}
+.card .d{font-size:.78rem;line-height:1.55;color:var(--muted)}
+.card.c:hover{background:rgba(0,229,255,.06);border-color:rgba(0,229,255,.22)}
+.card.v:hover{background:rgba(181,123,238,.06);border-color:rgba(181,123,238,.22)}
+.card.a:hover{background:rgba(255,179,71,.06);border-color:rgba(255,179,71,.22)}
+.card.g:hover{background:rgba(110,231,183,.06);border-color:rgba(110,231,183,.22)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:2.2rem;align-items:center}
+.split-text{display:flex;flex-direction:column;gap:1.1rem}
+.venn{position:relative;height:200px;display:flex;align-items:center;justify-content:center}
+.vc{position:absolute;width:135px;height:135px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono';font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;transition:transform .7s cubic-bezier(.34,1.56,.64,1);mix-blend-mode:screen}
+.vc.art{left:50%;margin-left:-135px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.4);color:var(--cyan)}
+.vc.sys{left:50%;margin-left:-25px;background:rgba(181,123,238,.12);border:1px solid rgba(181,123,238,.4);color:var(--violet)}
+.vc.cog{left:50%;margin-left:-60px;top:55px;background:rgba(255,179,71,.10);border:1px solid rgba(255,179,71,.32);color:var(--amber)}
+.active .vc.art{transform:translate(-14px,-10px)}.active .vc.cog{transform:translateY(-12px)}.active .vc.sys{transform:translate(14px,8px)}
+.venn-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:'Syne';font-size:.74rem;font-weight:700;color:#fff;text-align:center;text-shadow:0 0 14px rgba(0,229,255,.6);z-index:2}
+.stack{display:flex;flex-direction:column;gap:5px;max-width:520px}
+.stack-row{padding:.65rem 1.2rem;border-radius:7px;font-family:'DM Mono';font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--border);background:var(--surface);color:var(--muted);transform:translateX(-24px);opacity:0;transition:.3s var(--ease)}
+.active .stack-row{animation:slideIn .42s var(--ease) forwards}
+.timeline{position:relative;display:flex;flex-direction:column;max-width:720px;padding-left:1.8rem}
+.timeline::before{content:"";position:absolute;left:0;top:.7rem;bottom:.7rem;width:1px;background:linear-gradient(rgba(0,229,255,.5),rgba(181,123,238,.4),rgba(255,179,71,.45))}
+.tl-row{position:relative;padding:.7rem 0 .7rem 1.5rem;display:flex;align-items:flex-start;gap:.9rem}
+.tl-row::before{content:"";position:absolute;left:-.3rem;top:1.05rem;width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.5)}
+.tl-row:nth-child(odd)::before{background:var(--violet);box-shadow:0 0 8px rgba(181,123,238,.5)}
+.tl-row:last-child::before{background:var(--amber);box-shadow:0 0 8px rgba(255,179,71,.5)}
+.tl-year{font-family:'DM Mono';font-size:.62rem;letter-spacing:.12em;min-width:48px;opacity:.8;color:var(--cyan)}
+.tl-row:nth-child(odd) .tl-year{color:var(--violet)}.tl-row:last-child .tl-year{color:var(--amber)}
+.tl-text{font-size:.84rem;color:var(--muted);line-height:1.55}
+.tl-text strong{color:var(--text);font-weight:500}
+.cine{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.062),rgba(255,255,255,.024));border-radius:24px;min-height:420px;padding:2rem;position:relative;overflow:hidden;box-shadow:0 42px 120px rgba(0,0,0,.34),inset 0 0 90px rgba(0,229,255,calc(var(--glow)*.08));backdrop-filter:blur(16px)}
+.throughput{display:grid;grid-template-columns:1fr .95fr;gap:2.3rem;align-items:center}
+.gap-sim{min-height:430px}.gap-sim svg{width:100%;height:280px}
+.gap-controls{position:absolute;left:1.5rem;right:1.5rem;bottom:1.3rem;display:flex;flex-direction:column;gap:.6rem}
+.gap-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:linear-gradient(90deg,var(--cyan),var(--amber));border-radius:2px;outline:none;cursor:pointer}
+.gap-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.6);cursor:grab}
+.gap-readout{display:flex;justify-content:space-between;font-family:'DM Mono';font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.gap-readout b{color:var(--amber);font-weight:400}
+.frag{min-height:430px}
+.ctx{position:absolute;width:180px;min-height:92px;padding:1rem;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.055);border-radius:18px;backdrop-filter:blur(14px);box-shadow:0 20px 50px rgba(0,0,0,.28);animation:drift 6s ease-in-out infinite alternate}
+.ctx b{display:block;font-family:'DM Mono';font-size:.62rem;letter-spacing:.12em;color:var(--amber);margin-bottom:.4rem}
+.ctx span{display:block;font-size:.78rem;color:var(--muted);line-height:1.45}
+.c1{left:6%;top:8%;transform:rotate(-7deg);animation-delay:-.4s}
+.c2{right:7%;top:10%;transform:rotate(5deg);animation-delay:-1.2s}
+.c3{left:13%;bottom:11%;transform:rotate(6deg);animation-delay:-2s}
+.c4{right:12%;bottom:13%;transform:rotate(-5deg);animation-delay:-2.8s}
+.c5{left:38%;top:37%;transform:rotate(1deg);border-color:rgba(255,93,115,.33);background:rgba(255,93,115,.06);animation:shake .24s infinite alternate}
+.particle{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--amber);opacity:.75;box-shadow:0 0 12px rgba(255,179,71,.45);animation:scatter 4.8s ease-in-out infinite alternate}
+.principle-wrap{display:grid;place-items:center;text-align:center;min-height:430px}
+.gridlock{position:absolute;inset:2rem;background-image:linear-gradient(rgba(0,229,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.10) 1px,transparent 1px);background-size:42px 42px;opacity:0;transform:scale(1.08)}
+.active .gridlock{animation:lock 2.2s .6s ease forwards}
+.principle{position:relative;z-index:2;font-family:'Syne';font-size:clamp(1.7rem,4.8vw,4.5rem);font-weight:800;line-height:1.12;letter-spacing:-.04em;max-width:920px}
+.w{display:inline-block;opacity:0;transform:translateY(18px);filter:blur(12px)}
+.active .w{animation:wordIn .65s ease forwards}
+.active .w:nth-child(1){animation-delay:.2s}.active .w:nth-child(2){animation-delay:.32s}.active .w:nth-child(3){animation-delay:.44s}.active .w:nth-child(4){animation-delay:.56s}.active .w:nth-child(5){animation-delay:.68s}.active .w:nth-child(6){animation-delay:.8s}.active .w:nth-child(7){animation-delay:.92s}.active .w:nth-child(8){animation-delay:1.04s}.active .w:nth-child(9){animation-delay:1.16s}
+.hold{color:var(--cyan)}.active .hold{animation:wordIn .65s ease forwards,glow 1.6s 2s ease forwards}
+.lf{position:absolute;width:88px;height:54px;border:1px solid rgba(255,179,71,.28);border-radius:12px;background:rgba(255,179,71,.06);opacity:.7}
+.active .lf1{animation:snap1 1.8s .3s ease forwards}.active .lf2{animation:snap2 1.8s .35s ease forwards}.active .lf3{animation:snap3 1.8s .4s ease forwards}.active .lf4{animation:snap4 1.8s .45s ease forwards}
+.lf1{left:10%;top:14%;transform:rotate(-12deg)}.lf2{right:12%;top:16%;transform:rotate(9deg)}.lf3{left:15%;bottom:14%;transform:rotate(8deg)}.lf4{right:17%;bottom:16%;transform:rotate(-8deg)}
+.dial-wrap{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:center}
+.dial{position:relative;width:280px;height:280px;margin:auto}.dial svg{width:100%;height:100%}
+.dial-readout{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.dial-num{font-family:'Syne';font-size:3.4rem;font-weight:800;line-height:1;color:var(--cyan);text-shadow:0 0 30px rgba(0,229,255,.4)}
+.dial-tag{font-family:'DM Mono';font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:.4rem}
+.dial-controls{display:flex;gap:.4rem;justify-content:center;margin-top:.8rem;flex-wrap:wrap}
+.dial-btn{padding:.4rem .75rem;border-radius:6px;font-family:'DM Mono';font-size:.6rem;letter-spacing:.1em;border:1px solid var(--border);background:var(--surface);color:var(--muted);transition:.25s}
+.dial-btn.active,.dial-btn:hover{border-color:rgba(0,229,255,.5);color:var(--cyan);background:rgba(0,229,255,.06)}
+.dial-status{padding:1rem 1.2rem;border-radius:12px;border:1px solid var(--border);background:var(--surface);transition:.4s var(--ease)}
+.dial-status .s-name{font-family:'Syne';font-size:1.1rem;font-weight:700;margin-bottom:.3rem}
+.dial-status .s-desc{font-size:.82rem;line-height:1.55;color:var(--muted)}
+.codex-arch{display:grid;grid-template-columns:1.1fr .9fr;gap:1.5rem;align-items:start;max-width:880px}
+.codex-layers{display:flex;flex-direction:column;gap:8px}
+.codex-layer{padding:1rem 1.2rem;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:.3s var(--ease)}
+.codex-layer:hover{background:var(--surface-2);transform:translateX(4px)}
+.codex-layer.active{border-color:rgba(0,229,255,.5);background:rgba(0,229,255,.07);transform:translateX(8px)}
+.codex-layer .lk{font-family:'DM Mono';font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem}
+.codex-layer.active .lk{color:var(--cyan)}
+.codex-layer .ln{font-family:'Syne';font-size:.95rem;font-weight:600}
+.codex-detail{padding:1.4rem 1.5rem;border-radius:14px;border:1px solid rgba(0,229,255,.22);background:rgba(0,229,255,.04);min-height:260px;transition:.4s var(--ease)}
+.codex-detail h3{font-family:'Syne';font-size:1.2rem;font-weight:700;margin-bottom:.6rem;color:var(--cyan)}
+.codex-detail p{font-size:.85rem;line-height:1.65;color:var(--muted)}
+.codex-detail ul{list-style:none;padding:0}
+.codex-detail li{font-family:'DM Mono';font-size:.7rem;letter-spacing:.06em;padding:.3rem 0;color:var(--text);opacity:.85}
+.codex-detail li::before{content:"• ";color:var(--cyan);margin-right:.4rem}
+.codex-graph-wrap{position:relative;width:100%;min-height:420px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.025)}
+#codexGraph{width:100%;height:100%;cursor:grab}#codexGraph:active{cursor:grabbing}
+.graph-tooltip{position:absolute;padding:.6rem .9rem;background:rgba(5,6,15,.92);border:1px solid rgba(0,229,255,.35);border-radius:8px;font-family:'DM Mono';font-size:.62rem;color:var(--cyan);pointer-events:none;opacity:0;transition:opacity .2s;backdrop-filter:blur(10px)}
+.triptych{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:780px}
+.tri{padding:1.4rem 1rem;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);display:flex;flex-direction:column;align-items:center;gap:.8rem;text-align:center;backdrop-filter:blur(12px);transition:.3s var(--ease)}
+.tri:hover{transform:translateY(-4px)}
+.tri-icon{font-size:1.6rem}
+.tri-title{font-family:'Syne';font-weight:700;font-size:.92rem}
+.tri-desc{font-size:.74rem;color:var(--muted);line-height:1.55}
+.closing{display:flex;flex-direction:column;gap:1.4rem;max-width:760px}
+.cq{font-size:clamp(.95rem,1.6vw,1.12rem);line-height:1.65;color:var(--muted);padding:.65rem 0;border-bottom:1px solid var(--border)}
+.cq:last-child{color:var(--text);border-color:rgba(0,229,255,.22);text-shadow:0 0 30px rgba(0,229,255,.15)}
+.interstitial{display:flex;align-items:center;justify-content:center}
+.interstitial .int-inner{padding:3rem;text-align:center;max-width:680px}
+.int-line{font-family:'Syne';font-size:clamp(1.3rem,3vw,2rem);font-weight:700;color:var(--text);line-height:1.5;opacity:0;transform:translateY(14px)}
+.active .int-line{animation:wordIn .8s ease forwards;animation-delay:.3s}
+.int-sub{font-family:'DM Mono';font-size:.62rem;letter-spacing:.16em;color:var(--dim);margin-top:1.2rem;opacity:0}
+.active .int-sub{animation:wordIn .8s ease forwards;animation-delay:.7s}
+.black-frame{background:#000;display:flex;align-items:center;justify-content:center}
+.black-frame .int-line{font-size:clamp(1rem,2.4vw,1.6rem);color:rgba(255,255,255,.7)}
+.terminal-flash{font-family:'DM Mono';font-size:.75rem;color:var(--green);line-height:1.8;text-align:left;opacity:0}
+.active .terminal-flash{animation:wordIn .6s ease forwards;animation-delay:.4s}
+.embodied-item{padding:1.1rem 1.4rem;border-left:2px solid var(--border);margin-bottom:.6rem;transition:.3s var(--ease)}
+.embodied-item:hover{border-left-color:var(--amber);background:rgba(255,179,71,.04)}
+.ei-label{font-family:'DM Mono';font-size:.58rem;letter-spacing:.12em;color:var(--amber);margin-bottom:.3rem;text-transform:uppercase}
+.ei-text{font-size:.88rem;line-height:1.55;color:var(--muted)}
+.ei-text strong{color:var(--text)}
+.final-collapse{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem}
+.final-line{font-family:'Syne';font-size:clamp(1.5rem,4vw,3rem);font-weight:800;color:var(--text);text-align:center;line-height:1.3;opacity:0;transform:translateY(20px)}
+.active .final-line{animation:wordIn .9s ease forwards;animation-delay:.4s}
+.final-sub{font-size:.78rem;color:var(--dim);opacity:0}
+.active .final-sub{animation:wordIn .9s ease forwards;animation-delay:1s}
+#nav{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.04);border:1px solid var(--border);padding:.45rem;border-radius:999px;backdrop-filter:blur(14px)}
+.btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-size:.95rem;display:flex;align-items:center;justify-content:center;transition:.2s}
+.btn:hover{border-color:rgba(0,229,255,.45);background:rgba(0,229,255,.07);color:var(--cyan)}
+#counter{font-family:'DM Mono';font-size:.65rem;letter-spacing:.15em;color:var(--dim);min-width:64px;text-align:center}
+#progress{position:fixed;top:0;left:0;height:2px;z-index:40;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--amber));transition:width .45s ease}
+#track{position:fixed;top:1.8rem;right:2rem;z-index:30;display:flex;flex-direction:column;gap:.32rem;align-items:flex-end}
+.tl{font-family:'DM Mono';font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);transition:.3s;cursor:pointer}
+.tl:hover{color:var(--text)}.tl.active{color:var(--cyan);text-shadow:0 0 8px rgba(0,229,255,.34)}
+#toolbar{position:fixed;bottom:2.4rem;right:2rem;z-index:32;display:flex;flex-direction:column;gap:.4rem}
+.tb{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--dim);font-size:.75rem;display:flex;align-items:center;justify-content:center;transition:.25s}
+.tb:hover{border-color:rgba(0,229,255,.4);color:var(--cyan)}
+.tb.on{color:var(--cyan);border-color:rgba(0,229,255,.5);background:rgba(0,229,255,.07)}
+#soundToggle.tb.on{color:var(--violet);border-color:rgba(181,123,238,.5);background:rgba(181,123,238,.07)}
+#settingsBtn.has-key{border-color:rgba(110,231,183,.45);color:var(--green)}
+#help,#minimap,#codexTerminal,#settings{position:fixed;inset:0;z-index:50;background:rgba(5,6,15,.88);backdrop-filter:blur(24px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.4s var(--ease)}
+#help.open,#minimap.open,#codexTerminal.open,#settings.open{opacity:1;pointer-events:all}
+.help-card{max-width:480px;padding:2rem 2.2rem;border:1px solid rgba(0,229,255,.25);background:rgba(255,255,255,.04);border-radius:20px;backdrop-filter:blur(20px)}
+.help-card h3{font-family:'Syne';font-size:1.4rem;font-weight:700;margin-bottom:1.2rem;color:var(--cyan)}
+.help-row{display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.help-row span{color:var(--muted)}
+.kbd{font-family:'DM Mono';font-size:.7rem;padding:.18rem .55rem;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)}
+.mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;max-width:1100px;width:100%;max-height:80vh;overflow-y:auto}
+.mm-cell{aspect-ratio:16/10;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.04);padding:.7rem .8rem;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;transition:.25s var(--ease)}
+.mm-cell:hover{border-color:rgba(0,229,255,.5);background:rgba(0,229,255,.06);transform:scale(1.03)}
+.mm-cell.current{border-color:var(--cyan);background:rgba(0,229,255,.1)}
+.mm-num{font-family:'DM Mono';font-size:.55rem;letter-spacing:.1em;color:var(--dim)}
+.mm-title{font-family:'Syne';font-size:.78rem;font-weight:600;line-height:1.2;color:var(--text)}
+.mm-section{font-family:'DM Mono';font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);opacity:.7}
+.terminal-box{width:90%;max-width:760px;height:82vh;border:1px solid rgba(0,229,255,.3);background:rgba(5,6,15,.96);border-radius:20px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.8),0 0 40px rgba(0,229,255,.1)}
+.terminal-header{padding:1rem 1.4rem;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.terminal-status{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.1em;color:var(--cyan);display:flex;align-items:center;gap:.5rem}
+.status-dot{width:6px;height:6px;background:var(--cyan);border-radius:50%;animation:pulse 1.2s infinite}
+.terminal-close{font-family:'DM Mono';font-size:.65rem;color:var(--dim);cursor:pointer;transition:.2s}
+.terminal-close:hover{color:var(--red)}
+.terminal-body{flex:1;padding:1.5rem;display:flex;flex-direction:column;gap:1.2rem;overflow-y:auto}
+.terminal-intro{font-family:'DM Mono';font-size:.72rem;line-height:1.6;color:var(--muted)}
+.terminal-textarea{width:100%;height:100px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:.8rem;color:#fff;font-family:'DM Sans',sans-serif;font-size:.85rem;line-height:1.5;resize:none;outline:none;transition:border-color .3s}
+.terminal-textarea:focus{border-color:rgba(0,229,255,.5)}
+.terminal-btn-row{display:flex;justify-content:flex-end;gap:1rem;align-items:center}
+.terminal-run-btn{padding:.5rem 1.4rem;border-radius:6px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.4);color:var(--cyan);font-family:'DM Mono';font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;transition:.25s}
+.terminal-run-btn:hover:not(:disabled){background:rgba(0,229,255,.2);box-shadow:0 0 15px rgba(0,229,255,.3);transform:translateY(-1px)}
+.terminal-run-btn:disabled{opacity:.4;cursor:not-allowed}
+.terminal-output{flex:1;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.4);padding:1.2rem;overflow-y:auto;font-family:'DM Mono',monospace;font-size:.72rem;line-height:1.65;color:rgba(232,234,240,.95)}
+.terminal-output b{color:var(--amber)}
+.terminal-output .sys-tag{color:var(--cyan)}
+.terminal-output .rec-tag{color:var(--green)}
+.terminal-output .err-tag{color:var(--red)}
+/* ── SETTINGS PANEL ── */
+.settings-card{width:90%;max-width:460px;padding:2rem 2.2rem;border:1px solid rgba(0,229,255,.25);background:rgba(10,14,28,.96);border-radius:20px;backdrop-filter:blur(20px)}
+.settings-card h3{font-family:'Syne';font-size:1.35rem;font-weight:700;margin-bottom:1.5rem;color:var(--cyan)}
+.settings-field{margin-bottom:1.1rem}
+.settings-field label{display:block;font-family:'DM Mono';font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:.5rem}
+.settings-input-row{display:flex;gap:.5rem}
+.settings-input{flex:1;background:rgba(5,6,15,.8);border:1px solid var(--border);border-radius:8px;padding:.6rem .85rem;color:var(--text);font-family:'DM Mono';font-size:.78rem;outline:none;transition:border-color .2s}
+.settings-input:focus{border-color:rgba(0,229,255,.45)}
+.settings-eye{width:34px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.04);color:var(--dim);font-size:.85rem;flex-shrink:0;transition:.2s;cursor:pointer}
+.settings-eye:hover{color:var(--text);border-color:rgba(0,229,255,.3)}
+.settings-status-bar{display:flex;align-items:center;gap:.7rem;padding:.65rem .9rem;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid var(--border);margin-bottom:1.4rem;min-height:2.6rem}
+.sst-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:.3s}
+.sst-dot.ok{background:var(--green);box-shadow:0 0 7px rgba(110,231,183,.55)}
+.sst-dot.err{background:var(--red);box-shadow:0 0 7px rgba(255,93,115,.55)}
+.sst-dot.testing{background:var(--amber);animation:pulse .8s infinite}
+.sst-text{font-family:'DM Mono';font-size:.65rem;letter-spacing:.08em;color:var(--muted)}
+.settings-actions{display:flex;gap:.75rem;justify-content:flex-end}
+.stn-btn{padding:.55rem 1.3rem;border-radius:8px;font-family:'DM Mono';font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:.25s}
+.stn-btn.primary{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.4);color:var(--cyan)}
+.stn-btn.primary:hover{background:rgba(0,229,255,.2);box-shadow:0 0 12px rgba(0,229,255,.2)}
+.stn-btn.secondary{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted)}
+.stn-btn.secondary:hover{color:var(--text);border-color:rgba(255,255,255,.15)}
+@keyframes slideIn{to{transform:translateX(0);opacity:1}}
+@keyframes drift{from{margin-left:calc(var(--fragmentation)*-18px);margin-top:calc(var(--fragmentation)*12px)}to{margin-left:calc(var(--fragmentation)*26px);margin-top:calc(var(--fragmentation)*-18px)}}
+@keyframes shake{from{margin-left:-2px}to{margin-left:2px}}
+@keyframes scatter{from{transform:translate(0,0) scale(.8);opacity:.3}to{transform:translate(var(--x),var(--y)) scale(1.4);opacity:.85}}
+@keyframes lock{to{opacity:.5;transform:scale(1)}}
+@keyframes wordIn{to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes glow{45%{text-shadow:0 0 42px rgba(0,229,255,.85)}100%{text-shadow:0 0 18px rgba(0,229,255,.35)}}
+@keyframes snap1{to{left:18%;top:25%;transform:rotate(0deg);border-color:rgba(0,229,255,.22);background:rgba(0,229,255,.045)}}
+@keyframes snap2{to{right:18%;top:25%;transform:rotate(0deg);border-color:rgba(0,229,255,.22);background:rgba(0,229,255,.045)}}
+@keyframes snap3{to{left:18%;bottom:25%;transform:rotate(0deg);border-color:rgba(0,229,255,.22);background:rgba(0,229,255,.045)}}
+@keyframes snap4{to{right:18%;bottom:25%;transform:rotate(0deg);border-color:rgba(0,229,255,.22);background:rgba(0,229,255,.045)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:820px){
+  .slide{padding:5vh 6vw 10vh}
+  .split,.throughput,.dial-wrap,.codex-arch{grid-template-columns:1fr;gap:1.2rem}
+  .grid2,.grid4,.triptych{grid-template-columns:1fr}
+  #track{display:none}.cine{min-height:360px;padding:1.2rem;border-radius:20px}
+  .ctx{width:140px;min-height:78px;padding:.7rem}
+  .principle br{display:none}#nav{bottom:1rem}#toolbar{bottom:5.5rem;right:1rem}
+  .dial{width:220px;height:220px}#codexGraph{min-height:300px}
+  .terminal-box{height:90vh;width:95%}
+  .settings-card{width:95%}
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div class="nebula"></div>
+<div id="memory-layer"></div>
+<div id="progress"></div>
+<div id="track"></div>
+
+<div id="deck">
+
+<section class="slide active" data-section="intro" data-title="Title">
+<div class="slide-inner center">
+  <div class="label">A Documentary on Cognitive Architecture</div>
+  <h1 class="title" style="font-size:clamp(1.85rem,5.2vw,4rem)">Cognition Requires<br><span class="accent">Infrastructure</span></h1>
+  <svg width="320" height="180" viewBox="0 0 320 180" style="margin-top:.4rem"><ellipse cx="160" cy="90" rx="130" ry="55" stroke="rgba(0,229,255,.15)" stroke-width="1" stroke-dasharray="4 6" fill="none"/><ellipse cx="160" cy="90" rx="85" ry="35" stroke="rgba(181,123,238,.15)" stroke-width="1" stroke-dasharray="3 5" fill="none"/><circle cx="160" cy="90" r="14" fill="rgba(0,229,255,.15)" stroke="rgba(0,229,255,.5)"/><circle cx="160" cy="90" r="5" fill="#00e5ff"/><circle cx="290" cy="90" r="5" fill="rgba(0,229,255,.6)"/><circle cx="30" cy="90" r="4" fill="rgba(181,123,238,.6)"/><circle cx="160" cy="35" r="4" fill="rgba(255,179,71,.6)"/><circle cx="160" cy="145" r="3" fill="rgba(110,231,183,.6)"/></svg>
+  <p class="body" style="max-width:650px">An inquiry into nonlinear cognition, creative throughput, and the systems required to convert vision into shipped reality. Edward is the case study. Cognition is the subject.</p>
+  <div class="tags" style="justify-content:center"><span class="tag c">Press &#8594; to begin</span><span class="tag">? for shortcuts</span><span class="tag v">M for map</span><span class="tag a">S for sound</span><span class="tag c">C for Diagnostic Console</span></div>
+</div>
+</section>
+
+<section class="slide" data-section="intro" data-title="Who is Edward Emory?">
+<div class="slide-inner"><div class="label">Introduction &#183; 01</div>
+  <h1 class="title">Who is <span class="accent">Edward Emory?</span></h1>
+  <div class="split"><div class="split-text"><p class="body"><strong>Autistic astrophotographer, AI builder, and systems thinker</strong> working at the intersection of art, engineering, cognition, and narrative architecture.</p><p class="body">This is a story about <strong>configuration</strong>, not superiority. A specific cognitive stack that is powerful, nonlinear, and structurally mismatched with conventional execution tooling.</p><div class="tags"><span class="tag c">Artist</span><span class="tag v">Architect</span><span class="tag">Translator</span><span class="tag a">Systems Thinker</span></div></div>
+  <div class="venn"><div class="vc art">Art</div><div class="vc sys">Systems</div><div class="vc cog">Cognition</div><div class="venn-core">Edward</div></div></div>
+</div>
+</section>
+
+<section class="slide" data-section="intro" data-title="Why a Cognitive Audit?">
+<div class="slide-inner"><div class="label">Introduction &#183; 02</div><h1 class="title">Why a <span class="accent">Cognitive Audit?</span></h1><p class="body">The Legacy Codex emerged from lived friction: hyperfocus bursts, crashes, fragmentation, and a slow realization that cognition itself may require <strong>engineered infrastructure.</strong></p><div class="flow"><span class="node r">Friction</span><span class="arrow">&#8594;</span><span class="node">Inquiry</span><span class="arrow">&#8594;</span><span class="node">v1&#8211;v16</span><span class="arrow">&#8594;</span><span class="node v">Map = Territory</span><span class="arrow">&#8594;</span><span class="node a">Legacy Codex</span></div><p class="body">The audit exists to <strong>expose the architecture</strong> &#8212; not to glorify the chaos.</p></div>
+</section>
+
+<section class="slide" data-section="intro" data-title="The Mismatch">
+<div class="slide-inner"><div class="label">Introduction &#183; 03</div><h1 class="title">What happens<br>when <span class="accent">throughput</span> meets <span class="amber">bandwidth</span>?</h1><p class="body">A structural mismatch appears between how fast architecture generates and how slowly execution can instantiate it.</p><div class="flow"><span class="node">Pattern Synthesis Engine</span><span class="arrow">&#8594;</span><span class="node a">Narrow Output Pipe</span><span class="arrow">&#8594;</span><span class="node r">Overload</span></div><p class="body" style="font-size:.86rem">Wide input. Narrow output. Architecture outruns the body, the calendar, the tools, the day.</p></div>
+</section>
+
+<section class="slide" data-section="intro" data-title="The Journey Map">
+<div class="slide-inner"><div class="label">Introduction &#183; 04</div><h1 class="title">The <span class="accent">Journey Map</span></h1><p class="body">From undisciplined creative energy to engineered cognitive infrastructure. Six phases, one throughline.</p><div class="timeline"><div class="tl-row"><div class="tl-year">2012</div><div class="tl-text"><strong>Discovery.</strong> Deep-dives into astrophotography, technical systems, and creative practice.</div></div><div class="tl-row"><div class="tl-year">2017</div><div class="tl-text"><strong>Friction.</strong> Hyperfocus bursts produce extraordinary output followed by long crashes.</div></div><div class="tl-row"><div class="tl-year">2022</div><div class="tl-text"><strong>Inquiry.</strong> "What if my brain isn't broken &#8212; what if the tools are wrong?"</div></div><div class="tl-row"><div class="tl-year">2024</div><div class="tl-text"><strong>Prototype.</strong> v1&#8211;v16 experiments with Notion, AI agents, executive-function prosthetics.</div></div><div class="tl-row"><div class="tl-year">2025</div><div class="tl-text"><strong>Legacy Codex.</strong> The system stabilizes. Map becomes territory. The architecture ships.</div></div><div class="tl-row"><div class="tl-year">2026</div><div class="tl-text"><strong>Proof Engine.</strong> From internal coherence to external validation. Real users. Real artifacts.</div></div></div></div>
+</section>
+
+<section class="slide interstitial black-frame" data-section="intro" data-title="Interstitial">
+<div class="int-inner"><div class="int-line" style="color:rgba(255,255,255,.55)">No architecture survives first contact with the body.</div><div class="int-sub">Pause</div></div>
+</section>
+
+<section class="slide" data-section="architect" data-title="Architecture-First">
+<div class="slide-inner"><div class="label">The High-Throughput Architect &#183; 01</div><h1 class="title">Architecture-<span class="accent">First</span> Thinking</h1><p class="body">Default mode: operate at the level of <strong>systems, interfaces, and narratives</strong> before steps, checklists, or tasks. The finished experience appears first; the path is reverse-engineered.</p><div class="grid2"><div class="card c"><div class="k">Vision</div><div class="d">The final experience appears before the implementation path.</div></div><div class="card v"><div class="k">Systems</div><div class="d">Interfaces, workflows, and constraints become visible early.</div></div><div class="card a"><div class="k">Narratives</div><div class="d">Meaning and emotional arc are part of the architecture.</div></div><div class="card g"><div class="k">Agents</div><div class="d">Tools become extensions of cognitive routing.</div></div></div></div>
+</section>
+
+<section class="slide" data-section="architect" data-title="End-State First">
+<div class="slide-inner"><div class="label">The High-Throughput Architect &#183; 02</div><h1 class="title">End-State-<span class="accent">First</span> Cognition</h1><p class="body">Edward sees the <strong>finished experience first</strong>: the system in production, the user's interaction, the emotional arc. Tasks are inferred backward from the envisioned end state.</p><div class="flow" style="flex-direction:row-reverse;justify-content:flex-end"><span class="node">Final Experience</span><span class="arrow">&#8592;</span><span class="node">Architecture</span><span class="arrow">&#8592;</span><span class="node">Interfaces</span><span class="arrow">&#8592;</span><span class="node">Workflows</span><span class="arrow">&#8592;</span><span class="node dim">Tasks</span></div></div>
+</section>
+
+<section class="slide" data-section="architect" data-title="Pattern Synthesis">
+<div class="slide-inner"><div class="label">The High-Throughput Architect &#183; 03</div><h1 class="title">Pattern <span class="accent">Synthesis</span></h1><p class="body">Rapidly map analogies across domains into unified architectures. The brain behaves like a constantly-updating mental graph.</p><div class="tags"><span class="tag c">Astrophotography</span><span class="tag v">AI Agents</span><span class="tag a">EEG / Neurofeedback</span><span class="tag">OS Design</span><span class="tag c">Business Ops</span><span class="tag v">Narrative</span></div></div>
+</section>
+
+<section class="slide" data-section="architect" data-title="Translator">
+<div class="slide-inner"><div class="label">The High-Throughput Architect &#183; 04</div><h1 class="title">Translator &amp; <span class="accent">Narrative Framer</span></h1><p class="body">The strongest skill is translation: turning complex systems into coherent, emotionally resonant stories and interfaces.</p><div class="flow"><span class="node a">Raw Architecture</span><span class="arrow">&#8594;</span><span class="node">Framed Narrative</span><span class="arrow">&#8594;</span><span class="node g">Actionable Plan</span></div></div>
+</section>
+
+<section class="slide" data-section="rare" data-title="It's the Configuration">
+<div class="slide-inner"><div class="label">Why the Brain Feels Rare &#183; 01</div><h1 class="title">It's the <span class="accent">Configuration</span></h1><p class="body">The rarity is not ego, IQ mythology, or chosen-one narratives. It is the <strong>specific blend</strong> of cognitive roles operating simultaneously.</p><div class="stack"><div class="stack-row" style="animation-delay:.05s;color:var(--cyan);border-color:rgba(0,229,255,.3)">Artist</div><div class="stack-row" style="animation-delay:.1s;color:var(--violet);border-color:rgba(181,123,238,.3)">Engineer</div><div class="stack-row" style="animation-delay:.15s;color:var(--amber);border-color:rgba(255,179,71,.3)">Architect</div><div class="stack-row" style="animation-delay:.2s;color:var(--green);border-color:rgba(110,231,183,.3)">Strategist</div><div class="stack-row" style="animation-delay:.25s">Philosopher</div><div class="stack-row" style="animation-delay:.3s;color:var(--violet)">Narrative Framer</div></div></div>
+</section>
+
+<section class="slide" data-section="rare" data-title="Designing Systems">
+<div class="slide-inner"><div class="label">Why the Brain Feels Rare &#183; 02</div><h1 class="title">Designing <span class="accent">Systems</span>,<br>Not Tasks</h1><p class="body">Most people solve tasks. Edward instinctively designs the systems that govern tasks. The default question is: <strong>What architecture makes this problem disappear?</strong></p><div class="flow"><span class="node">System</span><span class="arrow">&#8594;</span><span class="node">Generates Tasks</span><span class="arrow">&#8594;</span><span class="node">Observes Outcome</span><span class="arrow">&#8594;</span><span class="node v">Refines System</span><span class="arrow">&#8617;</span></div></div>
+</section>
+
+<section class="slide interstitial" data-section="rare" data-title="Interstitial">
+<div class="int-inner"><div class="terminal-flash">&gt; running cognitive_diagnostic.sh<br>&gt; throughput: 94th percentile<br>&gt; executive_function_bandwidth: constrained<br>&gt; output_gap: active<br>&gt; fragmentation_risk: elevated<br>&gt; system_verdict: mismatch detected<br>&gt; recommendation: externalize state</div><div class="int-sub">Diagnostic fragment &#183; System log</div></div>
+</section>
+
+<section class="slide" data-section="shadow" data-title="Output Gap">
+<div class="slide-inner throughput"><div><div class="label">The Shadow Side &#183; 01</div><h1 class="title">Architecture outruns <span class="amber">execution bandwidth</span>.</h1><p class="body">Drag the slider to widen the gap between what the mind can synthesize and what the day can actually ship. The mismatch is structural, not moral.</p></div>
+<div class="cine gap-sim"><svg id="gapSvg" viewBox="0 0 520 280" preserveAspectRatio="none"><defs><linearGradient id="gapFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,179,71,.18)"/><stop offset="100%" stop-color="rgba(255,179,71,0)"/></linearGradient></defs><path id="gapArea" fill="url(#gapFill)" d=""/><path id="pathCap" stroke="#00e5ff" stroke-width="3" fill="none" opacity=".75" d=""/><path id="pathOut" stroke="#ffb347" stroke-width="4" fill="none" d="" style="filter:drop-shadow(0 0 14px rgba(255,179,71,.5))"/><text x="500" y="30" text-anchor="end" fill="#ffb347" font-family="DM Mono" font-size="10" letter-spacing="1">ARCHITECTURE</text><text x="500" y="245" text-anchor="end" fill="#00e5ff" font-family="DM Mono" font-size="10" letter-spacing="1">CAPACITY</text></svg><div class="gap-controls"><input type="range" min="0" max="100" value="50" class="gap-slider" id="gapSlider"/><div class="gap-readout"><span>Architecture</span><b id="gapReadout">Output gap: 50%</b><span>Capacity</span></div></div></div></div>
+</section>
+
+<section class="slide" data-section="shadow" data-title="Friction is Structural">
+<div class="slide-inner"><div class="label">The Shadow Side &#183; 02</div><h1 class="title">Execution Friction <span style="color:var(--dim)">&#8800;</span> <span class="amber">Laziness</span></h1><p class="body">Hyperfocus bursts, long crashes, overwhelm from too many partially-instantiated systems, sequencing paralysis once the architecture is known. <strong>Structural phenomenon, not character flaw.</strong></p><div class="flow"><span class="node a">Architecture</span><span class="arrow">&#8594;</span><span class="node">Execution Attempt</span><span class="arrow">&#8594;</span><span class="node r">Overwhelm</span><span class="arrow">&#8594;</span><span class="node dim">Avoidance</span><span class="arrow">&#8594;</span><span class="node a dim">More Architecture</span></div></div>
+</section>
+
+<section class="slide" data-section="shadow" data-title="State Explosion">
+<div class="slide-inner throughput"><div><div class="label">The Shadow Side &#183; 03</div><h1 class="title">State explosion becomes <span class="amber">spatial instability</span>.</h1><p class="body">Multiple AI contexts, documents, branches, and partial workflows exceed working-memory capacity. Context doesn't disappear. It drifts, competes, and fractures.</p></div><div class="cine frag"><div class="ctx c1"><b>Context A</b><span>Old project state still active.</span></div><div class="ctx c2"><b>Branch X</b><span>Different model, different assumptions.</span></div><div class="ctx c3"><b>Agent Log</b><span>Useful but not verified.</span></div><div class="ctx c4"><b>Lost Doc</b><span>Architecture without continuity.</span></div><div class="ctx c5"><b>Working Memory</b><span>Trying to hold everything at once.</span></div></div></div>
+</section>
+
+<section class="slide" data-section="shadow" data-title="Four Root Causes">
+<div class="slide-inner"><div class="label">The Shadow Side &#183; 04</div><h1 class="title">Four <span class="accent">Root Causes</span></h1><p class="body">The mismatches between high-throughput cognition and standard execution tooling.</p><div class="grid2"><div class="card a"><div class="k">Working Memory Overflow</div><div class="d">Holding architecture + open loops + context fragments exceeds buffer.</div></div><div class="card c"><div class="k">Sequence Paralysis</div><div class="d">Once the full architecture is known, choosing the first granular step is agonizing.</div></div><div class="card v"><div class="k">Context Switching Cost</div><div class="d">Each domain shift burns cognitive fuel. Nonlinear minds shift domains constantly.</div></div><div class="card g"><div class="k">Feedback Latency</div><div class="d">Architecture wants immediate proof. Execution delivers proof on calendar time.</div></div></div></div>
+</section>
+
+<section class="slide" data-section="shadow" data-title="The Human Cost">
+<div class="slide-inner center"><div class="label">The Shadow Side &#183; 05</div><h1 class="title">The Human <span class="amber">Cost</span></h1><div class="tags" style="justify-content:center"><span class="tag a">Overwhelm</span><span class="tag a">Guilt</span><span class="tag a">Stalls</span><span class="tag a">Repeated Friction</span><span class="tag c">Capacity</span><span class="tag c">Vision</span><span class="tag v">Synthesis</span></div><p class="body" style="max-width:590px"><em>"I understand everything that needs to happen right now &#8212; I just don't know which to tackle first."</em></p><p class="body" style="font-size:.82rem">Configuration, not character.</p></div>
+</section>
+
+<section class="slide" data-section="shadow" data-title="The Body Remembers">
+<div class="slide-inner"><div class="label">The Body &#183; 01</div><h1 class="title">The <span class="amber">Body</span> Remembers</h1><p class="body">No architecture survives first contact with exhaustion. The system may hold state &#8212; but the body holds the cost.</p><div class="embodied-item"><div class="ei-label">03:47 AM</div><div class="ei-text">Lying awake. Architecture spinning. <strong>Too many systems partially instantiated.</strong> The brain won't release the graph.</div></div><div class="embodied-item"><div class="ei-label">Namibia &#183; 4th night</div><div class="ei-text">Setting up telescope at 2 AM in 38&#176;F desert wind. <strong>Carrying technical precision while exhausted.</strong> The images will be extraordinary. The body doesn't care.</div></div><div class="embodied-item"><div class="ei-label">Trader Joe's &#183; Tuesday afternoon</div><div class="ei-text"><strong>Carrying architecture while stocking shelves.</strong> The Codex doesn't fit in the break room. The contrast is the point.</div></div></div>
+</section>
+
+<section class="slide" data-section="shadow" data-title="Burnout">
+<div class="slide-inner center"><div class="label">The Body &#183; 02</div><h1 class="title" style="color:var(--amber)">What the system<br>doesn't show you</h1><div style="max-width:600px;text-align:left;margin:0 auto"><div class="embodied-item"><div class="ei-label">The crash</div><div class="ei-text">Hyperfocus burns fuel the system doesn't track. <strong>Three days of extraordinary output. Ten days of recovery.</strong> Not laziness. Metabolic reality.</div></div><div class="embodied-item"><div class="ei-label">The isolation</div><div class="ei-text"><strong>Architecture doesn't keep you company.</strong> Systems are brilliant companions and terrible friends. The loneliness of internal complexity no one else can see.</div></div><div class="embodied-item"><div class="ei-label">The return</div><div class="ei-text">Every time. <strong>You come back.</strong> Not because the system is perfect. Because you've built something that can catch you when you fall.</div></div></div></div>
+</section>
+
+<section class="slide interstitial black-frame" data-section="shadow" data-title="Interstitial">
+<div class="int-inner"><div class="int-line" style="color:rgba(255,255,255,.4);font-size:clamp(.9rem,2vw,1.3rem)">Some architectures are built from the debris of burnout.</div><div class="int-sub">Silence</div></div>
+</section>
+
+<section class="slide" data-section="codex" data-title="Birth of the Codex">
+<div class="slide-inner"><div class="label">Birth of the Legacy Codex &#183; 01</div><h1 class="title">The emergence of<br>the <span class="accent">Codex</span></h1><p class="body">Not from tool-fetishism or productivity theater. From a <strong>survival adaptation</strong>: keeping high-level cognition usable in the face of fragmentation and fatigue.</p><div class="flow"><span class="node r">Friction</span><span class="arrow">&#8594;</span><span class="node">Inquiry</span><span class="arrow">&#8594;</span><span class="node">v1&#8211;v16</span><span class="arrow">&#8594;</span><span class="node v">Map = Territory</span><span class="arrow">&#8594;</span><span class="node a">Legacy Codex</span></div></div>
+</section>
+
+<section class="slide" data-section="codex" data-title="Codex Architecture">
+<div class="slide-inner"><div class="label">Birth of the Legacy Codex &#183; 02</div><h1 class="title">The <span class="accent">Four Layers</span></h1><p class="body">An external prosthetic mind. Click each layer to explore its role.</p><div class="codex-arch"><div class="codex-layers" id="codexLayers"><div class="codex-layer active" data-layer="memory"><div class="lk">Memory &#183; Layer 1</div><div class="ln">Holds state across sessions</div></div><div class="codex-layer" data-layer="governance"><div class="lk">Governance &#183; Layer 2</div><div class="ln">Enforces constraints &amp; intent</div></div><div class="codex-layer" data-layer="routing"><div class="lk">Routing &#183; Layer 3</div><div class="ln">Assigns context &amp; sequences work</div></div><div class="codex-layer" data-layer="recovery"><div class="lk">Recovery &#183; Layer 4</div><div class="ln">Restart paths after collapse</div></div></div><div class="codex-detail" id="codexDetail"><h3 id="detTitle">Memory Layer</h3><p id="detDesc">Preserves project state, intent, history, and decision context between sessions. The system remembers what Edward was doing so Edward doesn't have to.</p><ul id="detList"><li>Status reports as compressed checkpoints</li><li>Project &amp; knowledge intake DB</li><li>Quick Notes + Notebooks for raw thought</li><li>Working-set memory across agents</li></ul></div></div></div>
+</section>
+
+<section class="slide" data-section="codex" data-title="Codex Graph">
+<div class="slide-inner"><div class="label">Birth of the Legacy Codex &#183; 03</div><h1 class="title">The <span class="accent">Living Graph</span></h1><p class="body">Every project, agent, tool, and memory node in the Codex ecosystem. Drag nodes to shift state. The graph is the territory.</p><div class="codex-graph-wrap"><canvas id="codexGraph"></canvas><div class="graph-tooltip" id="graphTooltip"></div></div></div>
+</section>
+
+<section class="slide" data-section="codex" data-title="Core Principle">
+<div class="slide-inner"><div class="label" style="text-align:center">Core Principle</div><div class="cine principle-wrap"><div class="gridlock"></div><div class="lf lf1"></div><div class="lf lf2"></div><div class="lf lf3"></div><div class="lf lf4"></div><div class="principle"><span class="w">The</span> <span class="w">system</span> <span class="w">should</span> <span class="w hold">hold</span> <span class="w hold">the</span> <span class="w hold">state,</span><br><span class="w">not</span> <span class="w">Edward.</span></div></div><p class="body" style="text-align:center;margin:auto">This decouples progress from day-to-day cognitive variability and lets nonlinear bursts accumulate into coherent, persistent systems.</p></div>
+</section>
+
+<section class="slide interstitial" data-section="codex" data-title="Interstitial">
+<div class="int-inner"><div class="terminal-flash" style="color:var(--amber)">&gt; 2025.03.14 &#8212; 02:41 AM<br>&gt; "What if I stopped trying to be organized<br>&gt;  and started building external infrastructure<br>&gt;  that holds what my working memory can't?"<br>&gt; <br>&gt; 2025.06.22 &#8212; 11:08 PM<br>&gt; "v12 works. Three days without a crash.<br>&gt;  This might actually be a system, not a hack."</div><div class="int-sub">Notebook fragments &#183; Unedited</div></div>
+</section>
+
+<section class="slide" data-section="recursive" data-title="Layers Beneath Layers">
+<div class="slide-inner"><div class="label">Recursive Architecture &#183; 01</div><h1 class="title">Layers beneath <span class="accent">layers</span></h1><p class="body">Each solved coordination problem reveals a deeper one: task system &#8594; governance &#8594; meta-governance &#8594; agent orchestration &#8594; memory weighting &#8594; contradiction detection &#8594; identity-aware routing.</p><div class="tags"><span class="tag c">Task System</span><span class="tag v">Governance</span><span class="tag c">Agent Orchestration</span><span class="tag a">Memory Weighting</span><span class="tag">Contradiction Detection</span></div></div>
+</section>
+
+<section class="slide" data-section="recursive" data-title="Depth Dial">
+<div class="slide-inner"><div class="label">Recursive Architecture &#183; 02</div><h1 class="title">The <span class="accent">Depth Dial</span></h1><p class="body">Not all recursion is pathological. Modulating depth is a skill. Click the depths to feel how they read.</p><div class="dial-wrap"><div><div class="dial" id="dial"><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2"/><circle id="dialFill" cx="100" cy="100" r="80" fill="none" stroke="#00e5ff" stroke-width="3" stroke-dasharray="502" stroke-dashoffset="352" transform="rotate(-90 100 100)" style="filter:drop-shadow(0 0 12px rgba(0,229,255,.5));transition:.5s var(--ease)"/><g id="dialTicks"></g></svg><div class="dial-readout"><div class="dial-num" id="dialNum">3</div><div class="dial-tag">DEPTH</div></div></div><div class="dial-controls"><button class="dial-btn" data-d="1">1</button><button class="dial-btn" data-d="2">2</button><button class="dial-btn active" data-d="3">3</button><button class="dial-btn" data-d="5">5</button><button class="dial-btn" data-d="7">7+</button></div></div><div class="dial-status" id="dialStatus"><div class="s-name" id="sName" style="color:var(--violet)">Optimal &#183; Depth 3</div><div class="s-desc" id="sDesc">The sweet spot for systems thinking. Deep enough to capture structure, shallow enough to ship. Architecture serves reality.</div></div></div></div>
+</section>
+
+<section class="slide" data-section="recursive" data-title="Reality as Constraint">
+<div class="slide-inner"><div class="label">Recursive Architecture &#183; 03</div><h1 class="title">Reality as a <span class="accent">Design Constraint</span></h1><p class="body">The Codex must be disciplined by proof, not imagination alone. Reality feeds upward into architecture and grounds it.</p><div class="flow"><span class="node">Architecture</span><span class="arrow">&#8594;</span><span class="node">Prototype</span><span class="arrow">&#8594;</span><span class="node">Reality Signal</span><span class="arrow">&#8594;</span><span class="node v">Codex Update</span><span class="arrow">&#8594;</span><span class="node">Architecture &#8617;</span></div><div class="tags"><span class="tag c">Users</span><span class="tag">Deploys</span><span class="tag a">Metrics</span><span class="tag v">Conversations</span></div></div>
+</section>
+
+<!-- ✅ FIXED: Replaced fake shipped artifacts with honest reality signal -->
+<section class="slide interstitial" data-section="recursive" data-title="Reality Signal">
+<div class="int-inner"><div class="terminal-flash" style="color:var(--cyan)">&gt; REALITY SIGNAL // MAY 2026<br>&gt; &#9679; Photography Business &#8212; active &#183; prints via @Freddy_v<br>&gt; &#9679; Legacy Codex v37 &#8212; deployed &#183; legacy-codex.vercel.app<br>&gt; &#9680; Artful Intelligence V1 &#8212; content done &#183; storefront built &#183; not deployed<br>&gt; &#9680; Namibia Workshop &#8212; outreach kit ready &#183; calls pending<br>&gt; &#9675; Photography RAG &#8212; LangChain + FAISS &#183; prototype<br>&gt; &#9675; Muse 2 EEG &#8212; FastAPI pipeline &#183; Docker errors active<br>&gt; &#8212; CouncilDashboard &#8212; frozen<br>&gt; <br>&gt; PROOF LOOPS ACTIVE: 2<br>&gt; MYTHOLOGY PRESENT: 0<br>&gt; REALITY CONTACT: MAINTAINED</div><div class="int-sub">Reality signal &#183; Honest status &#183; May 2026</div></div>
+</section>
+
+<section class="slide" data-section="autonomy" data-title="Four Layers of Autonomy">
+<div class="slide-inner"><div class="label">Autonomy Architecture &#183; 01</div><h1 class="title">Four layers of <span class="accent">autonomy</span></h1><p class="body">Autonomy isn't binary. Cognitive infrastructure enables graduated delegation across four interdependent layers.</p><div class="grid4"><div class="card c"><div class="k">Self</div><div class="d">Executive function, habit loops, energy management, decision protocols.</div></div><div class="card v"><div class="k">Culture</div><div class="d">Social contracts, team norms, reputation signals, trust scaffolds.</div></div><div class="card a"><div class="k">Structure</div><div class="d">Notion, agents, databases, dashboards, governance rules.</div></div><div class="card g"><div class="k">Institution</div><div class="d">Market fit, revenue loops, legal entities, public artifacts.</div></div></div></div>
+</section>
+
+<section class="slide" data-section="autonomy" data-title="From Load to Delegation">
+<div class="slide-inner"><div class="label">Autonomy Architecture &#183; 02</div><h1 class="title">From <span class="accent">cognitive load</span><br>to <span class="violet">delegated execution</span></h1><p class="body">The Legacy Codex is a bridge: internal architecture &#8594; externalized systems &#8594; autonomous execution pipelines.</p><div class="flow"><span class="node r">Internal: in head</span><span class="arrow">&#8594;</span><span class="node a">Externalized: in tools</span><span class="arrow">&#8594;</span><span class="node v">Automated: agents run</span><span class="arrow">&#8594;</span><span class="node g">Autonomous: self-sustaining</span></div></div>
+</section>
+
+<section class="slide" data-section="future" data-title="The Realization">
+<div class="slide-inner center"><div class="label">The Realization</div><h1 class="title">Cognition Requires<br><span class="accent">Infrastructure</span></h1><p class="body" style="max-width:660px">Most people force themselves into pre-existing systems. Edward instinctively engineered support structures that dignify nonlinear cognition: externalizing continuity, reducing switching costs, and preserving complex thought graphs.</p><div class="tags" style="justify-content:center"><span class="tag c">Support</span><span class="tag v">Continuity</span><span class="tag a">Constraint</span><span class="tag">Not Control</span></div></div>
+</section>
+
+<section class="slide" data-section="future" data-title="Proof over Infinity">
+<div class="slide-inner"><div class="label">The Strategic Shift &#183; 01</div><h1 class="title">From infinite architecture<br>to <span class="accent">proof</span></h1><p class="body">From designing infinite internal architectures toward constrained proof loops grounded in deployed systems and real users. The Codex evolves by serving actual workflows, not by perfecting blueprints.</p><div class="grid2"><div class="card a"><div class="k">Fractal Expansion</div><div class="d">More architecture creates more architecture.</div></div><div class="card c"><div class="k">Proof Loop</div><div class="d">Build &#8594; Ship &#8594; Observe &#8594; Adjust.</div></div><div class="card g"><div class="k">Keep / Kill</div><div class="d">Reality decides what survives.</div></div><div class="card v"><div class="k">Codex Update</div><div class="d">The system evolves from evidence, not vibes.</div></div></div></div>
+</section>
+
+<section class="slide" data-section="future" data-title="The True Role">
+<div class="slide-inner"><div class="label">The Future</div><h1 class="title">The <span class="accent">True Role</span></h1><p class="body">Neither micromanager of implementation detail, nor prisoner of infrastructure recursion. The highest-leverage position is the intersection of three roles.</p><div class="triptych"><div class="tri"><div class="tri-icon">&#9672;</div><div class="tri-title">Architect</div><div class="tri-desc">Designs the blueprint and defines the shape of systems before they are built.</div></div><div class="tri" style="border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.05)"><div class="tri-icon" style="color:var(--cyan)">&#9673;</div><div class="tri-title" style="color:var(--cyan)">Creative Director</div><div class="tri-desc">Maintains aesthetic and narrative coherence across the system.</div></div><div class="tri"><div class="tri-icon" style="color:var(--violet)">&#10234;</div><div class="tri-title" style="color:var(--violet)">Translator</div><div class="tri-desc">Bridges systems, humans, and stories into actionable form.</div></div></div></div>
+</section>
+
+<section class="slide" data-section="future" data-title="Closing">
+<div class="slide-inner center"><div class="label">From Vision to Reality</div><div class="closing"><div class="cq">"The goal was never to build infinite systems. The goal was to preserve coherence long enough to turn vision into reality."</div><div class="cq">"The Codex is strongest when it governs real systems serving real humans."</div><div class="cq" style="color:var(--cyan)">"The future of nonlinear cognition may not be discipline alone &#8212; but intelligently engineered support systems."</div></div></div>
+</section>
+
+<section class="slide" data-section="future" data-title="Final Collapse">
+<div class="slide-inner center final-collapse"><div class="label" style="opacity:.5">Reduction</div><div class="final-line">Build systems that<br><span class="accent">preserve reality contact.</span></div><div class="final-sub">The system learns restraint.</div></div>
+</section>
+
+<section class="slide interstitial black-frame" data-section="future" data-title="Black">
+<div class="int-inner"><div class="int-line" style="font-size:clamp(.7rem,1.6vw,1rem);color:rgba(255,255,255,.25);animation:pulse 3s ease-in-out infinite;opacity:1">Press Home to restart</div></div>
+</section>
+
+</div><!-- /deck -->
+
+<div id="nav">
+  <button class="btn" id="prev">&#8592;</button>
+  <div id="counter">01 / total</div>
+  <button class="btn" id="next">&#8594;</button>
+</div>
+
+<div id="toolbar">
+  <button class="tb" id="playBtn" title="Autoplay (P)">&#9654;</button>
+  <button class="tb" id="soundToggle" title="Sound (S)">&#9834;</button>
+  <button class="tb" id="terminalBtn" title="Diagnostic Terminal (C)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+  </button>
+  <button class="tb" id="settingsBtn" title="API Settings">&#9881;</button>
+  <button class="tb" id="mapBtn" title="Slide Map (M)">&#9638;</button>
+  <button class="tb" id="helpBtn" title="Shortcuts (?)">?</button>
+</div>
+
+<!-- HELP -->
+<div id="help">
+  <div class="help-card">
+    <h3>Keyboard shortcuts</h3>
+    <div class="help-row"><span>Next slide</span><span class="kbd">&#8594;</span></div>
+    <div class="help-row"><span>Previous slide</span><span class="kbd">&#8592;</span></div>
+    <div class="help-row"><span>Toggle autoplay</span><span class="kbd">P</span></div>
+    <div class="help-row"><span>Toggle sound</span><span class="kbd">S</span></div>
+    <div class="help-row"><span>Diagnostic Terminal</span><span class="kbd">C</span></div>
+    <div class="help-row"><span>Open slide map</span><span class="kbd">M</span></div>
+    <div class="help-row"><span>API Settings</span><span class="kbd">&#9881;</span></div>
+    <div class="help-row"><span>First / Last slide</span><span class="kbd">Home / End</span></div>
+    <div class="help-row"><span>Close panels</span><span class="kbd">Esc</span></div>
+  </div>
+</div>
+
+<!-- MINIMAP -->
+<div id="minimap">
+  <div class="mm-grid" id="mmGrid"></div>
+</div>
+
+<!-- DIAGNOSTIC TERMINAL -->
+<div id="codexTerminal">
+  <div class="terminal-box">
+    <div class="terminal-header">
+      <div class="terminal-status">
+        <span class="status-dot" id="termDot"></span>
+        <span id="termStatusText">LEGACY CODEX // DIAGNOSTIC TERMINAL v3.0</span>
+      </div>
+      <div class="terminal-close" id="termCloseBtn">ESC // CLOSE</div>
+    </div>
+    <div class="terminal-body">
+      <div class="terminal-intro" id="termIntro">
+        &gt; System ready. Describe your current executive congestion or task friction.<br>
+        &gt; The Codex model will assess state overflow and output architectural guardrails.<br>
+        &gt; No API key? Open &#9881; settings in the toolbar to configure.
+      </div>
+      <div class="terminal-input-wrap">
+        <textarea class="terminal-textarea" id="termInput" placeholder="Ex: I have 15 tabs open — Namibia workshop planning, Muse 2 EEG scripts, Sony camera configs. Working memory is blown. I don't know where to start."></textarea>
+      </div>
+      <div class="terminal-btn-row">
+        <button class="terminal-run-btn" id="termRunBtn">Run Diagnostic</button>
+      </div>
+      <div class="terminal-output" id="termOutput">
+        &gt; SYSTEM IDLE. WAITING FOR COGNITIVE INPUT...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ NEW: API SETTINGS PANEL -->
+<div id="settings">
+  <div class="settings-card">
+    <h3>&#9881; API Configuration</h3>
+
+    <div class="settings-field">
+      <label>Gemini API Key</label>
+      <div class="settings-input-row">
+        <input type="password" class="settings-input" id="apiKeyInput" placeholder="AIza..." autocomplete="off" spellcheck="false"/>
+        <button class="settings-eye" id="toggleKeyBtn" title="Show / hide key">&#128065;</button>
+      </div>
+    </div>
+
+    <div class="settings-status-bar">
+      <div class="sst-dot" id="sstDot"></div>
+      <div class="sst-text" id="sstText">No key saved — enter your Gemini API key above</div>
+    </div>
+
+    <div class="settings-actions">
+      <button class="stn-btn secondary" id="testConnBtn">Test Connection</button>
+      <button class="stn-btn primary" id="saveApiBtn">Save &amp; Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── API KEY MANAGEMENT ───────────────────────────────────── */
+const API_KEY_STORE = 'codex_gemini_key';
+const MODEL = 'gemini-2.0-flash';
+
+function getApiKey(){ return localStorage.getItem(API_KEY_STORE) || ''; }
+function saveApiKey(k){ localStorage.setItem(API_KEY_STORE, k); }
+
+function refreshSettingsStatus(){
+  const key = getApiKey();
+  const dot = document.getElementById('sstDot');
+  const text = document.getElementById('sstText');
+  const btn = document.getElementById('settingsBtn');
+  if(key){
+    dot.className='sst-dot ok';
+    text.textContent='Key saved · '+MODEL+' · ready';
+    btn.classList.add('has-key');
+  } else {
+    dot.className='sst-dot';
+    text.textContent='No key saved — enter your Gemini API key above';
+    btn.classList.remove('has-key');
+  }
+  // Update terminal status
+  const termDot = document.getElementById('termDot');
+  const termStatus = document.getElementById('termStatusText');
+  if(termDot && termStatus){
+    if(key){
+      termDot.style.background='var(--cyan)';
+      termStatus.textContent='LEGACY CODEX // DIAGNOSTIC TERMINAL v3.0 // ONLINE';
+    } else {
+      termDot.style.background='var(--red)';
+      termStatus.textContent='LEGACY CODEX // DIAGNOSTIC TERMINAL v3.0 // NO KEY';
+    }
+  }
+}
+
+/* SETTINGS PANEL UI */
+const settingsEl = document.getElementById('settings');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const sstDot = document.getElementById('sstDot');
+const sstText = document.getElementById('sstText');
+
+document.getElementById('settingsBtn').onclick = () => {
+  closeOverlays(settingsEl);
+  settingsEl.classList.toggle('open');
+  if(settingsEl.classList.contains('open')){
+    apiKeyInput.value = getApiKey();
+    refreshSettingsStatus();
+    apiKeyInput.focus();
+  }
+};
+
+document.getElementById('toggleKeyBtn').onclick = () => {
+  apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+};
+
+document.getElementById('saveApiBtn').onclick = () => {
+  const k = apiKeyInput.value.trim();
+  saveApiKey(k);
+  refreshSettingsStatus();
+  settingsEl.classList.remove('open');
+  playNotificationSound('success');
+};
+
+document.getElementById('testConnBtn').onclick = async () => {
+  const k = apiKeyInput.value.trim();
+  if(!k){ sstDot.className='sst-dot err'; sstText.textContent='Enter a key before testing'; return; }
+  sstDot.className='sst-dot testing'; sstText.textContent='Testing connection...';
+  try{
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${k}`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{parts:[{text:'Reply with exactly: CODEX ONLINE'}]}],
+        generationConfig:{maxOutputTokens:8,temperature:0}
+      })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'HTTP '+res.status); }
+    const data = await res.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'OK';
+    sstDot.className='sst-dot ok';
+    sstText.textContent='Connected &#183; '+MODEL+' &#183; '+reply.trim().slice(0,20);
+    playNotificationSound('success');
+  } catch(err){
+    sstDot.className='sst-dot err';
+    sstText.textContent='Error: '+err.message.slice(0,55);
+    playNotificationSound('error');
+  }
+};
+
+settingsEl.onclick = e => { if(e.target===settingsEl){ settingsEl.classList.remove('open'); } };
+
+/* ── WEB AUDIO SYNTHESIZER v3 ────────────────────────────── */
+let audioCtx=null,soundOn=false;
+const soundToggle=document.getElementById('soundToggle');
+let masterGain,droneOsc1,droneOsc2,noiseNode,noiseGain,lowpass,highpass,distortion;
+
+function makeDistortionCurve(amount){
+  const s=256,c=new Float32Array(s);
+  for(let i=0;i<s;i++){const x=i*2/s-1;c[i]=(Math.PI+amount)*x/(Math.PI+amount*Math.abs(x));}
+  return c;
+}
+
+function initAudio(){
+  if(audioCtx)return;
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  masterGain=audioCtx.createGain();masterGain.gain.value=0;masterGain.connect(audioCtx.destination);
+  droneOsc1=audioCtx.createOscillator();droneOsc1.type='sine';droneOsc1.frequency.value=55;
+  const d1g=audioCtx.createGain();d1g.gain.value=.08;droneOsc1.connect(d1g);d1g.connect(masterGain);droneOsc1.start();
+  droneOsc2=audioCtx.createOscillator();droneOsc2.type='triangle';droneOsc2.frequency.value=110;
+  const d2g=audioCtx.createGain();d2g.gain.value=.04;droneOsc2.connect(d2g);d2g.connect(masterGain);droneOsc2.start();
+  const bufSize=audioCtx.sampleRate*2,buf=audioCtx.createBuffer(1,bufSize,audioCtx.sampleRate),data=buf.getChannelData(0);
+  for(let i=0;i<bufSize;i++)data[i]=Math.random()*2-1;
+  noiseNode=audioCtx.createBufferSource();noiseNode.buffer=buf;noiseNode.loop=true;
+  noiseGain=audioCtx.createGain();noiseGain.gain.value=.008;
+  lowpass=audioCtx.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=800;
+  highpass=audioCtx.createBiquadFilter();highpass.type='highpass';highpass.frequency.value=120;
+  distortion=audioCtx.createWaveShaper();distortion.curve=makeDistortionCurve(20);
+  const dg=audioCtx.createGain();dg.gain.value=.8;
+  noiseNode.connect(lowpass);lowpass.connect(highpass);highpass.connect(distortion);distortion.connect(noiseGain);noiseGain.connect(dg);dg.connect(masterGain);
+  noiseNode.start();
+}
+
+function updateAudioEnv(){
+  if(!audioCtx||!soundOn)return;
+  const frag=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fragmentation'))||.04;
+  const glow=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glow'))||.4;
+  const intensity=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--intensity'))||.22;
+  masterGain.gain.setTargetAtTime(.06+glow*.1+intensity*.08,audioCtx.currentTime,.2);
+  if(frag>.4){lowpass.frequency.setTargetAtTime(200+frag*400,audioCtx.currentTime,.15);highpass.frequency.setTargetAtTime(80+frag*300,audioCtx.currentTime,.15);distortion.curve=makeDistortionCurve(20+frag*180);noiseGain.gain.setTargetAtTime(.01+frag*.06,audioCtx.currentTime,.2);}
+  else{lowpass.frequency.setTargetAtTime(800,audioCtx.currentTime,.3);highpass.frequency.setTargetAtTime(120,audioCtx.currentTime,.3);noiseGain.gain.setTargetAtTime(.005,audioCtx.currentTime,.3);}
+}
+
+function playNotificationSound(type='click'){
+  if(!audioCtx||!soundOn)return;
+  const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.connect(gain);gain.connect(masterGain);
+  if(type==='click'){osc.type='sine';osc.frequency.setValueAtTime(880,now);osc.frequency.exponentialRampToValueAtTime(110,now+.1);gain.gain.setValueAtTime(.08,now);gain.gain.exponentialRampToValueAtTime(.001,now+.1);osc.start(now);osc.stop(now+.12);}
+  else if(type==='terminal'){osc.type='square';osc.frequency.setValueAtTime(440,now);osc.frequency.setValueAtTime(587.33,now+.05);gain.gain.setValueAtTime(.04,now);gain.gain.exponentialRampToValueAtTime(.001,now+.15);osc.start(now);osc.stop(now+.16);}
+  else if(type==='success'){osc.type='sine';osc.frequency.setValueAtTime(523.25,now);osc.frequency.setValueAtTime(783.99,now+.08);osc.frequency.setValueAtTime(1046.5,now+.16);gain.gain.setValueAtTime(.06,now);gain.gain.exponentialRampToValueAtTime(.001,now+.3);osc.start(now);osc.stop(now+.32);}
+  else if(type==='error'){osc.type='sawtooth';osc.frequency.setValueAtTime(130.81,now);osc.frequency.linearRampToValueAtTime(65.41,now+.25);gain.gain.setValueAtTime(.1,now);gain.gain.exponentialRampToValueAtTime(.001,now+.25);osc.start(now);osc.stop(now+.26);}
+}
+
+function toggleSound(){
+  if(!audioCtx)initAudio();
+  soundOn=!soundOn;
+  soundToggle.classList.toggle('on',soundOn);
+  if(soundOn){masterGain.gain.setTargetAtTime(.08,audioCtx.currentTime,.3);updateAudioEnv();playNotificationSound('success');}
+  else{masterGain.gain.setTargetAtTime(0,audioCtx.currentTime,.3);}
+}
+soundToggle.onclick=toggleSound;
+
+/* ── MOOD ENGINE ─────────────────────────────────────────── */
+const MOOD={
+  intro:{intensity:.22,fragmentation:.03,stability:.9,recursion:.2,glow:.42,noise:.035,fog:.18,chroma:0,density:1,cameraZ:0,cameraY:0},
+  architect:{intensity:.42,fragmentation:.06,stability:.82,recursion:.44,glow:.54,noise:.04,fog:.22,chroma:.35,density:1,cameraZ:.15,cameraY:.05},
+  rare:{intensity:.52,fragmentation:.08,stability:.78,recursion:.48,glow:.56,noise:.045,fog:.23,chroma:.45,density:1,cameraZ:.2,cameraY:.08},
+  shadow:{intensity:.88,fragmentation:.86,stability:.16,recursion:.66,glow:.38,noise:.14,fog:.5,chroma:6,density:.88,cameraZ:-.25,cameraY:-.12},
+  codex:{intensity:.46,fragmentation:.1,stability:.96,recursion:.34,glow:.72,noise:.025,fog:.16,chroma:0,density:1.05,cameraZ:.3,cameraY:0},
+  recursive:{intensity:.62,fragmentation:.22,stability:.56,recursion:.94,glow:.5,noise:.07,fog:.48,chroma:1.2,density:.78,cameraZ:-.4,cameraY:-.06},
+  autonomy:{intensity:.38,fragmentation:.14,stability:.85,recursion:.52,glow:.6,noise:.042,fog:.28,chroma:.6,density:1,cameraZ:.15,cameraY:.04},
+  future:{intensity:.24,fragmentation:.04,stability:.96,recursion:.26,glow:.46,noise:.02,fog:.12,chroma:0,density:1.08,cameraZ:.1,cameraY:.02}
+};
+const SECTION_LABELS={intro:'Introduction',architect:'The Architect',rare:'Why Rare',shadow:'Shadow Side',codex:'Legacy Codex',recursive:'Recursion',autonomy:'Autonomy',future:'The Future'};
+let cur={...MOOD.intro},tgt={...MOOD.intro},state='intro';
+const root=document.documentElement;
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+function tickMood(){
+  for(const k in cur)cur[k]=lerp(cur[k],tgt[k],.045);
+  root.style.setProperty('--intensity',cur.intensity.toFixed(3));
+  root.style.setProperty('--fragmentation',cur.fragmentation.toFixed(3));
+  root.style.setProperty('--stability',cur.stability.toFixed(3));
+  root.style.setProperty('--recursion',cur.recursion.toFixed(3));
+  root.style.setProperty('--glow',cur.glow.toFixed(3));
+  root.style.setProperty('--noise',cur.noise.toFixed(3));
+  root.style.setProperty('--fog',cur.fog.toFixed(3));
+  root.style.setProperty('--chroma',cur.chroma.toFixed(2)+'px');
+  root.style.setProperty('--density',cur.density.toFixed(3));
+  root.style.setProperty('--camera-z',(cur.cameraZ||0).toFixed(2)+'px');
+  root.style.setProperty('--camera-y',(cur.cameraY||0).toFixed(2)+'px');
+  if(soundOn)updateAudioEnv();
+  requestAnimationFrame(tickMood);
+}
+tickMood();
+
+/* ── SLIDES & GHOST MEMORY ───────────────────────────────── */
+const slides=[...document.querySelectorAll('.slide')],total=slides.length;
+document.getElementById('counter').textContent='01 / '+total;
+let idx=0,locked=false,prevGhost=null;
+const counterEl=document.getElementById('counter'),progEl=document.getElementById('progress'),trackEl=document.getElementById('track'),memoryLayer=document.getElementById('memory-layer');
+
+const sectionSlots={};
+slides.forEach((s,i)=>{const sec=s.dataset.section;if(!sectionSlots[sec])sectionSlots[sec]=i;});
+Object.entries(sectionSlots).forEach(([sec,i])=>{
+  const el=document.createElement('div');el.className='tl';el.dataset.section=sec;el.textContent=SECTION_LABELS[sec];
+  el.onclick=()=>{go(i);playNotificationSound('click');};trackEl.appendChild(el);
+});
+
+function setSection(i){
+  const sec=slides[i].dataset.section;
+  document.querySelectorAll('.tl').forEach(el=>el.classList.toggle('active',el.dataset.section===sec));
+  state=sec;tgt={...MOOD[sec]};
+}
+
+function updateGhost(slideEl){
+  memoryLayer.innerHTML='';
+  if(prevGhost){const g=prevGhost.cloneNode(true);g.classList.add('show');memoryLayer.appendChild(g);}
+  const clone=document.createElement('div');clone.className='memory-ghost';clone.style.cssText='position:absolute;left:10%;top:20%;width:40%;';
+  const t=slideEl.querySelector('h1');if(t)clone.innerHTML=t.outerHTML;
+  prevGhost=clone;
+}
+
+let _lockStamp=0;
+function go(i){
+  if(i<0||i>=total||locked)return;
+  try{
+    locked=true;_lockStamp=Date.now();
+    const prev=idx;
+    slides[idx].classList.remove('active');slides[idx].classList.add('exit');
+    setTimeout(()=>slides[prev]?.classList.remove('exit'),650);
+    updateGhost(slides[prev]);
+    memoryLayer.style.opacity='1';setTimeout(()=>{memoryLayer.style.opacity='0';},1200);
+    idx=i;slides[idx].classList.add('active');
+    counterEl.textContent=String(idx+1).padStart(2,'0')+' / '+total;
+    progEl.style.width=((idx+1)/total)*100+'%';
+    setSection(idx);resetAuto();renderMM();
+    if(slides[idx].dataset.title==='Codex Graph')setTimeout(initCodexGraph,200);
+    setTimeout(()=>locked=false,700);
+  }catch(e){locked=false;console.warn('slide error:',e);}
+  // Safety net: always release lock after 1.2s regardless
+  setTimeout(()=>{if(locked&&Date.now()-_lockStamp>1100)locked=false;},1250);
+}
+
+document.getElementById('next').onclick=()=>{go(idx+1);playNotificationSound('click');};
+document.getElementById('prev').onclick=()=>{go(idx-1);playNotificationSound('click');};
+
+/* ── KEYBOARD ────────────────────────────────────────────── */
+document.addEventListener('keydown',e=>{
+  if(document.activeElement.tagName==='TEXTAREA'||document.activeElement.tagName==='INPUT')return;
+  const anyOpen=[document.getElementById('help'),document.getElementById('minimap'),document.getElementById('codexTerminal'),settingsEl].some(x=>x.classList.contains('open'));
+  if(anyOpen){if(e.key==='Escape'){closeOverlays();return;}}
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();go(idx+1);playNotificationSound('click');}
+  else if(e.key==='ArrowLeft'){e.preventDefault();go(idx-1);playNotificationSound('click');}
+  else if(e.key==='Home'){e.preventDefault();go(0);playNotificationSound('click');}
+  else if(e.key==='End'){e.preventDefault();go(total-1);playNotificationSound('click');}
+  else if(e.key==='?'||(e.shiftKey&&e.key==='/'))toggleHelp();
+  else if(e.key==='m'||e.key==='M')toggleMap();
+  else if(e.key==='p'||e.key==='P')toggleAuto();
+  else if(e.key==='s'||e.key==='S'){e.preventDefault();toggleSound();}
+  else if(e.key==='c'||e.key==='C'){e.preventDefault();toggleTerminal();}
+  else if(e.key==='Escape')closeOverlays();
+});
+
+window.addEventListener('wheel',e=>{
+  if(document.getElementById('codexTerminal').classList.contains('open')||settingsEl.classList.contains('open'))return;
+  if(e.deltaY>50){go(idx+1);playNotificationSound('click');}else if(e.deltaY<-50){go(idx-1);playNotificationSound('click');}
+},{passive:true});
+
+let tx=0,ty=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(document.getElementById('codexTerminal').classList.contains('open')||settingsEl.classList.contains('open'))return;
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>50&&Math.abs(dy)<100){dx<0?go(idx+1):go(idx-1);playNotificationSound('click');}
+},{passive:true});
+
+document.addEventListener('mousemove',e=>{
+  root.style.setProperty('--cursor-x',(e.clientX/innerWidth)*100+'%');
+  root.style.setProperty('--cursor-y',(e.clientY/innerHeight)*100+'%');
+  root.style.setProperty('--camera-ry',((e.clientX/innerWidth-.5)*2*3).toFixed(2)+'deg');
+});
+
+/* ── AUTOPLAY ────────────────────────────────────────────── */
+let autoT=null,autoOn=false;const playBtn=document.getElementById('playBtn');
+function toggleAuto(){autoOn=!autoOn;playBtn.classList.toggle('on',autoOn);playBtn.innerHTML=autoOn?'&#9208;':'&#9654;';if(autoOn)nextAuto();else clearTimeout(autoT);playNotificationSound('click');}
+function resetAuto(){if(autoOn){clearTimeout(autoT);nextAuto();}}
+function nextAuto(){const isInt=slides[idx].classList.contains('interstitial');const d=isInt?2800:state==='shadow'?4600:state==='recursive'?5000:4400;autoT=setTimeout(()=>{if(idx<total-1){go(idx+1);playNotificationSound('click');}else{autoOn=false;playBtn.classList.remove('on');playBtn.innerHTML='&#9654;';}},d);}
+playBtn.onclick=toggleAuto;
+
+/* ── OVERLAYS ────────────────────────────────────────────── */
+const helpEl=document.getElementById('help'),mmEl=document.getElementById('minimap'),termEl=document.getElementById('codexTerminal');
+function toggleHelp(){closeOverlays(helpEl);helpEl.classList.toggle('open');playNotificationSound('terminal');}
+function toggleMap(){closeOverlays(mmEl);mmEl.classList.toggle('open');renderMM();playNotificationSound('terminal');}
+function toggleTerminal(){closeOverlays(termEl);termEl.classList.toggle('open');playNotificationSound('terminal');if(termEl.classList.contains('open'))document.getElementById('termInput').focus();}
+function closeOverlays(keep){[helpEl,mmEl,termEl,settingsEl].forEach(e=>{if(e!==keep)e.classList.remove('open');});}
+document.getElementById('helpBtn').onclick=toggleHelp;
+document.getElementById('mapBtn').onclick=toggleMap;
+document.getElementById('terminalBtn').onclick=toggleTerminal;
+document.getElementById('termCloseBtn').onclick=()=>{termEl.classList.remove('open');playNotificationSound('terminal');};
+helpEl.onclick=e=>{if(e.target===helpEl)helpEl.classList.remove('open');};
+mmEl.onclick=e=>{if(e.target===mmEl)mmEl.classList.remove('open');};
+termEl.onclick=e=>{if(e.target===termEl)termEl.classList.remove('open');};
+
+const mmGrid=document.getElementById('mmGrid');
+function renderMM(){
+  mmGrid.innerHTML='';
+  slides.forEach((s,i)=>{
+    const c=document.createElement('div');c.className='mm-cell'+(i===idx?' current':'');
+    c.innerHTML='<div><div class="mm-num">'+String(i+1).padStart(2,'0')+'</div><div class="mm-section">'+(SECTION_LABELS[s.dataset.section]||s.dataset.section)+'</div></div><div class="mm-title">'+(s.dataset.title||'')+'</div>';
+    c.onclick=()=>{go(i);mmEl.classList.remove('open');playNotificationSound('click');};
+    mmGrid.appendChild(c);
+  });
+}
+renderMM();
+
+/* ── GAP SIMULATOR ───────────────────────────────────────── */
+const gapSlider=document.getElementById('gapSlider'),gapReadout=document.getElementById('gapReadout');
+function renderGap(v){
+  const cap=document.getElementById('pathCap'),out=document.getElementById('pathOut'),area=document.getElementById('gapArea');
+  if(!cap||!out||!area)return;
+  const cy=215-(v/100)*100,oy=215-(v/100)*215;
+  cap.setAttribute('d','M0 215 C95 '+(cy+8)+' 240 '+(cy+4)+' 520 '+cy);
+  out.setAttribute('d','M0 215 C95 '+((oy+cy)/2-30)+' 280 '+(oy+18)+' 520 '+oy);
+  area.setAttribute('d','M0 215 C95 '+((oy+cy)/2-30)+' 280 '+(oy+18)+' 520 '+oy+' L520 '+cy+' C240 '+(cy+4)+' 95 '+(cy+8)+' 0 215 Z');
+  gapReadout.innerHTML='Output gap: <b>'+v+'%</b>';
+}
+if(gapSlider){gapSlider.addEventListener('input',e=>{renderGap(+e.target.value);playNotificationSound('click');});renderGap(50);}
+
+/* ── DEPTH DIAL ──────────────────────────────────────────── */
+const depthData={
+  1:{name:'Grounded &#183; Depth 1',color:'var(--green)',desc:'Pure execution. No abstraction. Hands on the work. Shippable, but not strategic.'},
+  2:{name:'Safe &#183; Depth 2',color:'var(--green)',desc:'Light system thinking. You make small structural improvements while doing the work. Healthy.'},
+  3:{name:'Optimal &#183; Depth 3',color:'var(--violet)',desc:'The sweet spot. Deep enough to capture structure, shallow enough to ship. Architecture serves reality.'},
+  5:{name:'Caution &#183; Depth 5',color:'var(--amber)',desc:'Designing systems that design systems. Powerful but expensive. Risk of detachment from any user.'},
+  7:{name:'Danger &#183; Depth 7+',color:'var(--red)',desc:'Infinite recursion. The architecture becomes the artifact. No proof loop. No real-world signal. Stall.'}
+};
+const dialFill=document.getElementById('dialFill'),dialNum=document.getElementById('dialNum'),sName=document.getElementById('sName'),sDesc=document.getElementById('sDesc');
+function setDepth(d){
+  const data=depthData[d],pct=(d-1)/6,off=502*(1-pct);
+  if(!dialFill)return;
+  dialFill.setAttribute('stroke-dashoffset',off);
+  const col=data.color.includes('green')?'#6ee7b7':data.color.includes('violet')?'#b57bee':data.color.includes('amber')?'#ffb347':data.color.includes('red')?'#ff5d73':'#00e5ff';
+  dialFill.setAttribute('stroke',col);dialNum.textContent=d>=7?'7+':d;dialNum.style.color=col;
+  sName.innerHTML=data.name;sName.style.color=data.color;sDesc.textContent=data.desc;
+  document.querySelectorAll('.dial-btn').forEach(b=>b.classList.toggle('active',+b.dataset.d===d));
+}
+document.querySelectorAll('.dial-btn').forEach(b=>b.onclick=()=>{setDepth(+b.dataset.d);playNotificationSound('click');});
+const ticks=document.getElementById('dialTicks');
+if(ticks){for(let i=0;i<7;i++){const a=(-Math.PI/2)+(i/6)*(Math.PI*2*.85),x1=100+Math.cos(a)*88,y1=100+Math.sin(a)*88,x2=100+Math.cos(a)*94,y2=100+Math.sin(a)*94;ticks.innerHTML+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>';}}
+
+/* ── CODEX INTERACTIVE LAYERS ───────────────────────────── */
+const codexInfo={
+  memory:{t:'Memory Layer',d:'Preserves project state, intent, history, and decision context between sessions.',items:['Status reports as compressed checkpoints','Project & knowledge intake DB','Quick Notes + Notebooks for raw thought','Working-set memory across agents']},
+  governance:{t:'Governance Layer',d:'Rules and constraints that prevent drift, uncontrolled recursion, and architecture for its own sake.',items:['Intent definitions per project','Recursion-depth limits','Keep / kill criteria','Anti-drift heuristics']},
+  routing:{t:'Routing Layer',d:'Assigns the right context to the right tool, agent, or workflow without redundant human overhead.',items:['Agent-to-task matching','Context bundling','Sequence resolution','Priority signaling']},
+  recovery:{t:'Recovery Layer',d:'Restart protocols and anti-fragmentation scaffolding for after fatigue, drift, interruption, or collapse.',items:['Restart-from-checkpoint procedures','Fragment reassembly maps','Energy-aware sequencing','Compassionate defaults']}
+};
+const detT=document.getElementById('detTitle'),detD=document.getElementById('detDesc'),detL=document.getElementById('detList');
+document.querySelectorAll('.codex-layer').forEach(el=>el.onclick=()=>{
+  document.querySelectorAll('.codex-layer').forEach(x=>x.classList.remove('active'));el.classList.add('active');
+  const info=codexInfo[el.dataset.layer];detT.textContent=info.t;detD.textContent=info.d;
+  detL.innerHTML=info.items.map(i=>'<li>'+i+'</li>').join('');
+  playNotificationSound('click');
+});
+
+/* ── CODEX FORCE GRAPH ───────────────────────────────────── */
+let graphAnimId=null;
+const graphNodes=[
+  {id:'codex',label:'Legacy Codex',group:'core',x:0,y:0,r:18,color:'#00e5ff'},
+  {id:'memory',label:'Memory Layer',group:'layer',x:0,y:0,r:12,color:'#00e5ff'},
+  {id:'governance',label:'Governance',group:'layer',x:0,y:0,r:12,color:'#b57bee'},
+  {id:'routing',label:'Routing',group:'layer',x:0,y:0,r:12,color:'#b57bee'},
+  {id:'recovery',label:'Recovery',group:'layer',x:0,y:0,r:12,color:'#6ee7b7'},
+  {id:'status',label:'Status Reports',group:'memory',x:0,y:0,r:7,color:'#00e5ff'},
+  {id:'intake',label:'Intake DB',group:'memory',x:0,y:0,r:7,color:'#00e5ff'},
+  {id:'quicknotes',label:'Quick Notes',group:'memory',x:0,y:0,r:7,color:'#00e5ff'},
+  {id:'notebooks',label:'Notebooks',group:'memory',x:0,y:0,r:7,color:'#00e5ff'},
+  {id:'agents',label:'AI Agents',group:'routing',x:0,y:0,r:10,color:'#ffb347'},
+  {id:'photobiz',label:'Photography Biz',group:'artifact',x:0,y:0,r:8,color:'#6ee7b7'},
+  {id:'artful',label:'Artful Intel. V1',group:'artifact',x:0,y:0,r:8,color:'#6ee7b7'},
+  {id:'namibia',label:'Namibia Workshop',group:'artifact',x:0,y:0,r:8,color:'#6ee7b7'},
+  {id:'muse',label:'Muse 2 EEG',group:'artifact',x:0,y:0,r:8,color:'#ffb347'},
+  {id:'rag',label:'Photo RAG',group:'artifact',x:0,y:0,r:7,color:'#6ee7b7'},
+  {id:'proof',label:'Proof Loops',group:'governance',x:0,y:0,r:8,color:'#ff5d73'},
+  {id:'reality',label:'Reality Signal',group:'governance',x:0,y:0,r:8,color:'#ff5d73'},
+  {id:'projects',label:'Projects DB',group:'memory',x:0,y:0,r:7,color:'#00e5ff'},
+  {id:'burnout',label:'Burnout',group:'constraint',x:0,y:0,r:7,color:'#ff5d73'},
+  {id:'execfn',label:'Exec Function',group:'constraint',x:0,y:0,r:8,color:'#ffb347'}
+];
+const graphLinks=[
+  {source:'codex',target:'memory'},{source:'codex',target:'governance'},{source:'codex',target:'routing'},{source:'codex',target:'recovery'},
+  {source:'memory',target:'status'},{source:'memory',target:'intake'},{source:'memory',target:'quicknotes'},{source:'memory',target:'notebooks'},{source:'memory',target:'projects'},
+  {source:'routing',target:'agents'},{source:'governance',target:'proof'},{source:'governance',target:'reality'},
+  {source:'reality',target:'photobiz'},{source:'reality',target:'artful'},{source:'reality',target:'namibia'},{source:'reality',target:'muse'},{source:'reality',target:'rag'},
+  {source:'proof',target:'artful'},{source:'execfn',target:'codex'},{source:'burnout',target:'execfn'}
+];
+let graphCtx=null,graphCanvas=null,graphW=0,graphH=0,graphDragNode=null,graphHoverNode=null;
+const graphTooltip=document.getElementById('graphTooltip');
+
+function initCodexGraph(){
+  graphCanvas=document.getElementById('codexGraph');if(!graphCanvas)return;
+  const wrap=graphCanvas.parentElement;graphW=wrap.clientWidth;graphH=wrap.clientHeight;
+  graphCanvas.width=graphW;graphCanvas.height=graphH;graphCtx=graphCanvas.getContext('2d');
+  graphNodes.forEach(n=>{n.x=graphW*.5+(Math.random()-.5)*graphW*.4;n.y=graphH*.5+(Math.random()-.5)*graphH*.4;n.vx=0;n.vy=0;});
+  function sim(){
+    const cx=graphW*.5,cy=graphH*.5,alpha=.3;
+    graphNodes.forEach(n=>{
+      if(n===graphDragNode)return;
+      if(n.group==='core'||n.group==='layer'){n.vx+=(cx-n.x)*.002;n.vy+=(cy-n.y)*.002;}
+      graphNodes.forEach(m=>{if(n===m)return;const dx=n.x-m.x,dy=n.y-m.y,d=Math.hypot(dx,dy)+1,f=120/(d*d);n.vx+=dx/d*f;n.vy+=dy/d*f;});
+      graphLinks.forEach(l=>{const s=l.source,r=l.target;if(s===n.id||r===n.id){const o=s===n.id?graphNodes.find(x=>x.id===r):graphNodes.find(x=>x.id===s);if(o){const dx=o.x-n.x,dy=o.y-n.y,d=Math.hypot(dx,dy)+1,rest=40;n.vx+=dx/d*(d-rest)*.001;n.vy+=dy/d*(d-rest)*.001;}}});
+      n.vx*=alpha;n.vy*=alpha;n.x+=n.vx;n.y+=n.vy;
+      n.x=Math.max(n.r,Math.min(graphW-n.r,n.x));n.y=Math.max(n.r,Math.min(graphH-n.r,n.y));
+    });
+  }
+  function drawG(){
+    if(!graphCtx)return;graphCtx.clearRect(0,0,graphW,graphH);
+    graphLinks.forEach(l=>{const s=graphNodes.find(n=>n.id===l.source),r=graphNodes.find(n=>n.id===l.target);if(!s||!r)return;graphCtx.beginPath();graphCtx.moveTo(s.x,s.y);graphCtx.lineTo(r.x,r.y);graphCtx.strokeStyle='rgba(255,255,255,.08)';graphCtx.lineWidth=1;graphCtx.stroke();});
+    graphNodes.forEach(n=>{
+      graphCtx.beginPath();graphCtx.arc(n.x,n.y,n.r,0,Math.PI*2);graphCtx.fillStyle=n.color.replace(/^(#[0-9a-f]{6})$/i,'$1'+'18');graphCtx.fill();
+      graphCtx.strokeStyle=n.color;graphCtx.lineWidth=n===graphHoverNode?2:.8;graphCtx.stroke();
+      if(n.r>=7){graphCtx.fillStyle='rgba(232,234,240,.7)';graphCtx.font=Math.max(9,n.r*.55)+'px DM Mono';graphCtx.textAlign='center';graphCtx.fillText(n.label,n.x,n.y+n.r+12);}
+    });
+  }
+  function animateG(){sim();drawG();graphAnimId=requestAnimationFrame(animateG);}
+  animateG();
+  const startDrag=(mx,my)=>{graphDragNode=graphNodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+6)||null;if(graphDragNode)playNotificationSound('click');};
+  const moveDrag=(mx,my)=>{if(graphDragNode){graphDragNode.x=mx;graphDragNode.y=my;graphDragNode.vx=0;graphDragNode.vy=0;}graphHoverNode=graphNodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+4)||null;if(graphHoverNode){graphTooltip.style.opacity='1';graphTooltip.style.left=(mx+16)+'px';graphTooltip.style.top=(my-10)+'px';graphTooltip.textContent=graphHoverNode.label;}else{graphTooltip.style.opacity='0';}};
+  const endDrag=()=>{graphDragNode=null;};
+  graphCanvas.onmousedown=e=>{const r=graphCanvas.getBoundingClientRect();startDrag(e.clientX-r.left,e.clientY-r.top);};
+  graphCanvas.onmousemove=e=>{const r=graphCanvas.getBoundingClientRect();moveDrag(e.clientX-r.left,e.clientY-r.top);};
+  graphCanvas.onmouseup=endDrag;graphCanvas.onmouseleave=()=>{endDrag();graphTooltip.style.opacity='0';};
+  graphCanvas.ontouchstart=e=>{if(e.touches.length===1){const r=graphCanvas.getBoundingClientRect();startDrag(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);}};
+  graphCanvas.ontouchmove=e=>{if(e.touches.length===1){const r=graphCanvas.getBoundingClientRect();moveDrag(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);}};
+  graphCanvas.ontouchend=endDrag;
+}
+const graphObs=new MutationObserver(()=>{const gs=slides.find(s=>s.classList.contains('active')&&s.dataset.title==='Codex Graph');if(!gs&&graphAnimId){cancelAnimationFrame(graphAnimId);graphAnimId=null;}});
+graphObs.observe(document.getElementById('deck'),{attributes:true,subtree:true,attributeFilter:['class']});
+
+/* ── STAR FIELD ──────────────────────────────────────────── */
+const canvas=document.getElementById('stars'),ctx=canvas.getContext('2d');let nodes=[];
+class Star{
+  constructor(w,h){this.x=Math.random()*w;this.y=Math.random()*h;this.vx=0;this.vy=0;this.r=Math.random()*1.6+.35;this.m=Math.random();this.c='#00e5ff';this.tx=this.x;this.ty=this.y;}
+  update(w,h){
+    let f=.96;const cx=w/2,cy=h/2;
+    if(state==='intro'){this.tx=this.x+Math.sin(this.y*.004)*.3;this.ty=this.y+Math.cos(this.x*.004)*.3;f=.992;this.c='#00e5ff';}
+    else if(state==='architect'||state==='rare'){const dx=cx-this.x,dy=cy-this.y,d=Math.hypot(dx,dy)||1,s=state==='rare'?.22:.14;this.tx=this.x+(dx/d)*.02+(dy/d)*s;this.ty=this.y+(dy/d)*.02-(dx/d)*s;f=.975;this.c=this.m>.55?'#00e5ff':'#b57bee';}
+    else if(state==='shadow'){this.tx=this.x+(Math.random()-.5)*8;this.ty=this.y+(Math.random()-.5)*8;f=.86;this.c=Math.random()>.86?'#ff5d73':(Math.random()>.55?'#ffb347':'#00e5ff');}
+    else if(state==='codex'){const gx=Math.round(this.x/55)*55,gy=Math.round(this.y/55)*55;this.tx+=(gx-this.x)*.04;this.ty+=(gy-this.y)*.04;f=.97;this.c=this.m>.55?'#00e5ff':'#6ee7b7';}
+    else if(state==='recursive'){const dx=cx-this.x,dy=cy-this.y,d=Math.hypot(dx,dy)||1,r=Math.floor(this.m*8)+1,tr=r*38,p=(d-tr)*.005;this.tx=this.x+(dx/d)*p+(dy/d)*(1/r);this.ty=this.y+(dy/d)*p-(dx/d)*(1/r);f=.925;this.c=r%2?'#00e5ff':'#b57bee';}
+    else if(state==='autonomy'){const dx=cx-this.x,dy=cy-this.y,d=Math.hypot(dx,dy)||1,tr=60+Math.floor(this.m*4)*45,p=(d-tr)*.004;this.tx=this.x+(dx/d)*p+(dy/d)*.1;this.ty=this.y+(dy/d)*p-(dx/d)*.1;f=.95;this.c=this.m>.5?'#00e5ff':(this.m>.25?'#b57bee':'#6ee7b7');}
+    else{const g=68,tx=Math.round(this.x/g)*g,ty=Math.round(this.y/g)*g;this.tx=this.x+(tx-this.x)*.016;this.ty=this.y+(ty-this.y)*.016;f=.88;this.c='#6ee7b7';}
+    this.vx+=(this.tx-this.x)*.06;this.vy+=(this.ty-this.y)*.06;this.vx*=f;this.vy*=f;this.x+=this.vx;this.y+=this.vy;
+    if(this.x<0)this.x=w;if(this.x>w)this.x=0;if(this.y<0)this.y=h;if(this.y>h)this.y=0;
+  }
+  draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=this.c;ctx.fill();}
+}
+function initC(){canvas.width=innerWidth;canvas.height=innerHeight;nodes=Array.from({length:innerWidth<768?65:200},()=>new Star(canvas.width,canvas.height));}
+const _mobile=innerWidth<768;let _lastDraw=0;
+function draw(ts){
+  if(_mobile&&ts-_lastDraw<34){requestAnimationFrame(draw);return;}
+  _lastDraw=ts;
+  const tr=state==='shadow'?.33:state==='future'?.065:.14;
+  ctx.fillStyle='rgba(5,6,15,'+tr+')';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.globalCompositeOperation='lighter';nodes.forEach(n=>{n.update(canvas.width,canvas.height);n.draw();});
+  const linkDist=state==='shadow'?24:state==='codex'?110:state==='recursive'?38:state==='autonomy'?52:state==='future'?62:70;
+  // BATCHED: one beginPath/stroke for all connections instead of one per pair
+  ctx.beginPath();
+  ctx.strokeStyle=state==='shadow'?'rgba(255,93,115,.18)':state==='future'?'rgba(110,231,183,.1)':state==='autonomy'?'rgba(181,123,238,.1)':'rgba(0,229,255,.09)';
+  ctx.lineWidth=.4;
+  for(let i=0;i<nodes.length;i+=3){for(let j=i+1;j<nodes.length;j+=3){const a=nodes[i],b=nodes[j],d=Math.hypot(a.x-b.x,a.y-b.y);if(d<linkDist){ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}}}
+  ctx.stroke();
+  ctx.globalCompositeOperation='source-over';requestAnimationFrame(draw);
+}
+addEventListener('resize',()=>{canvas.width=innerWidth;canvas.height=innerHeight;});
+initC();requestAnimationFrame(draw);
+
+/* ── GEMINI DIAGNOSTIC ENGINE ────────────────────────────── */
+const termInput=document.getElementById('termInput'),termOutput=document.getElementById('termOutput'),termRunBtn=document.getElementById('termRunBtn');
+
+const SYSTEM_PROMPT=`You are the Legacy Codex Diagnostic Engine v3.0, acting as the structural authority on Edward Emory's cognitive profile (autistic astrophotographer, AI builder, systems thinker, @Freddy_v on Instagram).
+
+OPERATING RULES:
+- Do NOT offer motivation, mindset, or productivity/discipline platitudes.
+- Anchor all feedback strictly to concrete artifacts, constraints, or systems.
+- Prefer modifying existing infrastructure over proposing new tooling.
+- Reject plans that cannot survive interruption.
+- Identify the smallest shippable artifact that breaks the sequencing paralysis.
+- Route cognitive load to one of the four Legacy Codex Layers: Memory (Layer 1), Governance (Layer 2), Routing (Layer 3), Recovery (Layer 4).
+
+EDDIE'S REAL PROJECTS (May 2026):
+- Photography Business: active, prints via Instagram DMs @Freddy_v
+- Legacy Codex v37: deployed at legacy-codex.vercel.app
+- Artful Intelligence V1: content done Feb 21, storefront built, NOT deployed
+- Namibia Workshop: outreach kit done, strategic calls pending
+- Muse 2 EEG: FastAPI + WebSocket, Docker config errors, research layer
+- Photography RAG: LangChain + FAISS, prototype
+- WHOOP Integration: concept only
+
+Format output with terminal-style headers: [STATE ANALYSIS], [SMALLEST SHIPPABLE ARTIFACT], [CODEX ROUTING DIRECTIVE]`;
+
+async function runCognitiveDiagnostic(){
+  const input=termInput.value.trim();
+  if(!input){termOutput.innerHTML='<span class="err-tag">&gt; ERROR: DIAGNOSTIC DATA IS EMPTY. CANNOT PROCESS VOID STATE.</span>';playNotificationSound('error');return;}
+  const key=getApiKey();
+  if(!key){termOutput.innerHTML='<span class="err-tag">&gt; NO API KEY CONFIGURED.\n&gt; Click the &#9881; settings button in the toolbar to add your Gemini API key.</span>';playNotificationSound('error');return;}
+  termOutput.innerHTML='&gt; ENCRYPTING STATE GRAPH...<br>&gt; CONNECTING TO CODEX HEURISTIC SERVER...<br>&gt; PROCESSING RECURSIVE LAYERS...';
+  termRunBtn.disabled=true;playNotificationSound('terminal');
+  let attempt=0,delay=1000,responseText='',success=false;
+  while(attempt<5){
+    try{
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:input}]}],systemInstruction:{parts:[{text:SYSTEM_PROMPT}]},generationConfig:{temperature:.25,maxOutputTokens:900}})});
+      if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
+      const result=await res.json();responseText=result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if(responseText){success=true;break;}
+    }catch(err){attempt++;if(attempt>=5){responseText='<span class="err-tag">&gt; DIAGNOSTIC ERROR: '+err.message+'</span>';break;}await new Promise(r=>setTimeout(r,delay));delay*=2;}
+  }
+  termRunBtn.disabled=false;
+  if(success){playNotificationSound('success');termOutput.innerHTML=formatTerminalOutput(responseText);}
+  else{playNotificationSound('error');termOutput.innerHTML=responseText;}
+}
+
+function formatTerminalOutput(text){
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\[(STATE ANALYSIS|SMALLEST SHIPPABLE ARTIFACT|CODEX ROUTING DIRECTIVE|DIAGNOSTIC COMPLETE)\]/g,'<b class="sys-tag">[$1]</b>')
+    .replace(/(\* [^\n]+)/g,'<span class="rec-tag">$1</span>').replace(/\n/g,'<br>');
+}
+termRunBtn.onclick=runCognitiveDiagnostic;
+
+/* ── INIT ────────────────────────────────────────────────── */
+progEl.style.width=(100/total)+'%';
+setSection(0);
+refreshSettingsStatus();
+</script>
+</body>
+</html>
