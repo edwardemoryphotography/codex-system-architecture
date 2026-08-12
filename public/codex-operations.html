@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Codex Operations — Active State</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#07111a;--surface:#0b1822;--panel:#0d1b26;
+  --border:#1e2d3d;--border2:#253545;
+  --text:#c8d3e0;--muted:#6b7e91;--dim:#3b4a5a;
+  --cyan:#3b82f6;--cyan2:#00d4ff;--green:#34d399;
+  --amber:#fbbf24;--red:#f87171;--violet:#a78bfa;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden}
+@media(max-width:600px){html,body{overflow:auto}}
+
+/* ── LAYOUT ── */
+.shell{display:grid;grid-template-rows:auto 1fr auto;height:100vh;max-height:100dvh}
+@media(max-width:600px){.shell{height:auto;min-height:100dvh}}
+
+/* ── HEADER ── */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:.75rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header-brand{display:flex;align-items:center;gap:.6rem}
+.brand-icon{width:26px;height:26px;border-radius:5px;background:linear-gradient(135deg,var(--cyan),var(--cyan2));display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0}
+.brand-name{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text)}
+.brand-sub{font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;color:var(--dim);margin-top:.08rem}
+.header-date{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;color:var(--dim);text-align:right}
+
+/* ── MAIN GRID ── */
+.main{display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden;min-height:0}
+@media(max-width:700px){.main{grid-template-columns:1fr;overflow:auto}}
+
+/* ── COLUMN ── */
+.col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.col:last-child{border-right:none}
+.col-head{padding:.85rem 1.2rem .7rem;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:.55rem}
+.col-label{font-family:var(--mono);font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.col-icon{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 6px var(--cyan);animation:dot-pulse 2.5s ease-in-out infinite}
+.col-body{flex:1;overflow-y:auto;padding:1rem 1.2rem;display:flex;flex-direction:column;gap:1rem}
+@media(max-width:700px){.col{overflow:visible}.col-body{overflow:visible}}
+
+/* ── FIELD GROUPS ── */
+.field{display:flex;flex-direction:column;gap:.4rem}
+.field-label{font-family:var(--mono);font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+select,input[type=text],textarea{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:.78rem;padding:.6rem .75rem;outline:none;appearance:none;transition:border-color .15s}
+select:focus,input:focus,textarea:focus{border-color:rgba(59,130,246,.45)}
+select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233b4a5a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
+textarea{resize:none;line-height:1.55;min-height:72px;max-height:120px}
+
+/* ── ENERGY ── */
+.energy-row{display:flex;gap:.5rem;flex-wrap:wrap}
+.e-btn{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:.45rem .9rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.e-btn:hover{border-color:var(--border2);color:var(--text)}
+.e-btn.active[data-e="crashed"]{border-color:var(--red);color:var(--red);background:rgba(248,113,113,.08)}
+.e-btn.active[data-e="low"]{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,.08)}
+.e-btn.active[data-e="medium"]{border-color:var(--cyan);color:var(--cyan);background:rgba(59,130,246,.08)}
+.e-btn.active[data-e="high"]{border-color:var(--green);color:var(--green);background:rgba(52,211,153,.08)}
+.e-btn.active[data-e="flow"]{border-color:var(--violet);color:var(--violet);background:rgba(167,139,250,.1)}
+
+/* ── NEXT ACTION ── */
+.next-input{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:.82rem;padding:.7rem .85rem;outline:none;transition:border-color .15s;line-height:1.4}
+.next-input::placeholder{color:var(--dim)}
+.next-input:focus{border-color:rgba(59,130,246,.45)}
+
+/* ── LOG ── */
+.log-input-row{display:flex;gap:.5rem;flex-shrink:0}
+.log-input-row textarea{flex:1;min-height:56px;max-height:80px;font-size:.76rem}
+.btn-log{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);border-radius:5px;color:var(--cyan);font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:.5rem .9rem;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;align-self:flex-start;margin-top:2px}
+.btn-log:hover{background:rgba(59,130,246,.2)}
+.log-feed{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;min-height:0}
+.log-entry{background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:.65rem .85rem}
+.log-entry-meta{display:flex;align-items:center;gap:.6rem;margin-bottom:.3rem;flex-wrap:wrap}
+.log-ts{font-family:var(--mono);font-size:.56rem;letter-spacing:.08em;color:var(--dim)}
+.log-proj{font-family:var(--mono);font-size:.56rem;letter-spacing:.08em;padding:.15rem .5rem;border-radius:3px;background:rgba(59,130,246,.1);color:var(--cyan);border:1px solid rgba(59,130,246,.2)}
+.log-energy{font-family:var(--mono);font-size:.56rem;letter-spacing:.06em;color:var(--dim)}
+.log-text{font-family:var(--mono);font-size:.76rem;color:var(--text);line-height:1.5}
+.log-empty{font-family:var(--mono);font-size:.7rem;color:var(--dim);text-align:center;padding:2rem 0;letter-spacing:.06em}
+
+/* ── RECOVERY PANEL ── */
+.recovery{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:7px;padding:1rem;display:none}
+.recovery.visible{display:block}
+.recovery-title{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:.8rem}
+.recovery-steps{display:flex;flex-direction:column;gap:.5rem}
+.recovery-step{font-family:var(--mono);font-size:.72rem;color:rgba(248,113,113,.7);line-height:1.5;display:flex;gap:.6rem}
+.recovery-step::before{content:attr(data-n);color:rgba(248,113,113,.35);flex-shrink:0;width:.9rem}
+
+/* ── STATUS BAR ── */
+.statusbar{background:var(--surface);border-top:1px solid var(--border);padding:.45rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:1rem;flex-wrap:wrap}
+.sb-left{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap}
+.sb-item{font-family:var(--mono);font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:.35rem}
+.sb-item span{color:var(--muted)}
+.sb-right{display:flex;align-items:center;gap:.7rem}
+.btn-export{font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--dim);padding:.3rem .7rem;cursor:pointer;transition:all .15s}
+.btn-export:hover{border-color:var(--border2);color:var(--muted)}
+.btn-clear{font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--dim);padding:.3rem .7rem;cursor:pointer;transition:all .15s}
+.btn-clear:hover{border-color:rgba(248,113,113,.3);color:var(--red)}
+.toast{position:fixed;bottom:3.5rem;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:.55rem 1.1rem;font-family:var(--mono);font-size:.65rem;letter-spacing:.08em;color:var(--green);box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;z-index:99}
+.toast.show{opacity:1}
+
+@keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="header-brand">
+      <div class="brand-icon">C</div>
+      <div>
+        <div class="brand-name">Codex Operations</div>
+        <div class="brand-sub">Active State &amp; Log</div>
+      </div>
+    </div>
+    <div class="header-date">
+      <div id="hDate"></div>
+      <div id="hTime" style="margin-top:.1rem"></div>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- LEFT: ACTIVE STATE (B) -->
+    <div class="col">
+      <div class="col-head">
+        <div class="col-icon"></div>
+        <span class="col-label">Active State</span>
+      </div>
+      <div class="col-body">
+
+        <!-- Project -->
+        <div class="field">
+          <div class="field-label">Current Project</div>
+          <select id="projectSelect">
+            <option value="">— Select project —</option>
+            <option value="Legacy Codex v37">Legacy Codex v37</option>
+            <option value="Artful Intelligence / Agent Pack V1">Artful Intelligence / Agent Pack V1</option>
+            <option value="Muse 2 EEG System">Muse 2 EEG System</option>
+            <option value="Photography Business">Photography Business (Edward Emory)</option>
+            <option value="Namibia Workshop">Namibia Workshop Relaunch</option>
+            <option value="Print Sales Auto-Agent">Print Sales Auto-Agent</option>
+            <option value="Photography RAG System">Photography RAG System</option>
+            <option value="WHOOP Integration">WHOOP Integration</option>
+            <option value="CouncilDashboard">CouncilDashboard</option>
+            <option value="12-Book Money OS">12-Book Money OS</option>
+          </select>
+        </div>
+
+        <!-- Energy -->
+        <div class="field">
+          <div class="field-label">Energy State</div>
+          <div class="energy-row">
+            <button class="e-btn" data-e="crashed">💀 Crashed</button>
+            <button class="e-btn" data-e="low">🔋 Low</button>
+            <button class="e-btn" data-e="medium">⚡ Medium</button>
+            <button class="e-btn" data-e="high">🔥 High</button>
+            <button class="e-btn" data-e="flow">🌊 Flow</button>
+          </div>
+        </div>
+
+        <!-- Next Action -->
+        <div class="field" style="flex:1">
+          <div class="field-label">Next Safe Action</div>
+          <input type="text" class="next-input" id="nextAction" placeholder="What is the single next move?" maxlength="200" autocomplete="off"/>
+        </div>
+
+        <!-- Session note -->
+        <div class="field">
+          <div class="field-label">Session Context</div>
+          <textarea id="sessionNote" placeholder="What's true right now? What broke? What's the goal?" rows="3"></textarea>
+        </div>
+
+        <!-- Recovery panel (shows when crashed) -->
+        <div class="recovery" id="recoveryPanel">
+          <div class="recovery-title">⚠ Recovery Protocol</div>
+          <div class="recovery-steps">
+            <div class="recovery-step" data-n="1">Close everything except this tab and the Codex.</div>
+            <div class="recovery-step" data-n="2">Pick ONE task. Not the most important — the smallest.</div>
+            <div class="recovery-step" data-n="3">Set a 15-minute timer. Only that task.</div>
+            <div class="recovery-step" data-n="4">Go look at the stars.</div>
+            <div class="recovery-step" data-n="5">Log what happened before you close the tab.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: LOG (C) -->
+    <div class="col">
+      <div class="col-head">
+        <div class="col-icon" style="background:var(--green);box-shadow:0 0 6px var(--green)"></div>
+        <span class="col-label">Log</span>
+      </div>
+      <div class="col-body">
+
+        <div class="log-input-row">
+          <textarea id="logInput" placeholder="What just happened? What changed? What did you learn? What broke?" rows="3"></textarea>
+          <button class="btn-log" onclick="addLog()">+ Log</button>
+        </div>
+
+        <div class="log-feed" id="logFeed">
+          <div class="log-empty" id="logEmpty">No entries yet.<br>Start logging state changes.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="statusbar">
+    <div class="sb-left">
+      <div class="sb-item">Project: <span id="sbProject">—</span></div>
+      <div class="sb-item">Energy: <span id="sbEnergy">—</span></div>
+      <div class="sb-item">Entries: <span id="sbCount">0</span></div>
+    </div>
+    <div class="sb-right">
+      <button class="btn-export" onclick="exportLog()">Export Log</button>
+      <button class="btn-clear" onclick="clearLog()">Clear Log</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORE = 'codex_ops_v1';
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch(e) { return {}; }
+}
+function save(data) {
+  localStorage.setItem(STORE, JSON.stringify(data));
+}
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('hDate').textContent = now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+  document.getElementById('hTime').textContent = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// Restore state
+const state = load();
+if (state.project) document.getElementById('projectSelect').value = state.project;
+if (state.energy) setEnergy(state.energy, false);
+if (state.nextAction) document.getElementById('nextAction').value = state.nextAction;
+if (state.sessionNote) document.getElementById('sessionNote').value = state.sessionNote;
+
+// Project change
+document.getElementById('projectSelect').addEventListener('change', function() {
+  const d = load(); d.project = this.value; save(d);
+  updateStatusBar();
+});
+
+// Next action
+document.getElementById('nextAction').addEventListener('input', function() {
+  const d = load(); d.nextAction = this.value; save(d);
+});
+document.getElementById('nextAction').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addLog('→ Next: ' + this.value); }
+});
+
+// Session note
+document.getElementById('sessionNote').addEventListener('input', function() {
+  const d = load(); d.sessionNote = this.value; save(d);
+});
+
+// Energy
+function setEnergy(e, persist = true) {
+  document.querySelectorAll('.e-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`[data-e="${e}"]`);
+  if (btn) btn.classList.add('active');
+  const rec = document.getElementById('recoveryPanel');
+  if (e === 'crashed') rec.classList.add('visible');
+  else rec.classList.remove('visible');
+  if (persist) {
+    const d = load(); d.energy = e; save(d);
+    updateStatusBar();
+  }
+}
+document.querySelectorAll('.e-btn').forEach(btn => {
+  btn.addEventListener('click', function() { setEnergy(this.dataset.e); });
+});
+
+// Log
+function addLog(prefill) {
+  const input = document.getElementById('logInput');
+  const text = prefill || input.value.trim();
+  if (!text) return;
+
+  const d = load();
+  const entries = d.entries || [];
+  const project = d.project || '';
+  const energy = d.energy || '';
+
+  entries.unshift({
+    id: Date.now(),
+    ts: new Date().toISOString(),
+    text,
+    project,
+    energy
+  });
+
+  d.entries = entries.slice(0, 200); // keep last 200
+  save(d);
+  if (!prefill) input.value = '';
+  renderLog();
+  updateStatusBar();
+}
+
+// Enter to log (shift+enter for newline)
+document.getElementById('logInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addLog(); }
+});
+
+function renderLog() {
+  const d = load();
+  const entries = d.entries || [];
+  const feed = document.getElementById('logFeed');
+  const empty = document.getElementById('logEmpty');
+
+  if (entries.length === 0) {
+    empty.style.display = 'block';
+    const existing = feed.querySelectorAll('.log-entry');
+    existing.forEach(e => e.remove());
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Re-render
+  const existing = feed.querySelectorAll('.log-entry');
+  existing.forEach(e => e.remove());
+
+  entries.forEach(entry => {
+    const el = document.createElement('div');
+    el.className = 'log-entry';
+    const ts = new Date(entry.ts);
+    const tsStr = ts.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    el.innerHTML = `
+      <div class="log-entry-meta">
+        <span class="log-ts">${tsStr}</span>
+        ${entry.project ? `<span class="log-proj">${entry.project}</span>` : ''}
+        ${entry.energy ? `<span class="log-energy">${entry.energy}</span>` : ''}
+      </div>
+      <div class="log-text">${entry.text.replace(/</g,'&lt;')}</div>
+    `;
+    feed.appendChild(el);
+  });
+}
+
+function updateStatusBar() {
+  const d = load();
+  document.getElementById('sbProject').textContent = d.project || '—';
+  document.getElementById('sbEnergy').textContent = d.energy || '—';
+  document.getElementById('sbCount').textContent = (d.entries || []).length;
+}
+
+function exportLog() {
+  const d = load();
+  const entries = d.entries || [];
+  if (entries.length === 0) { showToast('No entries to export'); return; }
+
+  let md = `# Codex Operations Log\n`;
+  md += `Exported: ${new Date().toLocaleString()}\n\n`;
+  if (d.project) md += `Active Project: ${d.project}\n`;
+  if (d.energy) md += `Energy State: ${d.energy}\n`;
+  if (d.nextAction) md += `Next Action: ${d.nextAction}\n`;
+  md += `\n---\n\n`;
+
+  entries.forEach(e => {
+    const ts = new Date(e.ts).toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    md += `**${ts}**`;
+    if (e.project) md += ` · ${e.project}`;
+    if (e.energy) md += ` · ${e.energy}`;
+    md += `\n${e.text}\n\n`;
+  });
+
+  navigator.clipboard.writeText(md).then(() => showToast('Log copied to clipboard'));
+}
+
+function clearLog() {
+  if (!confirm('Clear all log entries? This cannot be undone.')) return;
+  const d = load();
+  d.entries = [];
+  save(d);
+  renderLog();
+  updateStatusBar();
+  showToast('Log cleared');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Init
+renderLog();
+updateStatusBar();
+
+// Energy needs re-set on init
+if (state.energy) setEnergy(state.energy, false);
+</script>
+</body>
+</html>

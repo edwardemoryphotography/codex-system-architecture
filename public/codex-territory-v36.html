@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Legacy Codex v36 — Territory Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{bg:'#060b14',panel:'#0c1221',line:'#1e2d3d'},fontFamily:{mono:['"DM Mono"','monospace'],sans:['"DM Sans"','sans-serif']}}}};
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#060b14;--panel:#0c1221;--panel2:#0f1929;--border:#1e2d3d;--text:#c8d3e0;--muted:#6b7e91;--dim:#3b4a5a;--cyan:#3b82f6;--green:#34d399;--amber:#fbbf24;--red:#f87171;--violet:#a78bfa;--white:#e2e8f0;}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;overflow:hidden}
+.graph-shell{position:relative;height:100%;overflow:hidden;border-radius:.75rem;background:radial-gradient(circle at 20% 20%,rgba(59,130,246,.06),transparent 30%),radial-gradient(circle at 80% 0%,rgba(167,139,250,.08),transparent 30%),var(--bg)}
+.graph-bg{background-image:linear-gradient(rgba(148,163,184,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.045) 1px,transparent 1px);background-size:40px 40px}
+.edge-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.node-layer{position:absolute;inset:0;width:100%;height:100%}
+.kgn{position:absolute;transform:translate(-50%,-50%);width:148px;border:1px solid rgba(148,163,184,.15);border-radius:.75rem;padding:.5rem .65rem;background:rgba(10,18,30,.9);backdrop-filter:blur(10px);cursor:pointer;text-align:left;user-select:none;z-index:10;transition:border-color .12s,box-shadow .12s}
+.kgn:hover{border-color:rgba(139,92,246,.55);box-shadow:0 0 18px rgba(59,130,246,.14);z-index:20}
+.kgn.selected{border-color:rgba(56,189,248,.85);box-shadow:0 0 20px rgba(56,189,248,.18);z-index:15}
+.kgn.dragging{cursor:grabbing;z-index:30;opacity:.88}
+.node-type{font-size:9px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.25rem;font-family:'DM Mono',monospace}
+.node-label{font-size:12px;font-weight:700;line-height:1.2;color:#e2e8f0;margin-bottom:.25rem}
+.node-cluster{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;margin-bottom:.3rem}
+.signal-badge{display:inline-flex;align-items:center;gap:.2rem;font-size:8px;font-family:'DM Mono',monospace;letter-spacing:.1em;padding:.12rem .4rem;border-radius:999px;border:1px solid}
+.sig-ship{color:#34d399;border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+.sig-wip{color:#fbbf24;border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+.sig-proto{color:#60a5fa;border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06)}
+.sig-frozen{color:#64748b;border-color:rgba(100,116,139,.25);background:rgba(100,116,139,.06)}
+.sig-failed{color:#f87171;border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.06)}
+.right-panel{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.rp-section{border-bottom:1px solid var(--border);flex-shrink:0}
+.rp-head{padding:.6rem .9rem;font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:.4rem}
+.rp-head::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--cyan);box-shadow:0 0 5px var(--cyan);flex-shrink:0}
+.e-btn{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:.35rem .7rem;border-radius:.3rem;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .12s;white-space:nowrap}
+.e-btn.active[data-e="crashed"]{border-color:#f87171;color:#f87171;background:rgba(248,113,113,.08)}
+.e-btn.active[data-e="low"]{border-color:#fbbf24;color:#fbbf24;background:rgba(251,191,36,.08)}
+.e-btn.active[data-e="medium"]{border-color:#3b82f6;color:#3b82f6;background:rgba(59,130,246,.08)}
+.e-btn.active[data-e="high"]{border-color:#34d399;color:#34d399;background:rgba(52,211,153,.08)}
+.e-btn.active[data-e="flow"]{border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,.1)}
+.next-inp{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:.35rem;color:#e2e8f0;font-family:'DM Mono',monospace;font-size:.78rem;padding:.5rem .65rem;outline:none;transition:border-color .12s}
+.next-inp::placeholder{color:var(--dim)}
+.next-inp:focus{border-color:rgba(59,130,246,.4)}
+.log-entry{background:var(--panel2);border:1px solid var(--border);border-radius:.35rem;padding:.5rem .65rem;margin-bottom:.35rem}
+.log-ts{font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.06em;color:var(--dim)}
+.log-text{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--text);line-height:1.45;margin-top:.15rem}
+.ai-output{font-size:.8rem;line-height:1.6;color:#c8d3e0}
+.ai-output strong{color:#e2e8f0;font-weight:600}
+.ai-output code{background:rgba(0,0,0,.35);padding:1px 4px;border-radius:3px;font-family:'DM Mono',monospace;color:#60a5fa;font-size:.75rem}
+.statusbar{background:var(--panel);border-top:1px solid var(--border);padding:.35rem .9rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;flex-shrink:0}
+.sb-chip{font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:.3rem}
+.sb-chip span{color:var(--muted)}
+.recovery{background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.18);border-radius:.45rem;padding:.75rem;margin:0 .75rem .75rem}
+.rec-step{font-family:'DM Mono',monospace;font-size:.7rem;color:rgba(248,113,113,.65);line-height:1.5;display:flex;gap:.5rem;margin-bottom:.3rem}
+.rec-step span{color:rgba(248,113,113,.28);width:.8rem;flex-shrink:0}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.toast{position:fixed;bottom:3rem;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--border);border-radius:.45rem;padding:.5rem 1rem;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.08em;color:#34d399;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;z-index:999}
+.toast.on{opacity:1}
+</style>
+</head>
+<body class="overflow-hidden">
+
+<div class="flex flex-col h-screen">
+
+  <!-- HEADER -->
+  <header class="flex-shrink-0 flex items-center justify-between px-4 py-2.5 border-b" style="border-color:var(--border);background:var(--panel)">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-bold font-mono flex-shrink-0" style="background:linear-gradient(135deg,#3b82f6,#7c3aed)">C</div>
+      <div>
+        <div class="font-mono font-bold text-sm tracking-wide" style="color:#e2e8f0">LEGACY CODEX</div>
+        <div class="font-mono text-[9px] tracking-widest" style="color:var(--dim)">v36 · TERRITORY DASHBOARD</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="aiAction('brief')" class="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md cursor-pointer border" style="background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.35);color:#a78bfa">✦ DAILY BRIEF</button>
+      <button onclick="aiAction('triage')" class="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md cursor-pointer border" style="background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3);color:#fbbf24">⚠ TRIAGE</button>
+      <div class="flex items-center gap-1.5 ml-2">
+        <div id="statusDot" class="w-2 h-2 rounded-full" style="background:#f87171"></div>
+        <span id="statusText" class="font-mono text-[9px] tracking-widest" style="color:var(--dim)">OFFLINE</span>
+      </div>
+      <button onclick="toggleConfig()" class="text-[10px] font-mono px-2 py-1 rounded border cursor-pointer" style="border-color:var(--border);color:var(--dim)">⚙</button>
+    </div>
+  </header>
+
+  <!-- CONFIG DRAWER (hidden by default) -->
+  <div id="configDrawer" class="hidden flex-shrink-0 border-b px-4 py-3 flex gap-3 items-end" style="border-color:var(--border);background:var(--panel2)">
+    <div class="flex flex-col gap-1">
+      <label class="font-mono text-[9px] tracking-widest" style="color:var(--dim)">GEMINI API KEY</label>
+      <input id="geminiKey" type="password" class="font-mono text-xs rounded px-2.5 py-1.5 outline-none w-52" style="background:var(--bg);border:1px solid var(--border);color:#e2e8f0" placeholder="AIza..."/>
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="font-mono text-[9px] tracking-widest" style="color:var(--dim)">GITHUB PAT (optional)</label>
+      <input id="githubPat" type="password" class="font-mono text-xs rounded px-2.5 py-1.5 outline-none w-52" style="background:var(--bg);border:1px solid var(--border);color:#e2e8f0" placeholder="ghp_..."/>
+    </div>
+    <button onclick="saveConfig()" class="font-mono font-bold text-[10px] px-4 py-2 rounded cursor-pointer" style="background:rgba(59,130,246,.2);border:1px solid rgba(59,130,246,.4);color:#60a5fa">SAVE</button>
+    <button onclick="toggleConfig()" class="font-mono text-[10px] px-3 py-2 rounded cursor-pointer" style="border:1px solid var(--border);color:var(--dim)">CLOSE</button>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="flex flex-1 min-h-0">
+
+    <!-- GRAPH -->
+    <div class="flex-1 min-w-0 p-3 flex flex-col gap-2">
+      <div class="graph-shell flex-1 border" style="border-color:var(--border)">
+        <div id="graphScroll" class="w-full h-full overflow-auto cursor-grab active:cursor-grabbing" style="scrollbar-width:thin">
+          <div id="graphVP" class="relative graph-bg" style="width:1800px;height:1100px">
+            <svg id="edgeSvg" class="edge-svg"></svg>
+            <div id="nodeLayer" class="node-layer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="flex-shrink-0 border-l flex flex-col" style="width:320px;border-color:var(--border);background:var(--panel)">
+      <div class="right-panel overflow-y-auto flex-1">
+
+        <!-- ACTIVE STATE -->
+        <div class="rp-section">
+          <div class="rp-head">Active State</div>
+          <div class="px-3 pb-3 flex flex-col gap-2.5">
+            <div>
+              <div class="font-mono text-[9px] tracking-widest mb-1" style="color:var(--dim)">CURRENT PROJECT</div>
+              <select id="activeProject" class="w-full font-mono text-xs rounded px-2.5 py-1.5 outline-none cursor-pointer" style="background:var(--panel2);border:1px solid var(--border);color:#e2e8f0" onchange="saveState()">
+                <option value="">— select —</option>
+                <option>Legacy Codex v37</option>
+                <option>Artful Intelligence / Agent Pack V1</option>
+                <option>Photography Business</option>
+                <option>Print Sales Auto-Agent</option>
+                <option>Muse 2 EEG System</option>
+                <option>Namibia Workshop</option>
+                <option>Photography RAG System</option>
+                <option>WHOOP Integration</option>
+                <option>12-Book Money OS</option>
+              </select>
+            </div>
+            <div>
+              <div class="font-mono text-[9px] tracking-widest mb-1.5" style="color:var(--dim)">ENERGY</div>
+              <div class="flex gap-1.5 flex-wrap">
+                <button class="e-btn" data-e="crashed" onclick="setEnergy(this)">💀</button>
+                <button class="e-btn" data-e="low" onclick="setEnergy(this)">🔋 LOW</button>
+                <button class="e-btn" data-e="medium" onclick="setEnergy(this)">⚡ MED</button>
+                <button class="e-btn" data-e="high" onclick="setEnergy(this)">🔥 HIGH</button>
+                <button class="e-btn" data-e="flow" onclick="setEnergy(this)">🌊</button>
+              </div>
+            </div>
+            <div>
+              <div class="font-mono text-[9px] tracking-widest mb-1" style="color:var(--dim)">NEXT SAFE ACTION</div>
+              <input type="text" class="next-inp" id="nextAction" placeholder="One move. What is it?" oninput="saveState()" onkeydown="if(event.key==='Enter')addLog('→ '+this.value)"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- RECOVERY (shows when crashed) -->
+        <div id="recoveryBlock" class="hidden rp-section pb-1">
+          <div class="rp-head" style="--cyan:#f87171">Recovery Protocol</div>
+          <div class="recovery">
+            <div class="rec-step"><span>1</span>Close everything except this tab + Codex.</div>
+            <div class="rec-step"><span>2</span>Pick the SMALLEST possible task. Not most important.</div>
+            <div class="rec-step"><span>3</span>Set a 15-minute timer. Only that task.</div>
+            <div class="rec-step"><span>4</span>Go look at the stars.</div>
+            <div class="rec-step"><span>5</span>Log what happened before closing.</div>
+          </div>
+        </div>
+
+        <!-- NODE DETAIL (hidden until click) -->
+        <div id="nodeDetail" class="hidden rp-section">
+          <div class="rp-head">Node Detail</div>
+          <div class="px-3 pb-3 flex flex-col gap-2">
+            <div id="ndTitle" class="font-bold text-sm" style="color:#e2e8f0"></div>
+            <div id="ndMeta" class="font-mono text-[9px]" style="color:var(--dim)"></div>
+            <div id="ndDesc" class="text-xs leading-relaxed" style="color:var(--muted)"></div>
+            <div class="flex gap-1.5 flex-wrap mt-1">
+              <button onclick="aiAnalyzeNode()" class="font-mono font-bold text-[9px] px-2.5 py-1.5 rounded cursor-pointer border" style="background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.35);color:#60a5fa">✦ ARCHITECT SCAN</button>
+              <button onclick="aiAction('unblock')" class="font-mono font-bold text-[9px] px-2.5 py-1.5 rounded cursor-pointer border" style="background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.25);color:#f87171">🚀 BREAK WALL</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI WORKSPACE -->
+        <div class="rp-section flex-1 flex flex-col" style="border-bottom:none">
+          <div class="rp-head">AI Workspace · Claude</div>
+          <div class="px-3 pb-2 flex gap-1.5">
+            <textarea id="aiInput" rows="2" class="flex-1 font-mono text-xs rounded px-2.5 py-1.5 outline-none resize-none" style="background:var(--panel2);border:1px solid var(--border);color:#e2e8f0" placeholder="Ask about your ecosystem..."></textarea>
+            <button onclick="aiCustom()" class="font-mono font-bold text-[9px] px-2.5 py-1 rounded cursor-pointer border self-start mt-0.5" style="background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.35);color:#a78bfa">SEND</button>
+          </div>
+          <div id="aiOutput" class="ai-output px-3 pb-3 overflow-y-auto flex-1 text-xs" style="min-height:80px;max-height:200px;color:var(--muted)">
+            <em style="color:var(--dim)">Select a node or ask a question.</em>
+          </div>
+        </div>
+
+        <!-- LOG -->
+        <div style="border-top:1px solid var(--border)">
+          <div class="rp-head">State Log</div>
+          <div class="px-3 pb-2 flex gap-1.5">
+            <input type="text" id="logInput" class="next-inp flex-1" style="font-size:.7rem" placeholder="What just changed?" onkeydown="if(event.key==='Enter')addLog()"/>
+            <button onclick="addLog()" class="font-mono font-bold text-[9px] px-2.5 py-1 rounded border cursor-pointer flex-shrink-0" style="background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3);color:#34d399">+</button>
+          </div>
+          <div id="logFeed" class="px-3 pb-3 overflow-y-auto" style="max-height:180px">
+            <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--dim);text-align:center;padding:.75rem 0">No entries yet.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- STATUSBAR -->
+      <div class="statusbar">
+        <div class="flex gap-3 flex-wrap">
+          <div class="sb-chip">Node <span id="sbNode">—</span></div>
+          <div class="sb-chip">Energy <span id="sbEnergy">—</span></div>
+          <div class="sb-chip">Log <span id="sbLog">0</span></div>
+        </div>
+        <button onclick="exportLog()" class="font-mono text-[9px] px-2 py-1 rounded border cursor-pointer" style="border-color:var(--border);color:var(--dim)">EXPORT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══ DATA ══════════════════════════════════════════════════════
+const NODES = [
+  // DOCTRINE
+  {id:'legacy-codex',  label:'Legacy Codex v37', type:'DOCTRINE', cluster:'Infrastructure', signal:'ship', desc:'Cognitive governance OS. Deployed at legacy-codex.vercel.app. Hybrid markdown + Node.js/TS.', color:'#3b82f6'},
+  {id:'proof-loop',    label:'Proof Loop',        type:'DOCTRINE', cluster:'Infrastructure', signal:null,  desc:'Build → Ship → Observe → Adjust. The anti-recursion mechanism.', color:'#34d399'},
+  {id:'reality',       label:'Reality Contact',   type:'DOCTRINE', cluster:'Infrastructure', signal:null,  desc:'The containment principle. Without it, infinite architecture.', color:'#34d399'},
+  {id:'exec-fn',       label:'Executive Function',type:'DOCTRINE', cluster:'Struggle',       signal:null,  desc:'The bottleneck. Codex exists to externalize this.', color:'#fbbf24'},
+  // PROJECTS
+  {id:'photo-biz',     label:'Photography Business', type:'PROJECT', cluster:'Revenue', signal:'ship', desc:'Edward Emory Photography. Active. Astrophotography, landscape, timelapse. Print sales via Instagram DMs.', color:'#a78bfa'},
+  {id:'artful',        label:'Artful Intelligence',  type:'PROJECT', cluster:'Revenue', signal:'wip',  desc:'V1 pack content fully done since Feb 21. Storefront page built. Not deployed. 3 months stalled.', color:'#a78bfa'},
+  {id:'namibia',       label:'Namibia Workshop',     type:'PROJECT', cluster:'Revenue', signal:'wip',  desc:'Relaunch with Nick (NatGeo) + Richard. Strategic calls pending. Outreach kit done.', color:'#a78bfa'},
+  {id:'revenue',       label:'Revenue',              type:'PROJECT', cluster:'Revenue', signal:'wip',  desc:'Primary proof layer. Photography active. Pack sales not started.', color:'#fbbf24'},
+  // SYSTEMS
+  {id:'print-agent',   label:'Print Sales Agent',   type:'SYSTEM', cluster:'Revenue',       signal:'wip',    desc:'FastAPI + ConvertKit + abandoned checkout recovery. Status unclear.', color:'#60a5fa'},
+  {id:'muse2',         label:'Muse 2 EEG',          type:'SYSTEM', cluster:'Research',      signal:'proto',  desc:'FastAPI + WebSocket + React Three Fiber. Docker config errors. Research layer only.', color:'#60a5fa'},
+  {id:'whoop',         label:'WHOOP Integration',   type:'SYSTEM', cluster:'Research',      signal:'proto',  desc:'Biometric data → Codex state. Not started. Concept only.', color:'#60a5fa'},
+  {id:'rag',           label:'Photography RAG',     type:'SYSTEM', cluster:'Infrastructure',signal:'proto',  desc:'LangChain + FAISS + OpenAI. Retrieval pipeline built.', color:'#60a5fa'},
+  {id:'council',       label:'CouncilDashboard',    type:'SYSTEM', cluster:'Infrastructure',signal:'frozen', desc:'Cyber-Neuro React UI. Three columns. Frozen.', color:'#475569'},
+  {id:'money-os',      label:'12-Book Money OS',    type:'SYSTEM', cluster:'Infrastructure',signal:'frozen', desc:'Six-bucket budgeting OS. Frozen.', color:'#475569'},
+  // CONSTRAINTS
+  {id:'inquiry',       label:'Inquiry Sprint',      type:'CONSTRAINT', cluster:'Revenue', signal:'wip',  desc:'7-step execution plan. March 5 2026. None of the immediate next actions were executed.', color:'#fbbf24'},
+  {id:'burnout',       label:'Burnout',             type:'CONSTRAINT', cluster:'Struggle', signal:null,  desc:'Recurring. Architecture spiral + physical exhaustion + Trader\'s shift.', color:'#f87171'},
+  {id:'traders',       label:"Trader Joe's Reality",type:'CONSTRAINT', cluster:'Struggle', signal:null,  desc:'Thurs–Mon. The body carries the architecture while stocking shelves.', color:'#f87171'},
+];
+
+const EDGES = [
+  // Infrastructure backbone
+  ['legacy-codex','proof-loop',  'implements',  '#34d399'],
+  ['legacy-codex','reality',     'preserves',   '#34d399'],
+  ['legacy-codex','exec-fn',     'addresses',   '#fbbf24'],
+  ['proof-loop',  'reality',     'enables',     '#34d399'],
+  // Revenue flow
+  ['photo-biz',   'revenue',     'generates',   '#a78bfa'],
+  ['artful',      'revenue',     'feeds',       '#a78bfa'],
+  ['artful',      'inquiry',     'includes',    '#fbbf24'],
+  ['artful',      'print-agent', 'includes',    '#60a5fa'],
+  ['namibia',     'revenue',     'extends',     '#a78bfa'],
+  ['photo-biz',   'artful',      'case_study',  '#a78bfa'],
+  // Research feeds codex
+  ['muse2',       'legacy-codex','feeds',       '#60a5fa'],
+  ['whoop',       'muse2',       'integrates',  '#60a5fa'],
+  ['rag',         'artful',      'component',   '#60a5fa'],
+  // Struggle → Codex (bidirectional meaning)
+  ['burnout',     'exec-fn',     'caused_by',   '#f87171'],
+  ['burnout',     'legacy-codex','recovered_by','#3b82f6'],
+  ['traders',     'burnout',     'amplifies',   '#f87171'],
+  ['inquiry',     'revenue',     'unlocks',     '#fbbf24'],
+  // Proof discipline
+  ['revenue',     'reality',     'grounds',     '#34d399'],
+];
+
+const SIGNALS = {
+  ship:   {label:'SHIPPED',   cls:'sig-ship',   dot:'●'},
+  wip:    {label:'WIP',       cls:'sig-wip',    dot:'◐'},
+  proto:  {label:'PROTO',     cls:'sig-proto',  dot:'○'},
+  frozen: {label:'FROZEN',    cls:'sig-frozen', dot:'—'},
+  failed: {label:'FAILED',    cls:'sig-failed', dot:'✕'},
+};
+
+const CLUSTER_CENTERS = {
+  Infrastructure: {x:900, y:280},
+  Revenue:        {x:1300, y:550},
+  Research:       {x:500,  y:550},
+  Struggle:       {x:850,  y:850},
+};
+
+// ═══ STORAGE ════════════════════════════════════════════════════
+const SK = 'codex_v36';
+const load = () => { try { return JSON.parse(localStorage.getItem(SK)) || {}; } catch(e) { return {}; } };
+const save = (d) => localStorage.setItem(SK, JSON.stringify(d));
+let store = load();
+
+// ═══ CONFIG ══════════════════════════════════════════════════════
+let cfg = store.cfg || {};
+let simNodes = NODES.map(n => ({...n, x: store.pos?.[n.id]?.x || 900, y: store.pos?.[n.id]?.y || 550}));
+let simLinks = EDGES.map(e => ({source: simNodes.find(n=>n.id===e[0]), target: simNodes.find(n=>n.id===e[1]), rel:e[2], color:e[3]})).filter(e=>e.source&&e.target);
+let selectedNode = null;
+let sim;
+
+function toggleConfig() {
+  const d = document.getElementById('configDrawer');
+  d.classList.toggle('hidden');
+  if (!d.classList.contains('hidden')) {
+    document.getElementById('geminiKey').value = cfg.geminiKey || '';
+    document.getElementById('githubPat').value = cfg.githubPat || '';
+  }
+}
+function saveConfig() {
+  cfg.geminiKey = document.getElementById('geminiKey').value.trim();
+  cfg.githubPat = document.getElementById('githubPat').value.trim();
+  store.cfg = cfg; save(store);
+  updateStatus(); showToast('Config saved');
+  toggleConfig();
+}
+function updateStatus() {
+  const ok = !!cfg.geminiKey;
+  document.getElementById('statusDot').style.background = ok ? '#34d399' : '#f87171';
+  document.getElementById('statusText').textContent = ok ? 'READY' : 'NO API KEY';
+}
+
+// ═══ AI ENGINE ════════════════════════════════════════════════════
+async function callGemini(prompt, sysCtx) {
+  const key = cfg.geminiKey;
+  if (!key) { setAIOutput('⚠ Set your Gemini API key in ⚙ config.'); return; }
+  setAIOutput('<em style="color:var(--dim)">Thinking...</em>');
+  const model = 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        systemInstruction: {parts:[{text: sysCtx}]},
+        contents: [{parts:[{text: prompt}]}],
+        generationConfig: {temperature: 0.25, maxOutputTokens: 800}
+      })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API error'); }
+    const data = await res.json();
+    const text = data.candidates[0].content.parts[0].text;
+    setAIOutput(renderMd(text));
+    logInteraction('ai', text.slice(0,80)+'...');
+  } catch(e) { setAIOutput('Error: ' + e.message); }
+}
+
+const SYS = `You are the Legacy Codex Architect for Edward Emory — autistic astrophotographer, AI builder, Trader Joe's crew, Santa Barbara. 
+Key facts: Thurs–Mon schedule. Prefers smallest-safe-patch. Never mock data. Separate Proof Engine (revenue/ship) from Research Layer. 
+Real projects: Photography business (active, prints via Instagram DMs), Artful Intelligence V1 (content done, not shipped since Feb), Muse2 EEG (research, Docker errors), Legacy Codex v37 (deployed), Namibia workshop (calls pending), WHOOP (concept), Photography RAG (prototype).
+Be direct, specific, actionable. Max 250 words. Reference real project names. No fluff.`;
+
+async function aiAction(type) {
+  const eco = simNodes.map(n => `${n.label} (${n.signal||'?'}, ${n.cluster})`).join(', ');
+  const prompts = {
+    brief: `Ecosystem: ${eco}\n\nGive the 3 highest-leverage moves right now. Base on actual status. Shortest path to revenue first.`,
+    triage: `Stalled/WIP nodes: ${simNodes.filter(n=>n.signal==='wip'||n.signal==='proto').map(n=>n.label+': '+n.desc.slice(0,60)).join(' | ')}\n\nFor each: one micro-task to unblock. Be specific.`,
+    unblock: selectedNode ? `Node: ${selectedNode.label}\nStatus: ${selectedNode.signal||'?'}\nDesc: ${selectedNode.desc}\n\nSmallest CLI command or physical action to make measurable progress in the next 30 minutes.` : 'No node selected.'
+  };
+  await callGemini(prompts[type] || 'Summarize ecosystem.', SYS);
+}
+async function aiAnalyzeNode() {
+  if (!selectedNode) return;
+  const prompt = `Node: ${selectedNode.label}\nType: ${selectedNode.type}\nStatus: ${selectedNode.signal||'?'}\nCluster: ${selectedNode.cluster}\nDesc: ${selectedNode.desc}\n\nArchitect scan: What's blocking, what's the next safe action, what's the real leverage here?`;
+  await callGemini(prompt, SYS);
+}
+async function aiCustom() {
+  const input = document.getElementById('aiInput');
+  const q = input.value.trim(); if (!q) return;
+  input.value = '';
+  const eco = simNodes.map(n=>`${n.label}(${n.signal||'?'})`).join(' ');
+  await callGemini(`Ecosystem: ${eco}\n\nQuestion: ${q}`, SYS);
+}
+
+function setAIOutput(html) { document.getElementById('aiOutput').innerHTML = html; }
+function renderMd(t) {
+  return t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>').replace(/^#+\s(.+)/gm,'<span style="color:#a78bfa;font-weight:700">$1</span>');
+}
+
+// ═══ STATE PANEL ══════════════════════════════════════════════════
+function saveState() {
+  store.activeProject = document.getElementById('activeProject').value;
+  store.nextAction = document.getElementById('nextAction').value;
+  save(store);
+  document.getElementById('sbEnergy').textContent = store.energy || '—';
+}
+function setEnergy(btn) {
+  document.querySelectorAll('.e-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  store.energy = btn.dataset.e; save(store);
+  document.getElementById('sbEnergy').textContent = store.energy;
+  document.getElementById('recoveryBlock').classList.toggle('hidden', store.energy !== 'crashed');
+}
+function restoreState() {
+  if (store.activeProject) document.getElementById('activeProject').value = store.activeProject;
+  if (store.nextAction) document.getElementById('nextAction').value = store.nextAction;
+  if (store.energy) {
+    const btn = document.querySelector(`[data-e="${store.energy}"]`);
+    if (btn) { btn.classList.add('active'); }
+    document.getElementById('recoveryBlock').classList.toggle('hidden', store.energy !== 'crashed');
+  }
+  document.getElementById('sbEnergy').textContent = store.energy || '—';
+}
+
+// ═══ LOG ══════════════════════════════════════════════════════════
+function addLog(prefill) {
+  const inp = document.getElementById('logInput');
+  const text = prefill || inp.value.trim(); if (!text) return;
+  const entries = store.log || [];
+  entries.unshift({ ts: new Date().toISOString(), text, project: store.activeProject||'', energy: store.energy||'' });
+  store.log = entries.slice(0, 200); save(store);
+  if (!prefill) inp.value = '';
+  renderLog();
+}
+function logInteraction(type, msg) {
+  addLog(`[${type}] ${msg}`);
+}
+function renderLog() {
+  const entries = store.log || [];
+  const feed = document.getElementById('logFeed');
+  if (entries.length === 0) { feed.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--dim);text-align:center;padding:.75rem 0">No entries yet.</div>`; return; }
+  feed.innerHTML = entries.slice(0, 30).map(e => {
+    const ts = new Date(e.ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<div class="log-entry"><div class="log-ts">${ts}${e.project?' · '+e.project:''}</div><div class="log-text">${e.text.replace(/</g,'&lt;')}</div></div>`;
+  }).join('');
+  document.getElementById('sbLog').textContent = entries.length;
+}
+function exportLog() {
+  const entries = store.log || []; if (!entries.length) { showToast('Nothing to export'); return; }
+  let md = `# Codex Log\nExported: ${new Date().toLocaleString()}\n\n`;
+  entries.forEach(e => { md += `**${new Date(e.ts).toLocaleString()}**${e.project?' · '+e.project:''}\n${e.text}\n\n`; });
+  navigator.clipboard.writeText(md).then(()=>showToast('Log copied to clipboard'));
+}
+
+// ═══ GRAPH ════════════════════════════════════════════════════════
+function initGraph() {
+  sim = d3.forceSimulation(simNodes)
+    .force('link', d3.forceLink(simLinks).distance(180).strength(0.4))
+    .force('charge', d3.forceManyBody().strength(-1200))
+    .force('collide', d3.forceCollide().radius(90))
+    .force('cluster', clusterForce(0.08))
+    .on('tick', tick)
+    .on('end', savePositions);
+  renderGraph();
+}
+
+function clusterForce(strength) {
+  return function() {
+    simNodes.forEach(n => {
+      const center = CLUSTER_CENTERS[n.cluster];
+      if (!center) return;
+      n.vx += (center.x - n.x) * strength;
+      n.vy += (center.y - n.y) * strength;
+    });
+  };
+}
+
+function tick() {
+  const svg = d3.select('#edgeSvg');
+  svg.selectAll('line')
+    .attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
+    .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
+  simNodes.forEach(n => {
+    const el = document.querySelector(`.kgn[data-id="${n.id}"]`);
+    if (!el) return;
+    n.x = Math.max(80, Math.min(1720, n.x));
+    n.y = Math.max(60, Math.min(1040, n.y));
+    el.style.left = n.x + 'px'; el.style.top = n.y + 'px';
+  });
+}
+
+function savePositions() {
+  store.pos = {};
+  simNodes.forEach(n => { store.pos[n.id] = {x: Math.round(n.x), y: Math.round(n.y)}; });
+  save(store);
+}
+
+function renderGraph() {
+  // Edges
+  const svg = d3.select('#edgeSvg');
+  svg.selectAll('line').data(simLinks).join('line')
+    .attr('stroke', d => d.color || 'rgba(148,163,184,0.18)')
+    .attr('stroke-width', 1.2)
+    .attr('stroke-opacity', 0.4)
+    .attr('stroke-dasharray', d => d.rel === 'caused_by' || d.rel === 'amplifies' ? '4 4' : null);
+
+  // Nodes
+  const nl = document.getElementById('nodeLayer');
+  nl.innerHTML = '';
+  simNodes.forEach(n => {
+    const el = document.createElement('button');
+    el.className = 'kgn';
+    el.dataset.id = n.id;
+    const sig = n.signal ? SIGNALS[n.signal] : null;
+    el.innerHTML = `
+      <div class="node-type" style="color:${n.color}">${n.type}</div>
+      <div class="node-label">${n.label}</div>
+      <div class="node-cluster">${n.cluster}</div>
+      ${sig ? `<span class="signal-badge ${sig.cls}">${sig.dot} ${sig.label}</span>` : ''}
+    `;
+    el.style.borderColor = `${n.color}28`;
+    el.onclick = () => selectNode(n.id);
+    // Desktop drag
+    el.onmousedown = (e) => { if (e.button !== 0) return; e.stopPropagation(); startDrag(n, el, e, false); };
+    // Touch drag
+    el.ontouchstart = (e) => { e.stopPropagation(); startDrag(n, el, e.touches[0], true); };
+    nl.appendChild(el);
+  });
+}
+
+function startDrag(n, el, initEvent, isTouch) {
+  sim.alphaTarget(0.3).restart();
+  el.classList.add('dragging');
+  const vp = document.getElementById('graphVP').getBoundingClientRect();
+  const sc = document.getElementById('graphScroll');
+  const move = (ev) => {
+    const te = isTouch ? ev.touches[0] : ev;
+    n.fx = te.clientX - vp.left + sc.scrollLeft;
+    n.fy = te.clientY - vp.top + sc.scrollTop;
+  };
+  const up = () => {
+    n.fx = null; n.fy = null;
+    sim.alphaTarget(0);
+    el.classList.remove('dragging');
+    savePositions();
+    if (isTouch) { document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up); }
+    else { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+  };
+  if (isTouch) { document.addEventListener('touchmove', move, {passive:false}); document.addEventListener('touchend', up); }
+  else { document.addEventListener('mousemove', move); document.addEventListener('mouseup', up); }
+}
+
+function selectNode(id) {
+  selectedNode = simNodes.find(n => n.id === id);
+  document.querySelectorAll('.kgn').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+  const det = document.getElementById('nodeDetail');
+  det.classList.remove('hidden');
+  document.getElementById('ndTitle').textContent = selectedNode.label;
+  document.getElementById('ndMeta').textContent = `${selectedNode.type} · ${selectedNode.cluster} · ${selectedNode.signal ? SIGNALS[selectedNode.signal].label : 'no signal'}`;
+  document.getElementById('ndDesc').textContent = selectedNode.desc;
+  document.getElementById('sbNode').textContent = selectedNode.label;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+// ═══ BOOT ════════════════════════════════════════════════════════
+window.onload = () => {
+  updateStatus();
+  restoreState();
+  renderLog();
+  initGraph();
+  // Scroll to center
+  setTimeout(() => {
+    const sc = document.getElementById('graphScroll');
+    sc.scrollLeft = 700; sc.scrollTop = 350;
+  }, 100);
+};
+</script>
+</body>
+</html>
