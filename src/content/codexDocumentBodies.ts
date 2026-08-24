@@ -6,6 +6,10 @@ type EvidenceStatus =
   | 'UNVERIFIED CONCEPT — NOT IMPLEMENTED';
 
 import type { ProvenanceStatus } from '../types';
+import {
+  CANONICAL_REVIEW_DATE,
+  operationalizeDocument,
+} from './documentIntelligence';
 
 function documentBody(
   title: string,
@@ -17,7 +21,7 @@ function documentBody(
 
 **Evidence status:** ${status}
 **Evidence basis:** ${evidenceBasis}
-**Last reviewed:** 2026-07-14
+**Last reviewed:** ${CANONICAL_REVIEW_DATE}
 
 ${body.trim()}
 `;
@@ -32,7 +36,7 @@ ${body.trim()}
  * - Designs and goals must never be presented as running systems.
  * - Unknown values remain unknown.
  */
-export const CODEX_DOCUMENT_BODIES: Record<string, string> = {
+const BASE_CODEX_DOCUMENT_BODIES: Record<string, string> = {
   '/codex': documentBody(
     'Codex',
     'CANONICAL DESIGN',
@@ -968,6 +972,13 @@ No productivity, recovery, focus, revenue, relationship, or creative-satisfactio
   ),
 };
 
+export const CODEX_DOCUMENT_BODIES: Record<string, string> = Object.fromEntries(
+  Object.entries(BASE_CODEX_DOCUMENT_BODIES).map(([path, body]) => [
+    path,
+    operationalizeDocument(path, body),
+  ]),
+);
+
 export function getCodexDocumentBody(path: string, fallback = ''): string {
   return CODEX_DOCUMENT_BODIES[path] ?? fallback;
 }
@@ -1008,7 +1019,7 @@ export function getCodexDocumentProvenance(path: string): CodexDocumentProvenanc
   if (/DESIGN|CONCEPT|UNIMPLEMENTED/.test(evidenceStatus)) {
     statuses.add('concept');
   }
-  if (/UNVERIFIED|Unknown|not verified|not freshly verified/i.test(`${evidenceStatus}\n${content}`)) {
+  if (/UNVERIFIED|Unknown|not verified|not freshly verified/i.test(`${evidenceStatus}\n${evidenceBasis}`)) {
     statuses.add('unknown');
   }
 

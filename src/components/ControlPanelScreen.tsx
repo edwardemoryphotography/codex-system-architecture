@@ -19,6 +19,7 @@ import {
 import { storeUser } from '../lib/auth';
 import type { ExecutionLane, EvidenceKind, RouteProposal, RoutedRequestRecord, Workspace } from '../types';
 import { useToast } from '../hooks/useToast';
+import type { OutcomeDraft } from '../content/documentIntelligence';
 
 const CHIPS: Array<{
   id: string;
@@ -65,12 +66,16 @@ interface ControlPanelScreenProps {
   isDarkMode?: boolean;
   onSelectDocument?: (path: string) => void;
   onOpenGraph?: () => void;
+  initialDraft?: OutcomeDraft | null;
+  onDraftConsumed?: () => void;
 }
 
 export function ControlPanelScreen({
   isDarkMode = true,
   onSelectDocument,
   onOpenGraph,
+  initialDraft,
+  onDraftConsumed,
 }: ControlPanelScreenProps) {
   const toast = useToast();
   const [task, setTask] = useState('');
@@ -80,6 +85,7 @@ export function ControlPanelScreen({
   const [routing, setRouting] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [lastRoute, setLastRoute] = useState<RoutedRequestRecord | null>(null);
+  const [draftSource, setDraftSource] = useState<string | null>(null);
 
   const [session, setSession] = useState<Session | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -93,6 +99,19 @@ export function ControlPanelScreen({
   // The key only rotates once the draft materially changes or the route
   // succeeds.
   const draftIdempotency = useRef<{ key: string; fingerprint: string } | null>(null);
+
+  useEffect(() => {
+    if (!initialDraft) return;
+    setTask(initialDraft.task);
+    setChip(initialDraft.chipId);
+    setRepository(initialDraft.repository);
+    setRequiredEvidence(initialDraft.requiredEvidence);
+    setDraftSource(initialDraft.sourcePath);
+    setRouteError(null);
+    setLastRoute(null);
+    draftIdempotency.current = null;
+    onDraftConsumed?.();
+  }, [initialDraft, onDraftConsumed]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -337,6 +356,26 @@ export function ControlPanelScreen({
             )}
 
             <div className={`relative rounded-2xl border overflow-hidden ${panel}`}>
+              {draftSource && (
+                <div
+                  className={`flex items-center justify-between gap-3 border-b px-4 py-2 text-xs ${
+                    isDarkMode
+                      ? 'border-neutral-800 bg-sky-500/10 text-sky-300'
+                      : 'border-neutral-200 bg-sky-50 text-sky-700'
+                  }`}
+                >
+                  <span className="truncate">Outcome loaded from {draftSource}</span>
+                  {onSelectDocument && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectDocument(draftSource)}
+                      className="shrink-0 underline underline-offset-2"
+                    >
+                      Review source
+                    </button>
+                  )}
+                </div>
+              )}
               <textarea
                 value={task}
                 onChange={(e) => setTask(e.target.value)}

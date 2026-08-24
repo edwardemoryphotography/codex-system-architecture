@@ -26,12 +26,17 @@ import {
   Download,
   Columns,
   BookOpen,
+  ArrowRight,
 } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { TableOfContents } from './TableOfContents';
 import { ControlPanelScreen } from './ControlPanelScreen';
 import { ExportMenu } from './ExportMenu';
 import { useToast } from '../hooks/useToast';
+import {
+  createOutcomeDraft,
+  type OutcomeDraft,
+} from '../content/documentIntelligence';
 
 interface DocumentViewerProps {
   path: string | null;
@@ -42,6 +47,9 @@ interface DocumentViewerProps {
   onSelectDocument?: (path: string) => void;
   onOpenGraph?: () => void;
   onOpenControlPanel?: () => void;
+  onStartOutcome?: (draft: OutcomeDraft) => void;
+  controlPanelDraft?: OutcomeDraft | null;
+  onControlPanelDraftConsumed?: () => void;
 }
 
 interface Note {
@@ -145,6 +153,9 @@ export function DocumentViewer({
   onSelectDocument,
   onOpenGraph,
   onOpenControlPanel,
+  onStartOutcome,
+  controlPanelDraft,
+  onControlPanelDraftConsumed,
 }: DocumentViewerProps) {
   const toast = useToast();
   const { isAuthenticated } = useAuthSession();
@@ -317,6 +328,8 @@ export function DocumentViewer({
         isDarkMode={isDarkMode}
         onSelectDocument={onSelectDocument}
         onOpenGraph={onOpenGraph}
+        initialDraft={controlPanelDraft}
+        onDraftConsumed={onControlPanelDraftConsumed}
       />
     );
   }
@@ -372,6 +385,7 @@ export function DocumentViewer({
       day: 'numeric',
     });
   const colors = categoryColors[document.category] || categoryColors.root;
+  const outcomeDraft = createOutcomeDraft(document.path);
   const pathParts = document.path.split('/').filter(Boolean);
   const personalDisabled = !canPersistPersonal;
   const progressLabel =
@@ -609,6 +623,20 @@ export function DocumentViewer({
               {document.is_read_only ? ' · Public canonical document · read-only' : ''}
               {canPersistPersonal ? ' · Personal bookmarks/notes enabled' : ''}
             </p>
+            {outcomeDraft && onStartOutcome && (
+              <button
+                type="button"
+                onClick={() => onStartOutcome(outcomeDraft)}
+                className={`codex-press codex-focus-ring mt-4 inline-flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors ${
+                  isDarkMode
+                    ? 'bg-white text-gray-950 hover:bg-gray-100'
+                    : 'bg-gray-900 text-white hover:bg-black'
+                }`}
+              >
+                Start this outcome
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </button>
+            )}
           </div>
 
           {childDocs.length > 0 && onSelectDocument && (

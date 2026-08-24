@@ -1,5 +1,11 @@
 import type { CodexDocument } from '../types';
-import { CORPUS_BRIDGES, CORPUS_DOCUMENTS, corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
+import { CORPUS_DOCUMENTS, corpusToDocuments, isLeanDocumentSet } from '../content/codexCorpus';
+import {
+  DOCUMENT_RELATIONSHIPS,
+  getDocumentIntelligence,
+  getReviewState,
+  type ReviewState,
+} from '../content/documentIntelligence';
 
 export type GraphEdgeKind = 'hierarchy' | 'related' | 'bridges' | 'sibling';
 
@@ -14,6 +20,11 @@ export interface GraphNodeData {
   degree: number;
   isHub: boolean;
   excerpt: string;
+  outcome: string;
+  nextAction: string;
+  proof: string;
+  lastReviewed: string | null;
+  reviewState: ReviewState;
 }
 
 export interface GraphEdgeData {
@@ -22,6 +33,7 @@ export interface GraphEdgeData {
   target: string;
   kind: GraphEdgeKind;
   weight: number;
+  rationale: string;
 }
 
 export interface KnowledgeGraphData {
@@ -95,7 +107,9 @@ export function resolveGraphDocuments(liveDocs: CodexDocument[]): {
   documents: CodexDocument[];
   source: 'live' | 'corpus';
 } {
-  if (isLeanDocumentSet(liveDocs)) {
+  const isEmbeddedCorpus =
+    liveDocs.length > 0 && liveDocs.every((document) => document.id.startsWith('corpus-'));
+  if (isLeanDocumentSet(liveDocs) || isEmbeddedCorpus) {
     return { documents: corpusToDocuments(), source: 'corpus' };
   }
   return { documents: liveDocs, source: 'live' };
@@ -103,7 +117,12 @@ export function resolveGraphDocuments(liveDocs: CodexDocument[]): {
 
 export function buildKnowledgeGraph(
   liveDocs: CodexDocument[],
-  liveLinks: Array<{ source_document_id: string; target_document_id: string; link_type?: string }> = [],
+  liveLinks: Array<{
+    source_document_id: string;
+    target_document_id: string;
+    link_type?: string;
+    rationale?: string;
+  }> = [],
 ): KnowledgeGraphData {
   const { documents, source } = resolveGraphDocuments(liveDocs);
   const byId = new Map(documents.map((doc) => [doc.id, doc]));
@@ -111,7 +130,13 @@ export function buildKnowledgeGraph(
 
   const edgeMap = new Map<string, GraphEdgeData>();
 
-  const addEdge = (sourceId: string, targetId: string, kind: GraphEdgeKind, weight = 1) => {
+  const addEdge = (
+    sourceId: string,
+    targetId: string,
+    kind: GraphEdgeKind,
+    weight = 1,
+    rationale = 'Connected in the knowledge system.',
+  ) => {
     if (!byId.has(sourceId) || !byId.has(targetId) || sourceId === targetId) return;
     const key = edgeKey(sourceId, targetId);
     const existing = edgeMap.get(key);
@@ -119,6 +144,9 @@ export function buildKnowledgeGraph(
       existing.weight = Math.max(existing.weight, weight);
       if (kind === 'hierarchy' || (kind === 'bridges' && existing.kind === 'sibling')) {
         existing.kind = kind;
+      }
+      if (existing.rationale === 'Connected in the knowledge system.') {
+        existing.rationale = rationale;
       }
       return;
     }
@@ -128,28 +156,49 @@ export function buildKnowledgeGraph(
       target: targetId,
       kind,
       weight,
+      rationale,
     });
   };
 
   documents.forEach((doc) => {
     if (doc.parent_id && byId.has(doc.parent_id)) {
-      addEdge(doc.parent_id, doc.id, 'hierarchy', 1.4);
+      const parent = byId.get(doc.parent_id);
+      addEdge(
+        doc.parent_id,
+        doc.id,
+        'hierarchy',
+        1.4,
+        `${parent?.title ?? 'Parent'} contains ${doc.title} in the canonical hierarchy.`,
+      );
     }
   });
 
   liveLinks.forEach((link) => {
-    addEdge(link.source_document_id, link.target_document_id, 'related', 1.1);
+    const kind: GraphEdgeKind = link.link_type === 'bridges' ? 'bridges' : 'related';
+    addEdge(
+      link.source_document_id,
+      link.target_document_id,
+      kind,
+      kind === 'bridges' ? 1.25 : 1.1,
+      link.rationale ?? 'Relationship loaded from the live knowledge database.',
+    );
   });
 
-  if (source === 'corpus') {
-    CORPUS_BRIDGES.forEach((bridge) => {
-      const sourceDoc = byPath.get(bridge.sourcePath);
-      const targetDoc = byPath.get(bridge.targetPath);
-      if (sourceDoc && targetDoc) {
-        addEdge(sourceDoc.id, targetDoc.id, bridge.linkType, bridge.linkType === 'bridges' ? 1.25 : 1);
-      }
-    });
-  }
+  // Canonical relationship intelligence must remain present when live rows
+  // replace corpus ids. Previously these edges disappeared in "LIVE DB" mode.
+  DOCUMENT_RELATIONSHIPS.forEach((relationship) => {
+    const sourceDoc = byPath.get(relationship.sourcePath);
+    const targetDoc = byPath.get(relationship.targetPath);
+    if (sourceDoc && targetDoc) {
+      addEdge(
+        sourceDoc.id,
+        targetDoc.id,
+        relationship.kind,
+        relationship.kind === 'bridges' ? 1.25 : 1,
+        relationship.rationale,
+      );
+    }
+  });
 
   const childrenByParent = new Map<string, CodexDocument[]>();
   documents.forEach((doc) => {
@@ -162,7 +211,13 @@ export function buildKnowledgeGraph(
   childrenByParent.forEach((children) => {
     const ordered = [...children].sort((a, b) => a.order - b.order);
     for (let i = 0; i < ordered.length - 1; i += 1) {
-      addEdge(ordered[i].id, ordered[i + 1].id, 'sibling', 0.55);
+      addEdge(
+        ordered[i].id,
+        ordered[i + 1].id,
+        'sibling',
+        0.55,
+        `${ordered[i].title} and ${ordered[i + 1].title} are adjacent parts of the same territory.`,
+      );
     }
   });
 
@@ -175,6 +230,9 @@ export function buildKnowledgeGraph(
   const nodes: GraphNodeData[] = documents.map((doc) => {
     const childCount = childrenByParent.get(doc.id)?.length ?? 0;
     const nodeDegree = degree.get(doc.id) ?? 0;
+    const intelligence = getDocumentIntelligence(doc.path);
+    const excerpt = excerptFor(doc);
+    const cadence = intelligence?.reviewCadenceDays ?? 90;
     return {
       id: doc.id,
       title: doc.title,
@@ -185,7 +243,16 @@ export function buildKnowledgeGraph(
       childCount,
       degree: nodeDegree,
       isHub: childCount > 0 || doc.path === '/codex' || nodeDegree >= 4,
-      excerpt: excerptFor(doc),
+      excerpt,
+      outcome: intelligence?.outcome ?? excerpt,
+      nextAction:
+        intelligence?.nextAction ??
+        'Open this live document, verify its current purpose, and define the next outcome-producing move.',
+      proof:
+        intelligence?.proof ??
+        'The live document has a current owner, explicit outcome, and dated evidence.',
+      lastReviewed: doc.last_reviewed,
+      reviewState: getReviewState(doc.last_reviewed, cadence),
     };
   });
 

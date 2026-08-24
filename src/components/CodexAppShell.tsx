@@ -14,6 +14,7 @@ import { SupabaseSetupBanner } from './SupabaseSetupBanner';
 import { useIsMobileLayout } from '../hooks/useMediaQuery';
 import { getRecentDocuments, isSupabaseConfigured } from '../lib/supabase';
 import type { CodexDocument } from '../types';
+import type { OutcomeDraft } from '../content/documentIntelligence';
 
 interface RecentDoc {
   codex_documents: CodexDocument;
@@ -41,6 +42,7 @@ export function CodexAppShell() {
   const [splitRightPath, setSplitRightPath] = useState<string | null>(null);
   const [isFormExampleOpen, setIsFormExampleOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [outcomeDraft, setOutcomeDraft] = useState<OutcomeDraft | null>(null);
   const isMobileLayout = useIsMobileLayout();
   const showDesktopSidebar = !isFocusMode && !isSplitView && !isMobileLayout;
   const showMobileSidebar = isMobileLayout && isMobileNavOpen && !isFocusMode && !isSplitView;
@@ -128,6 +130,18 @@ export function CodexAppShell() {
     setSelectedPath(null);
     setIsMobileNavOpen(false);
     setIsSplitView(false);
+  }, []);
+
+  const handleStartOutcome = useCallback(
+    (draft: OutcomeDraft) => {
+      setOutcomeDraft(draft);
+      handleOpenControlPanel();
+    },
+    [handleOpenControlPanel],
+  );
+
+  const handleOutcomeDraftConsumed = useCallback(() => {
+    setOutcomeDraft(null);
   }, []);
 
   const handleOpenKnowledgeGraph = useCallback(() => {
@@ -530,6 +544,9 @@ export function CodexAppShell() {
                 onSelectDocument={handleSelectDocument}
                 onOpenGraph={handleOpenKnowledgeGraph}
                 onOpenControlPanel={handleOpenControlPanel}
+                onStartOutcome={handleStartOutcome}
+                controlPanelDraft={outcomeDraft}
+                onControlPanelDraftConsumed={handleOutcomeDraftConsumed}
               />
             )}
             </div>
