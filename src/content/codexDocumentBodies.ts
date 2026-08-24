@@ -999,7 +999,9 @@ const provenanceOrder: ProvenanceStatus[] = [
 /** Parse the required evidence header into machine-readable provenance. */
 export function getCodexDocumentProvenance(path: string): CodexDocumentProvenance {
   const content = CODEX_DOCUMENT_BODIES[path];
+  const baseContent = BASE_CODEX_DOCUMENT_BODIES[path];
   if (!content) throw new Error(`Missing canonical Codex body for ${path}`);
+  if (!baseContent) throw new Error(`Missing base canonical Codex body for ${path}`);
 
   const evidenceStatus = content.match(/^\*\*Evidence status:\*\* ([^\r\n]+)$/m)?.[1];
   const evidenceBasis = content.match(/^\*\*Evidence basis:\*\* ([^\r\n]+)$/m)?.[1];
@@ -1019,7 +1021,18 @@ export function getCodexDocumentProvenance(path: string): CodexDocumentProvenanc
   if (/DESIGN|CONCEPT|UNIMPLEMENTED/.test(evidenceStatus)) {
     statuses.add('concept');
   }
-  if (/UNVERIFIED|Unknown|not verified|not freshly verified/i.test(`${evidenceStatus}\n${evidenceBasis}`)) {
+  const unresolvedClaims = baseContent
+    .split('\n')
+    .filter((line) => !/^\s*- \*\*Unknown:\*\* not yet verified\.?\s*$/i.test(line))
+    .join('\n');
+  if (
+    /UNVERIFIED|Unknown|not verified|not freshly verified/i.test(
+      `${evidenceStatus}\n${evidenceBasis}`,
+    ) ||
+    /\*\*Unknown\b|\bUnknown\s+—|\bnot (?:yet |freshly )?verified\b|\bnot confirmed\b|\bnot measured\b/i.test(
+      unresolvedClaims,
+    )
+  ) {
     statuses.add('unknown');
   }
 

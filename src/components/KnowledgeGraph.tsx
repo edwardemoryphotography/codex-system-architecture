@@ -15,6 +15,7 @@ import { useIsMobileLayout } from '../hooks/useMediaQuery';
 import {
   buildKnowledgeGraph,
   getConnectedNodeIds,
+  matchesGraphNodeQuery,
   type GraphEdgeData,
   type GraphNodeData,
   type KnowledgeGraphData,
@@ -400,14 +401,7 @@ export function KnowledgeGraph({
     const query = searchQuery.trim().toLowerCase();
     if (!query) return [];
     return nodesRef.current
-      .filter(
-        (node) =>
-          node.title.toLowerCase().includes(query) ||
-          node.path.toLowerCase().includes(query) ||
-          node.category.toLowerCase().includes(query) ||
-          node.outcome.toLowerCase().includes(query) ||
-          node.nextAction.toLowerCase().includes(query),
-      )
+      .filter((node) => matchesGraphNodeQuery(node, query))
       .slice(0, 8);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, nodeCount]);
@@ -612,13 +606,7 @@ export function KnowledgeGraph({
     };
 
     const matchesQuery = (node: SimNode) => {
-      const query = searchQueryRef.current.trim().toLowerCase();
-      if (!query) return true;
-      return (
-        node.title.toLowerCase().includes(query) ||
-        node.path.toLowerCase().includes(query) ||
-        node.category.toLowerCase().includes(query)
-      );
+      return matchesGraphNodeQuery(node, searchQueryRef.current);
     };
 
     /* ---------------- simulation ---------------- */

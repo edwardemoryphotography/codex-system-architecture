@@ -5,6 +5,7 @@ import {
   CANONICAL_REVIEW_DATE,
   DOCUMENT_INTELLIGENCE,
   DOCUMENT_RELATIONSHIPS,
+  getReviewCadenceDays,
 } from './documentIntelligence';
 
 const forbiddenClaims = [
@@ -73,6 +74,25 @@ describe('Codex reality contract', () => {
       expect(document.content, document.path).toContain('## Connected systems');
       expect(wordCount, document.path).toBeGreaterThan(180);
     }
+  });
+
+  it('preserves explicit unknown claims inside otherwise verified documents', () => {
+    const documents = corpusToDocuments();
+    const gear = documents.find(
+      (document) => document.path === '/codex/artistic_systems/photography_ops/gear_specs.md',
+    );
+    const identity = documents.find((document) => document.path === '/codex/root/identity.md');
+
+    expect(gear?.provenance_status).toContain('verified');
+    expect(gear?.provenance_status).toContain('unknown');
+    expect(identity?.provenance_status).toContain('verified');
+    expect(identity?.provenance_status).not.toContain('unknown');
+  });
+
+  it('uses category cadence when a document has no explicit override', () => {
+    expect(getReviewCadenceDays('/codex/territory/version_schema.md')).toBe(30);
+    expect(getReviewCadenceDays('/codex/artistic_systems/photography_ops/timelapse_ops.md')).toBe(60);
+    expect(getReviewCadenceDays('/codex/root/identity.md')).toBe(90);
   });
 
   it('keeps every explicit relationship inside the canonical corpus', () => {

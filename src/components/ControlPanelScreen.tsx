@@ -22,7 +22,7 @@ import { useToast } from '../hooks/useToast';
 import type { OutcomeDraft } from '../content/documentIntelligence';
 
 const CHIPS: Array<{
-  id: string;
+  id: OutcomeDraft['chipId'];
   label: string;
   lane: ExecutionLane;
   evidenceKind: EvidenceKind;
@@ -67,6 +67,7 @@ interface ControlPanelScreenProps {
   onSelectDocument?: (path: string) => void;
   onOpenGraph?: () => void;
   initialDraft?: OutcomeDraft | null;
+  onDraftChange?: (draft: OutcomeDraft) => void;
   onDraftConsumed?: () => void;
 }
 
@@ -75,11 +76,12 @@ export function ControlPanelScreen({
   onSelectDocument,
   onOpenGraph,
   initialDraft,
+  onDraftChange,
   onDraftConsumed,
 }: ControlPanelScreenProps) {
   const toast = useToast();
   const [task, setTask] = useState('');
-  const [chip, setChip] = useState<string | null>(null);
+  const [chip, setChip] = useState<OutcomeDraft['chipId'] | null>(null);
   const [repository, setRepository] = useState('');
   const [requiredEvidence, setRequiredEvidence] = useState('');
   const [routing, setRouting] = useState(false);
@@ -110,8 +112,28 @@ export function ControlPanelScreen({
     setRouteError(null);
     setLastRoute(null);
     draftIdempotency.current = null;
-    onDraftConsumed?.();
-  }, [initialDraft, onDraftConsumed]);
+  }, [initialDraft]);
+
+  useEffect(() => {
+    if (!draftSource || !chip || !onDraftChange) return;
+    const nextDraft: OutcomeDraft = {
+      sourcePath: draftSource,
+      task,
+      repository,
+      requiredEvidence,
+      chipId: chip,
+    };
+    if (
+      initialDraft?.sourcePath === nextDraft.sourcePath &&
+      initialDraft.task === nextDraft.task &&
+      initialDraft.repository === nextDraft.repository &&
+      initialDraft.requiredEvidence === nextDraft.requiredEvidence &&
+      initialDraft.chipId === nextDraft.chipId
+    ) {
+      return;
+    }
+    onDraftChange(nextDraft);
+  }, [chip, draftSource, initialDraft, onDraftChange, repository, requiredEvidence, task]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -240,6 +262,8 @@ export function ControlPanelScreen({
       draftIdempotency.current = null;
       setTask('');
       setChip(null);
+      setDraftSource(null);
+      onDraftConsumed?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to route task';
       setRouteError(message);

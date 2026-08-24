@@ -144,6 +144,21 @@ export function CodexAppShell() {
     setOutcomeDraft(null);
   }, []);
 
+  const handleOutcomeDraftChange = useCallback((draft: OutcomeDraft) => {
+    setOutcomeDraft((current) => {
+      if (
+        current?.sourcePath === draft.sourcePath &&
+        current.task === draft.task &&
+        current.repository === draft.repository &&
+        current.requiredEvidence === draft.requiredEvidence &&
+        current.chipId === draft.chipId
+      ) {
+        return current;
+      }
+      return draft;
+    });
+  }, []);
+
   const handleOpenKnowledgeGraph = useCallback(() => {
     setIsKnowledgeGraphOpen(true);
   }, []);
@@ -546,6 +561,7 @@ export function CodexAppShell() {
                 onOpenControlPanel={handleOpenControlPanel}
                 onStartOutcome={handleStartOutcome}
                 controlPanelDraft={outcomeDraft}
+                onControlPanelDraftChange={handleOutcomeDraftChange}
                 onControlPanelDraftConsumed={handleOutcomeDraftConsumed}
               />
             )}

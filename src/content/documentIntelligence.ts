@@ -596,6 +596,13 @@ export function getDocumentIntelligence(path: string): DocumentIntelligence | nu
   return DOCUMENT_INTELLIGENCE[path] ?? null;
 }
 
+export function getReviewCadenceDays(path: string): number {
+  const intelligence = DOCUMENT_INTELLIGENCE[path];
+  const category = categoryFor(path);
+  const playbook = CATEGORY_PLAYBOOKS[category] ?? CATEGORY_PLAYBOOKS.root;
+  return intelligence?.reviewCadenceDays ?? playbook.cadenceDays;
+}
+
 export function createOutcomeDraft(path: string): OutcomeDraft | null {
   const intelligence = getDocumentIntelligence(path);
   if (!intelligence) return null;
@@ -643,7 +650,7 @@ export function operationalizeDocument(path: string, canonicalBody: string): str
   if (!intelligence) return canonicalBody;
   const category = categoryFor(path);
   const playbook = CATEGORY_PLAYBOOKS[category] ?? CATEGORY_PLAYBOOKS.root;
-  const cadence = intelligence.reviewCadenceDays ?? playbook.cadenceDays;
+  const cadence = getReviewCadenceDays(path);
   const relationships = getDocumentRelationships(path);
   const relatedLines = relationships.length > 0
     ? relationships.map((relationship) => {

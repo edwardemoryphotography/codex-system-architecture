@@ -78,12 +78,32 @@ describe('knowledgeGraph', () => {
         : null,
       is_read_only: false,
     }));
-    const graph = buildKnowledgeGraph(liveDocuments);
+    const identityId = liveDocuments.find(
+      (document) => document.path === '/codex/root/identity.md',
+    )!.id;
+    const personalityId = liveDocuments.find(
+      (document) => document.path === '/codex/personal_os/personality_manual.md',
+    )!.id;
+    const graph = buildKnowledgeGraph(liveDocuments, [
+      {
+        source_document_id: identityId,
+        target_document_id: personalityId,
+        link_type: 'related',
+        rationale: 'Generic live relationship.',
+      },
+    ]);
 
     expect(graph.source).toBe('live');
     expect(graph.edges.filter((edge) => edge.kind === 'bridges').length).toBeGreaterThan(15);
     expect(
       graph.edges.some((edge) => edge.rationale.includes('authors') || edge.rationale.includes('authorship')),
     ).toBe(true);
+    const reviewedIdentityBridge = graph.edges.find(
+      (edge) =>
+        new Set([edge.source, edge.target]).has(identityId) &&
+        new Set([edge.source, edge.target]).has(personalityId),
+    );
+    expect(reviewedIdentityBridge?.kind).toBe('bridges');
+    expect(reviewedIdentityBridge?.rationale).toMatch(/confirmed identity informs collaboration/i);
   });
 });

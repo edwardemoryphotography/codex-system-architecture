@@ -101,6 +101,44 @@ describe('ControlPanelScreen', () => {
     expect(screen.getByPlaceholderText(/pr link, deployed url/i)).toBeInTheDocument();
   });
 
+  it('preserves edited outcome fields while the source document is reviewed', async () => {
+    const onDraftChange = vi.fn();
+    const onSelectDocument = vi.fn();
+    const initialDraft = {
+      sourcePath: '/codex/root/identity.md',
+      task: 'Review the next public description.',
+      repository: 'codex-system-architecture',
+      requiredEvidence: 'Published copy reflects confirmed practice.',
+      chipId: 'status' as const,
+    };
+    const view = render(
+      <ToastProvider isDarkMode>
+        <ControlPanelScreen
+          isDarkMode
+          initialDraft={initialDraft}
+          onDraftChange={onDraftChange}
+          onSelectDocument={onSelectDocument}
+        />
+      </ToastProvider>,
+    );
+
+    const task = await screen.findByPlaceholderText(/what needs to move forward/i);
+    fireEvent.change(task, { target: { value: 'Review the edited public description.' } });
+    await waitFor(() => expect(onDraftChange).toHaveBeenCalled());
+    const persistedDraft = onDraftChange.mock.calls[onDraftChange.mock.calls.length - 1]?.[0];
+
+    fireEvent.click(screen.getByRole('button', { name: /review source/i }));
+    expect(onSelectDocument).toHaveBeenCalledWith(initialDraft.sourcePath);
+
+    view.unmount();
+    render(
+      <ToastProvider isDarkMode>
+        <ControlPanelScreen isDarkMode initialDraft={persistedDraft} />
+      </ToastProvider>,
+    );
+    expect(await screen.findByDisplayValue('Review the edited public description.')).toBeInTheDocument();
+  });
+
   it('does not show the owner sign-in prompt when Supabase is not configured', () => {
     renderControlPanel();
 

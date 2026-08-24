@@ -109,9 +109,9 @@ describe('KnowledgeGraph', () => {
 
     await screen.findByText(/corpus map/i);
     await user.click(screen.getByRole('button', { name: /toggle territory index/i }));
-    await user.type(screen.getByPlaceholderText(/search the codex/i), 'architect');
+    await user.type(screen.getByPlaceholderText(/search the codex/i), 'authorship');
 
     expect(await screen.findByRole('listbox', { name: /search results/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
+    expect(screen.getByRole('option', { name: /identity.*root/i })).toBeInTheDocument();
   });
 });
