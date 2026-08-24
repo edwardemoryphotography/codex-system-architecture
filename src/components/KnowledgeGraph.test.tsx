@@ -75,7 +75,9 @@ describe('KnowledgeGraph', () => {
       await screen.findByText(new RegExp(`${CORPUS_DOCUMENTS.length} nodes`, 'i')),
     ).toBeInTheDocument();
     expect(screen.getByText(/current/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /close knowledge graph/i })).toBeInTheDocument();
+    const closeGraph = screen.getByRole('button', { name: /close knowledge graph/i });
+    expect(closeGraph).toHaveClass('pointer-events-auto');
+    expect(closeGraph.parentElement).toHaveClass('pointer-events-none');
     expect(screen.getByRole('navigation', { name: /mobile graph controls/i })).toBeInTheDocument();
     expect(document.body).toHaveStyle({ overflow: 'hidden' });
   });
@@ -119,6 +121,10 @@ describe('KnowledgeGraph', () => {
 
     expect(await screen.findByRole('listbox', { name: /search results/i })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /identity.*root/i })).toBeInTheDocument();
+
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('dialog', { name: /node details/i })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: /explore knowledge graph/i })).not.toBeInTheDocument();
   });
 
   it('clears stale mobile panels before a slow graph reload finishes', async () => {

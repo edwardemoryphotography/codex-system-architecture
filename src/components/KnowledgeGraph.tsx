@@ -1312,8 +1312,9 @@ export function KnowledgeGraph({
       const node = searchResults[index];
       if (!node) return;
       selectNode(node, true);
+      if (isMobile) setShowIndex(false);
     },
-    [searchResults, selectNode],
+    [isMobile, searchResults, selectNode],
   );
 
   const handleSearchKeyDown = useCallback(
@@ -1447,7 +1448,7 @@ export function KnowledgeGraph({
       {/* ------------ header ------------ */}
       <header className="absolute top-0 inset-x-0 z-20 pointer-events-none">
         {isMobile ? (
-          <div className="pointer-events-auto flex items-center justify-between gap-3 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <div className="pointer-events-none flex items-center justify-between gap-3 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
             <div className={`min-w-0 rounded-xl border px-4 py-3 backdrop-blur-md ${chrome.panel}`}>
               <h2 className={`text-[19px] font-semibold leading-tight ${chrome.text}`}>Knowledge Graph</h2>
               <p className={`mt-1 flex items-center gap-2 text-[11px] tabular-nums ${chrome.sub}`}>
@@ -1467,7 +1468,7 @@ export function KnowledgeGraph({
               type="button"
               aria-label="Close knowledge graph"
               onClick={onClose}
-              className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-medium backdrop-blur-md ${chrome.btn}`}
+              className={`pointer-events-auto inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-medium backdrop-blur-md ${chrome.btn}`}
             >
               <X className="h-[18px] w-[18px]" aria-hidden />
               Close
