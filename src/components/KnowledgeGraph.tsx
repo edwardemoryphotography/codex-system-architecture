@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
   Layers,
   RotateCcw,
   Scan,
@@ -377,6 +379,7 @@ export function KnowledgeGraph({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategories, setActiveCategories] = useState<Set<string> | null>(null);
   const [showIndex, setShowIndex] = useState(false);
+  const [connectionsExpanded, setConnectionsExpanded] = useState(false);
   const [searchActiveIndex, setSearchActiveIndex] = useState(0);
   const [visitedVersion, setVisitedVersion] = useState(0);
 
@@ -456,7 +459,7 @@ export function KnowledgeGraph({
       const zoom = Math.min(2.1, Math.max(zoomRef.current, isMobileRef.current ? 1.25 : 1.45));
       // keep the node clear of the territory index (desktop left) and the detail card
       const targetX = width * (isMobileRef.current ? 0.5 : 0.68);
-      const targetY = height * (isMobileRef.current ? 0.3 : 0.4);
+      const targetY = height * (isMobileRef.current ? 0.24 : 0.4);
       const offset = offsetFor(node.x, node.y, zoom, targetX, targetY);
       animateCameraTo(zoom, offset.x, offset.y);
     },
@@ -590,8 +593,14 @@ export function KnowledgeGraph({
         applyGraph(buildKnowledgeGraph([]));
       }
       setActiveCategories(null);
+      setSearchQuery('');
+      searchQueryRef.current = '';
+      setShowIndex(false);
+      setConnectionsExpanded(false);
       setFocusedNode(null);
       focusedNodeRef.current = null;
+      setHoveredNode(null);
+      hoveredNodeRef.current = null;
       zoomRef.current = isMobileRef.current ? 0.85 : 1;
       offsetRef.current = { x: 0, y: 0 };
       setIsLoading(false);
@@ -814,7 +823,7 @@ export function KnowledgeGraph({
 
         // territory name, only readable at low zoom — the map's legend in place
         const labelAlpha = Math.max(0, Math.min(1, (1.12 - zoom) / 0.5));
-        if (labelAlpha > 0.03 && entry.n >= 2) {
+        if (!isMobileRef.current && labelAlpha > 0.03 && entry.n >= 2) {
           const fontSize = 12 / zoom;
           ctx.font = `600 ${fontSize}px ${MONO_STACK}`;
           ctx.textAlign = 'center';
@@ -955,12 +964,17 @@ export function KnowledgeGraph({
         // labels — title always for hubs and at close zoom; category only on hover
         const showLabel =
           alpha > 0.4 &&
-          (isHovered ||
-            isFocused ||
-            isNeighborOfActive ||
-            node.isHub ||
-            zoom > (isMobileRef.current ? 1.7 : 1.5) ||
-            Boolean(query && matchesQuery(node)));
+          (isMobileRef.current
+            ? isHovered ||
+              isFocused ||
+              Boolean(query && matchesQuery(node)) ||
+              (!focused && node.depth <= 2)
+            : isHovered ||
+              isFocused ||
+              isNeighborOfActive ||
+              node.isHub ||
+              zoom > 1.5 ||
+              Boolean(query && matchesQuery(node)));
 
         if (showLabel) {
           const fontSize = Math.max(9, 11.5 / zoom);
@@ -1092,6 +1106,7 @@ export function KnowledgeGraph({
       setFocusedNode(node);
       hoveredNodeRef.current = node;
       setHoveredNode(node);
+      setConnectionsExpanded(false);
       if (moveCamera) focusNodeCamera(node);
     },
     [focusNodeCamera],
@@ -1272,6 +1287,9 @@ export function KnowledgeGraph({
   const clearFocus = useCallback(() => {
     focusedNodeRef.current = null;
     setFocusedNode(null);
+    hoveredNodeRef.current = null;
+    setHoveredNode(null);
+    setConnectionsExpanded(false);
   }, []);
 
   const toggleCategory = useCallback((category: string) => {
@@ -1282,6 +1300,11 @@ export function KnowledgeGraph({
       else next.add(category);
       return next.size === 0 ? null : next;
     });
+  }, []);
+
+  const openMobileSearch = useCallback(() => {
+    setShowIndex(true);
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const focusSearchResult = useCallback(
@@ -1316,6 +1339,19 @@ export function KnowledgeGraph({
   // global shortcuts while the atlas is open
   useEffect(() => {
     if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && document.activeElement !== searchInputRef.current) {
         onClose();
@@ -1345,7 +1381,7 @@ export function KnowledgeGraph({
     ? (adjacencyRef.current.get(detailNode.id) ?? [])
         .slice()
         .sort((a, b) => b.weight - a.weight)
-        .slice(0, 5)
+        .slice(0, isMobile ? 8 : 5)
         .map((edge) => {
           const otherId = edge.source === detailNode.id ? edge.target : edge.source;
           const other = nodeByIdRef.current.get(otherId);
@@ -1410,32 +1446,59 @@ export function KnowledgeGraph({
 
       {/* ------------ header ------------ */}
       <header className="absolute top-0 inset-x-0 z-20 pointer-events-none">
-        <div className="flex items-start justify-between gap-3 p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <div className={`pointer-events-auto border backdrop-blur-md px-4 py-3 ${chrome.panel} rounded-md`}>
-            <p className={`${monoClass} text-[9px] tracking-[0.28em] ${chrome.faint}`}>
-              CODEX / SYSTEM ATLAS
-            </p>
-            <h2 className={`mt-1 text-base sm:text-lg font-semibold leading-none ${chrome.text}`}>
-              Knowledge Graph
-            </h2>
-            <p className={`mt-1.5 ${monoClass} text-[10px] tracking-[0.08em] tabular-nums ${chrome.sub}`}>
-              {String(nodeCount).padStart(3, '0')} NODES · {String(edgeCount).padStart(3, '0')} EDGES
-              {visitedCount > 0 && ` · ${visitedCount} READ`}
-            </p>
-            <p className={`mt-1 flex items-center gap-1.5 ${monoClass} text-[9px] tracking-[0.18em] ${chrome.faint}`}>
-              <span
-                className={`inline-block w-1.5 h-1.5 rounded-full ${
-                  graphMeta.source === 'corpus' ? 'bg-emerald-400' : 'bg-cyan-400'
-                } ${reducedMotionRef.current ? '' : 'animate-pulse'}`}
-              />
-              {graphMeta.source === 'corpus' ? 'CORPUS MAP' : 'LIVE DB'}
-              <span aria-hidden>·</span>
-              {reviewDueCount === 0 ? 'REVIEWS CURRENT' : `${reviewDueCount} REVIEWS DUE`}
-            </p>
+        {isMobile ? (
+          <div className="pointer-events-auto flex items-center justify-between gap-3 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+            <div className={`min-w-0 rounded-xl border px-4 py-3 backdrop-blur-md ${chrome.panel}`}>
+              <h2 className={`text-[19px] font-semibold leading-tight ${chrome.text}`}>Knowledge Graph</h2>
+              <p className={`mt-1 flex items-center gap-2 text-[11px] tabular-nums ${chrome.sub}`}>
+                <span>{nodeCount} nodes · {edgeCount} links</span>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      reviewDueCount === 0 ? 'bg-cyan-400' : 'bg-amber-400'
+                    }`}
+                  />
+                  {reviewDueCount === 0 ? 'Current' : `${reviewDueCount} due`}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Close knowledge graph"
+              onClick={onClose}
+              className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-medium backdrop-blur-md ${chrome.btn}`}
+            >
+              <X className="h-[18px] w-[18px]" aria-hidden />
+              Close
+            </button>
           </div>
+        ) : (
+          <div className="flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+            <div className={`pointer-events-auto border backdrop-blur-md px-4 py-3 ${chrome.panel} rounded-md`}>
+              <p className={`${monoClass} text-[9px] tracking-[0.28em] ${chrome.faint}`}>
+                CODEX / SYSTEM ATLAS
+              </p>
+              <h2 className={`mt-1 text-lg font-semibold leading-none ${chrome.text}`}>
+                Knowledge Graph
+              </h2>
+              <p className={`mt-1.5 ${monoClass} text-[10px] tracking-[0.08em] tabular-nums ${chrome.sub}`}>
+                {String(nodeCount).padStart(3, '0')} NODES · {String(edgeCount).padStart(3, '0')} EDGES
+                {visitedCount > 0 && ` · ${visitedCount} READ`}
+              </p>
+              <p className={`mt-1 flex items-center gap-1.5 ${monoClass} text-[9px] tracking-[0.18em] ${chrome.faint}`}>
+                <span
+                  className={`inline-block w-1.5 h-1.5 rounded-full ${
+                    graphMeta.source === 'corpus' ? 'bg-emerald-400' : 'bg-cyan-400'
+                  } ${reducedMotionRef.current ? '' : 'animate-pulse'}`}
+                />
+                {graphMeta.source === 'corpus' ? 'CORPUS MAP' : 'LIVE DB'}
+                <span aria-hidden>·</span>
+                {reviewDueCount === 0 ? 'REVIEWS CURRENT' : `${reviewDueCount} REVIEWS DUE`}
+              </p>
+            </div>
 
-          {/* icon rail */}
-          <nav className="pointer-events-auto flex flex-row sm:flex-col gap-1.5" aria-label="Atlas controls">
+            <nav className="pointer-events-auto flex flex-col gap-1.5" aria-label="Atlas controls">
             <button
               type="button"
               aria-label="Close knowledge graph"
@@ -1492,19 +1555,41 @@ export function KnowledgeGraph({
             >
               <RotateCcw className="w-4 h-4" />
             </button>
-          </nav>
-        </div>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* ------------ territory index ------------ */}
       {isDesktopIndexVisible && (
         <aside
-          className={`absolute z-30 left-3 sm:left-4 top-[6.5rem] sm:top-[7.5rem] w-[calc(100%-1.5rem)] sm:w-[19rem] max-h-[calc(100%-10rem)] flex flex-col border backdrop-blur-md rounded-md ${chrome.panelStrong}`}
+          aria-label={isMobile ? 'Explore knowledge graph' : 'Territory index'}
+          className={`absolute z-30 flex flex-col border backdrop-blur-md ${chrome.panelStrong} ${
+            isMobile
+              ? 'inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] top-[6.5rem] overflow-hidden rounded-2xl'
+              : 'left-4 top-[7.5rem] w-[19rem] max-h-[calc(100%-10rem)] rounded-md'
+          }`}
         >
+          {isMobile && (
+            <div className={`flex min-h-14 items-center justify-between border-b px-4 ${chrome.rule}`}>
+              <div>
+                <h3 className={`text-[16px] font-semibold ${chrome.text}`}>Explore graph</h3>
+                <p className={`text-[11px] ${chrome.sub}`}>Search documents or filter a territory.</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close graph explorer"
+                onClick={() => setShowIndex(false)}
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${chrome.btn}`}
+              >
+                <X className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+            </div>
+          )}
           {/* search */}
           <div className={`p-3 border-b ${chrome.rule}`}>
-            <div className={`flex items-center gap-2 border rounded px-2.5 py-2 ${chrome.input}`}>
-              <Search className={`w-3.5 h-3.5 shrink-0 ${chrome.faint}`} />
+            <div className={`flex min-h-12 items-center gap-2.5 rounded-xl border px-3 ${chrome.input}`}>
+              <Search className={`h-4 w-4 shrink-0 ${chrome.faint}`} />
               <input
                 ref={searchInputRef}
                 value={searchQuery}
@@ -1537,7 +1622,7 @@ export function KnowledgeGraph({
                         selectNode(node, true);
                         if (isMobile) setShowIndex(false);
                       }}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left ${
+                      className={`w-full flex items-center gap-2 px-2 rounded text-left ${isMobile ? 'min-h-11' : 'py-1.5'} ${
                         index === searchActiveIndex ? (dark ? 'bg-white/[0.07]' : 'bg-black/[0.06]') : ''
                       }`}
                     >
@@ -1562,8 +1647,11 @@ export function KnowledgeGraph({
             </p>
             <button
               type="button"
-              onClick={() => setActiveCategories(null)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-left border-l-2 ${
+              onClick={() => {
+                setActiveCategories(null);
+                if (isMobile) setShowIndex(false);
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 text-left border-l-2 ${isMobile ? 'min-h-11' : 'py-2'} ${
                 activeCategories === null
                   ? dark
                     ? 'border-cyan-400 bg-white/[0.05]'
@@ -1586,9 +1674,12 @@ export function KnowledgeGraph({
                   key={category}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => toggleCategory(category)}
+                  onClick={() => {
+                    toggleCategory(category);
+                    if (isMobile) setShowIndex(false);
+                  }}
                   onMouseEnter={() => { spotlightCategoryRef.current = category; }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left border-l-2 ${chrome.rowHover} ${
+                  className={`w-full flex items-center gap-2.5 px-3 text-left border-l-2 ${isMobile ? 'min-h-11' : 'py-2'} ${chrome.rowHover} ${
                     active ? '' : 'border-transparent'
                   } ${dimmed ? 'opacity-40' : ''}`}
                   style={active ? { borderLeftColor: color, background: `${color}14` } : undefined}
@@ -1606,7 +1697,7 @@ export function KnowledgeGraph({
           </div>
 
           {/* legend */}
-          <div className={`border-t ${chrome.rule} px-3 py-2`}>
+          <div className={`${isMobile ? 'hidden' : 'block'} border-t ${chrome.rule} px-3 py-2`}>
             <p className={`${monoClass} text-[8.5px] leading-relaxed tracking-[0.08em] ${chrome.faint}`}>
               SOLID — HIERARCHY · FLOWING — BRIDGES · DOTTED — RELATED
             </p>
@@ -1618,13 +1709,19 @@ export function KnowledgeGraph({
       {detailNode && (
         <section
           aria-label="Node details"
-          className={`absolute z-20 left-3 right-3 sm:left-[21.5rem] sm:right-auto sm:w-[22rem] bottom-[max(1rem,env(safe-area-inset-bottom))] max-h-[calc(100%-8rem)] overflow-y-auto kg-scroll border backdrop-blur-md rounded-md ${chrome.panelStrong}`}
+          role={isMobile ? 'dialog' : undefined}
+          className={`absolute overflow-y-auto kg-scroll border backdrop-blur-md ${chrome.panelStrong} ${
+            isMobile
+              ? 'inset-x-0 bottom-0 z-40 max-h-[64dvh] rounded-t-[1.5rem] border-b-0 shadow-[0_-24px_80px_rgba(0,0,0,0.38)]'
+              : 'z-20 left-[21.5rem] bottom-[max(1rem,env(safe-area-inset-bottom))] w-[22rem] max-h-[calc(100%-8rem)] rounded-md'
+          }`}
         >
           <div
             className="h-[3px] w-full"
             style={{ backgroundColor: categoryColor(detailNode.category, dark) }}
           />
-          <div className="p-4">
+          {isMobile && <div className={`mx-auto mt-2 h-1 w-10 rounded-full ${dark ? 'bg-slate-600' : 'bg-neutral-300'}`} aria-hidden />}
+          <div className={isMobile ? 'px-4 pb-0 pt-3' : 'p-4'}>
             <div className="flex items-center gap-2">
               <GlyphSwatch category={detailNode.category} dark={dark} />
               <span className={`${monoClass} text-[9px] tracking-[0.22em] uppercase ${chrome.sub}`}>
@@ -1656,79 +1753,113 @@ export function KnowledgeGraph({
               >
                 {detailNode.reviewState.toUpperCase()}
               </span>
-              <span className={`ml-auto ${monoClass} text-[9px] tabular-nums ${chrome.faint}`}>
-                {String(detailNode.degree).padStart(2, '0')} LINKS
-              </span>
+              {!isMobile && (
+                <span className={`ml-auto ${monoClass} text-[9px] tabular-nums ${chrome.faint}`}>
+                  {String(detailNode.degree).padStart(2, '0')} LINKS
+                </span>
+              )}
+              {isMobile && (
+                <button
+                  type="button"
+                  aria-label="Close document details"
+                  onClick={clearFocus}
+                  className={`ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${chrome.btn}`}
+                >
+                  <X className="h-5 w-5" aria-hidden />
+                </button>
+              )}
             </div>
 
-            <h3 className={`mt-2.5 font-semibold text-lg leading-tight ${chrome.text}`}>
+            <h3 className={`mt-2.5 font-semibold leading-tight ${isMobile ? 'text-[22px]' : 'text-lg'} ${chrome.text}`}>
               {detailNode.title}
             </h3>
-            <p className={`mt-1 ${monoClass} text-[10px] tracking-[0.04em] truncate ${chrome.faint}`}>
+            <p className={`mt-1 ${monoClass} ${isMobile ? 'text-[11px]' : 'text-[10px]'} tracking-[0.04em] truncate ${chrome.faint}`}>
               {detailNode.path}
             </p>
             <div className="mt-3">
-              <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>OUTCOME</p>
-              <p className={`mt-1.5 text-[13px] leading-relaxed ${chrome.sub}`}>{detailNode.outcome}</p>
+              <p className={`${monoClass} ${isMobile ? 'text-[10px]' : 'text-[8.5px]'} tracking-[0.2em] ${chrome.faint}`}>OUTCOME</p>
+              <p className={`mt-1.5 leading-relaxed ${isMobile ? 'text-[14px]' : 'text-[13px]'} ${chrome.sub}`}>{detailNode.outcome}</p>
             </div>
 
             <div className={`mt-3 pt-3 border-t ${chrome.rule}`}>
-              <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>NEXT MOVE</p>
-              <p className={`mt-1.5 text-[12px] leading-relaxed ${chrome.text}`}>{detailNode.nextAction}</p>
-              <p className={`mt-2 ${monoClass} text-[8.5px] tracking-[0.2em] ${chrome.faint}`}>
+              <p className={`${monoClass} ${isMobile ? 'text-[10px]' : 'text-[8.5px]'} tracking-[0.2em] ${chrome.faint}`}>NEXT MOVE</p>
+              <p className={`mt-1.5 leading-relaxed ${isMobile ? 'text-[14px]' : 'text-[12px]'} ${chrome.text}`}>{detailNode.nextAction}</p>
+              <p className={`mt-2 ${monoClass} ${isMobile ? 'text-[10px]' : 'text-[8.5px]'} tracking-[0.2em] ${chrome.faint}`}>
                 PROOF
               </p>
-              <p className={`mt-1 text-[10.5px] leading-snug ${chrome.sub}`}>{detailNode.proof}</p>
+              <p className={`mt-1 leading-relaxed ${isMobile ? 'text-[12px]' : 'text-[10.5px]'} ${chrome.sub}`}>{detailNode.proof}</p>
             </div>
 
-            {detailConnections.length > 0 && (
-              <div className={`mt-3 pt-3 border-t ${chrome.rule}`}>
-                <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>CONNECTIONS</p>
-                <ul className="mt-1.5">
-                  {detailConnections.map(({ node, kind, rationale }) => (
-                    <li key={node.id}>
-                      <button
-                        type="button"
-                        onClick={() => selectNode(node, true)}
-                        className={`group w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 gap-y-0.5 px-1.5 py-1.5 -mx-1.5 rounded text-left ${chrome.rowHover}`}
-                      >
-                        <GlyphSwatch category={node.category} dark={dark} small />
-                        <span className={`min-w-0 flex-1 truncate text-[12px] ${chrome.text} ${visitedRef.current.has(node.path) ? 'line-through opacity-50' : ''}`}>
-                          {node.title}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className={`${monoClass} text-[8px] tracking-[0.12em] uppercase shrink-0 ${chrome.faint}`}>
-                            {kind}
+            {detailConnections.length > 0 && (!isMobile || connectionsExpanded) && (
+              <div className={`mt-3 border-t pt-3 ${chrome.rule}`}>
+                {!isMobile && (
+                  <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>CONNECTIONS</p>
+                )}
+                {(!isMobile || connectionsExpanded) && (
+                  <ul className="mt-1.5">
+                    {detailConnections.map(({ node, kind, rationale }) => (
+                      <li key={node.id}>
+                        <button
+                          type="button"
+                          onClick={() => selectNode(node, true)}
+                          className={`group grid min-h-11 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 gap-y-0.5 rounded px-1.5 py-1.5 text-left ${chrome.rowHover}`}
+                        >
+                          <GlyphSwatch category={node.category} dark={dark} small />
+                          <span className={`min-w-0 flex-1 truncate text-[12px] ${chrome.text} ${visitedRef.current.has(node.path) ? 'line-through opacity-50' : ''}`}>
+                            {node.title}
                           </span>
-                          <ArrowUpRight className={`w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${chrome.faint}`} />
-                        </span>
-                        <span className={`col-start-2 col-span-2 line-clamp-2 text-[10px] leading-snug ${chrome.faint}`}>
-                          {rationale}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                          <span className="flex items-center gap-1">
+                            <span className={`${monoClass} text-[8px] tracking-[0.12em] uppercase shrink-0 ${chrome.faint}`}>
+                              {kind}
+                            </span>
+                            <ArrowUpRight className={`w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${chrome.faint}`} />
+                          </span>
+                          <span className={`col-start-2 col-span-2 line-clamp-2 text-[10px] leading-snug ${chrome.faint}`}>
+                            {rationale}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 
-            <div className="mt-4 flex items-center gap-2">
+            <div className={`${isMobile ? `sticky bottom-0 -mx-4 mt-3 border-t px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 ${chrome.rule} ${dark ? 'bg-[#0c1220]' : 'bg-white'}` : 'mt-4 flex items-center gap-2'}`}>
+              {isMobile && detailConnections.length > 0 && (
+                <button
+                  type="button"
+                  aria-expanded={connectionsExpanded}
+                  onClick={() => setConnectionsExpanded((expanded) => !expanded)}
+                  className={`mb-2 flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left ${chrome.rowHover}`}
+                >
+                  <Layers className={`h-[18px] w-[18px] ${chrome.sub}`} aria-hidden />
+                  <span className={`flex-1 text-[14px] font-medium ${chrome.text}`}>
+                    {detailConnections.length} connections
+                  </span>
+                  {connectionsExpanded ? (
+                    <ChevronUp className={`h-5 w-5 ${chrome.sub}`} aria-hidden />
+                  ) : (
+                    <ChevronDown className={`h-5 w-5 ${chrome.sub}`} aria-hidden />
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => openNode(detailNode)}
-                className={`group flex-1 inline-flex items-center justify-center gap-2 rounded px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                className={`group inline-flex min-h-12 w-full flex-1 items-center justify-center gap-2 rounded-xl px-3 text-[14px] font-semibold transition-colors ${
                   dark
                     ? 'bg-slate-100 text-[#0c1220] hover:bg-white'
                     : 'bg-neutral-900 text-white hover:bg-black'
                 }`}
               >
-                Open document
+                {isMobile ? 'Open full document' : 'Open document'}
                 <span className="relative w-4 h-4 overflow-hidden" aria-hidden>
                   <ArrowRight className="absolute inset-0 w-4 h-4 transition-transform duration-200 group-hover:translate-x-4" />
                   <ArrowRight className="absolute inset-0 w-4 h-4 -translate-x-4 transition-transform duration-200 group-hover:translate-x-0" />
                 </span>
               </button>
-              {focusedNode && (
+              {!isMobile && focusedNode && (
                 <button
                   type="button"
                   onClick={clearFocus}
@@ -1739,22 +1870,54 @@ export function KnowledgeGraph({
               )}
             </div>
 
-            <p className={`mt-3 ${monoClass} text-[8.5px] tracking-[0.1em] ${chrome.faint}`}>
-              {isMobile
-                ? 'PINCH ZOOM · DRAG PAN · TAP NODE TO FOCUS'
-                : 'SCROLL ZOOM · DRAG PAN · DOUBLE-CLICK TO OPEN · / TO SEARCH'}
-            </p>
+            {!isMobile && (
+              <p className={`mt-3 ${monoClass} text-[8.5px] tracking-[0.1em] ${chrome.faint}`}>
+                SCROLL ZOOM · DRAG PAN · DOUBLE-CLICK TO OPEN · / TO SEARCH
+              </p>
+            )}
           </div>
         </section>
       )}
 
+      {isMobile && !detailNode && !showIndex && !isLoading && (
+        <nav
+          aria-label="Mobile graph controls"
+          className={`absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-3 overflow-hidden rounded-2xl border backdrop-blur-md ${chrome.panelStrong}`}
+        >
+          <button
+            type="button"
+            onClick={openMobileSearch}
+            className={`flex min-h-[58px] flex-col items-center justify-center gap-1 text-[11px] font-medium ${chrome.text} ${chrome.rowHover}`}
+          >
+            <Search className="h-5 w-5 text-cyan-400" aria-hidden />
+            Search
+          </button>
+          <button
+            type="button"
+            onClick={fitToView}
+            className={`flex min-h-[58px] flex-col items-center justify-center gap-1 border-x text-[11px] font-medium ${chrome.rule} ${chrome.text} ${chrome.rowHover}`}
+          >
+            <Scan className="h-5 w-5 text-cyan-400" aria-hidden />
+            Recenter
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowIndex(true)}
+            className={`flex min-h-[58px] flex-col items-center justify-center gap-1 text-[11px] font-medium ${chrome.text} ${chrome.rowHover}`}
+          >
+            <Layers className="h-5 w-5 text-cyan-400" aria-hidden />
+            Territories
+          </button>
+        </nav>
+      )}
+
       {/* ------------ hint when idle ------------ */}
-      {!detailNode && !isDesktopIndexVisible && !isLoading && (
+      {!isMobile && !detailNode && !isDesktopIndexVisible && !isLoading && (
         <div
           className={`absolute z-10 left-3 right-3 sm:left-auto sm:right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] border backdrop-blur-md rounded-md px-3.5 py-2.5 ${chrome.panel}`}
         >
           <p className={`${monoClass} text-[9px] tracking-[0.14em] ${chrome.faint}`}>
-            {isMobile ? 'TAP A NODE TO INSPECT' : 'HOVER A NODE TO INSPECT · / TO SEARCH'}
+            HOVER A NODE TO INSPECT · / TO SEARCH
           </p>
         </div>
       )}
