@@ -582,16 +582,6 @@ export function KnowledgeGraph({
 
     const loadData = async () => {
       initCanvas();
-      setIsLoading(true);
-      try {
-        const [docs, links] = await Promise.all([getDocuments(), getDocumentLinks()]);
-        if (!mounted) return;
-        applyGraph(buildKnowledgeGraph(docs, links ?? []));
-      } catch (error) {
-        console.error('Failed to load graph:', error);
-        if (!mounted) return;
-        applyGraph(buildKnowledgeGraph([]));
-      }
       setActiveCategories(null);
       setSearchQuery('');
       searchQueryRef.current = '';
@@ -603,6 +593,16 @@ export function KnowledgeGraph({
       hoveredNodeRef.current = null;
       zoomRef.current = isMobileRef.current ? 0.85 : 1;
       offsetRef.current = { x: 0, y: 0 };
+      setIsLoading(true);
+      try {
+        const [docs, links] = await Promise.all([getDocuments(), getDocumentLinks()]);
+        if (!mounted) return;
+        applyGraph(buildKnowledgeGraph(docs, links ?? []));
+      } catch (error) {
+        console.error('Failed to load graph:', error);
+        if (!mounted) return;
+        applyGraph(buildKnowledgeGraph([]));
+      }
       setIsLoading(false);
       startAnimation();
     };

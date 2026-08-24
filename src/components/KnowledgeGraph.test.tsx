@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { CORPUS_DOCUMENTS } from '../content/codexCorpus';
+import { getDocuments } from '../lib/supabase';
 import { KnowledgeGraph } from './KnowledgeGraph';
 
 vi.mock('../lib/supabase', () => ({
@@ -39,6 +40,8 @@ function createCanvasContextMock() {
 
 describe('KnowledgeGraph', () => {
   beforeEach(() => {
+    vi.mocked(getDocuments).mockResolvedValue([]);
+
     Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
       configurable: true,
       value: vi.fn(createCanvasContextMock),
@@ -118,7 +121,7 @@ describe('KnowledgeGraph', () => {
     expect(screen.getByRole('option', { name: /identity.*root/i })).toBeInTheDocument();
   });
 
-  it('starts from a clean mobile view when reopened', async () => {
+  it('clears stale mobile panels before a slow graph reload finishes', async () => {
     const user = userEvent.setup();
     const props = {
       onClose: () => {},
@@ -130,13 +133,22 @@ describe('KnowledgeGraph', () => {
     await screen.findByText(/current/i);
     await user.click(screen.getByRole('button', { name: /search/i }));
     await user.type(screen.getByPlaceholderText(/search the codex/i), 'authorship');
-    expect(screen.getByRole('listbox', { name: /search results/i })).toBeInTheDocument();
+    await user.click(await screen.findByRole('option', { name: /identity.*root/i }));
+    expect(screen.getByRole('dialog', { name: /node details/i })).toBeInTheDocument();
 
     rerender(<KnowledgeGraph isOpen={false} {...props} />);
+    let resolveDocuments: (value: []) => void = () => {};
+    vi.mocked(getDocuments).mockImplementationOnce(
+      () => new Promise<[]>((resolve) => { resolveDocuments = resolve; }),
+    );
     rerender(<KnowledgeGraph isOpen {...props} />);
 
-    expect(await screen.findByRole('navigation', { name: /mobile graph controls/i })).toBeInTheDocument();
+    expect(await screen.findByText(/charting the codex/i)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /node details/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name: /explore knowledge graph/i })).not.toBeInTheDocument();
+
+    await act(async () => resolveDocuments([]));
+    expect(await screen.findByRole('navigation', { name: /mobile graph controls/i })).toBeInTheDocument();
   });
 
   it('opens a dismissible mobile detail sheet with collapsed connections', async () => {
