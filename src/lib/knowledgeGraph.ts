@@ -137,7 +137,13 @@ export function buildKnowledgeGraph(
     rationale?: string;
   }> = [],
 ): KnowledgeGraphData {
-  const { documents, source } = resolveGraphDocuments(liveDocs);
+  const { documents: resolvedDocuments, source } = resolveGraphDocuments(liveDocs);
+  // Preserve unrelated legacy rows in Supabase, but keep this atlas scoped to
+  // actual Codex documents. Pathless onboarding task stubs normalize outside
+  // `/codex` and should not affect node counts or review freshness.
+  const documents = resolvedDocuments.filter(
+    (document) => document.path === '/codex' || document.path.startsWith('/codex/'),
+  );
   const byId = new Map(documents.map((doc) => [doc.id, doc]));
   const byPath = new Map(documents.map((doc) => [doc.path, doc]));
 

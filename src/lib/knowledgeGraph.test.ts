@@ -139,4 +139,22 @@ describe('knowledgeGraph', () => {
       graph.nodes.find((node) => node.path === '/codex/automation/live-only.md')?.reviewState,
     ).toBe('due');
   });
+
+  it('keeps preserved pathless legacy task stubs out of the canonical atlas', () => {
+    const corpus = corpusToDocuments();
+    const legacyStub: CodexDocument = {
+      ...corpus[0],
+      id: 'legacy-onboarding-stub',
+      title: 'Define onboarding goal',
+      path: '/onboarding/define-onboarding-goal',
+      category: 'onboarding',
+      parent_id: null,
+      last_reviewed: null,
+    };
+
+    const graph = buildKnowledgeGraph([...corpus, legacyStub]);
+    expect(graph.nodes).toHaveLength(CORPUS_DOCUMENTS.length);
+    expect(graph.nodes.some((node) => node.id === legacyStub.id)).toBe(false);
+    expect(graph.categories).not.toContain('onboarding');
+  });
 });
