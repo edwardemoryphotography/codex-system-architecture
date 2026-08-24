@@ -3,6 +3,7 @@ import { CORPUS_DOCUMENTS, corpusToDocuments, isLeanDocumentSet } from '../conte
 import {
   DOCUMENT_RELATIONSHIPS,
   getDocumentIntelligence,
+  getReviewCadenceDays,
   getReviewState,
   type ReviewState,
 } from '../content/documentIntelligence';
@@ -41,6 +42,18 @@ export interface KnowledgeGraphData {
   edges: GraphEdgeData[];
   source: 'live' | 'corpus';
   categories: string[];
+}
+
+export function matchesGraphNodeQuery(node: GraphNodeData, rawQuery: string): boolean {
+  const query = rawQuery.trim().toLowerCase();
+  if (!query) return true;
+  return (
+    node.title.toLowerCase().includes(query) ||
+    node.path.toLowerCase().includes(query) ||
+    node.category.toLowerCase().includes(query) ||
+    node.outcome.toLowerCase().includes(query) ||
+    node.nextAction.toLowerCase().includes(query)
+  );
 }
 
 export const GRAPH_CATEGORY_COLORS: Record<string, string> = {
@@ -136,16 +149,27 @@ export function buildKnowledgeGraph(
     kind: GraphEdgeKind,
     weight = 1,
     rationale = 'Connected in the knowledge system.',
+    authoritative = false,
   ) => {
     if (!byId.has(sourceId) || !byId.has(targetId) || sourceId === targetId) return;
     const key = edgeKey(sourceId, targetId);
     const existing = edgeMap.get(key);
     if (existing) {
       existing.weight = Math.max(existing.weight, weight);
-      if (kind === 'hierarchy' || (kind === 'bridges' && existing.kind === 'sibling')) {
+      const kindPriority: Record<GraphEdgeKind, number> = {
+        sibling: 1,
+        related: 2,
+        bridges: 3,
+        hierarchy: 4,
+      };
+      const incomingWins = kindPriority[kind] >= kindPriority[existing.kind];
+      if (kindPriority[kind] > kindPriority[existing.kind]) {
         existing.kind = kind;
       }
-      if (existing.rationale === 'Connected in the knowledge system.') {
+      if (
+        (authoritative && incomingWins) ||
+        existing.rationale === 'Connected in the knowledge system.'
+      ) {
         existing.rationale = rationale;
       }
       return;
@@ -196,6 +220,7 @@ export function buildKnowledgeGraph(
         relationship.kind,
         relationship.kind === 'bridges' ? 1.25 : 1,
         relationship.rationale,
+        true,
       );
     }
   });
@@ -232,7 +257,7 @@ export function buildKnowledgeGraph(
     const nodeDegree = degree.get(doc.id) ?? 0;
     const intelligence = getDocumentIntelligence(doc.path);
     const excerpt = excerptFor(doc);
-    const cadence = intelligence?.reviewCadenceDays ?? 90;
+    const cadence = getReviewCadenceDays(doc.path);
     return {
       id: doc.id,
       title: doc.title,

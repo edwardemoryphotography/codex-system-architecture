@@ -19,10 +19,10 @@ import {
 import { storeUser } from '../lib/auth';
 import type { ExecutionLane, EvidenceKind, RouteProposal, RoutedRequestRecord, Workspace } from '../types';
 import { useToast } from '../hooks/useToast';
-import type { OutcomeDraft } from '../content/documentIntelligence';
+import type { OutcomeChipId, OutcomeDraft } from '../content/documentIntelligence';
 
 const CHIPS: Array<{
-  id: string;
+  id: OutcomeChipId;
   label: string;
   lane: ExecutionLane;
   evidenceKind: EvidenceKind;
@@ -67,6 +67,7 @@ interface ControlPanelScreenProps {
   onSelectDocument?: (path: string) => void;
   onOpenGraph?: () => void;
   initialDraft?: OutcomeDraft | null;
+  onDraftChange?: (draft: OutcomeDraft) => void;
   onDraftConsumed?: () => void;
 }
 
@@ -75,11 +76,12 @@ export function ControlPanelScreen({
   onSelectDocument,
   onOpenGraph,
   initialDraft,
+  onDraftChange,
   onDraftConsumed,
 }: ControlPanelScreenProps) {
   const toast = useToast();
   const [task, setTask] = useState('');
-  const [chip, setChip] = useState<string | null>(null);
+  const [chip, setChip] = useState<OutcomeChipId | null>(null);
   const [repository, setRepository] = useState('');
   const [requiredEvidence, setRequiredEvidence] = useState('');
   const [routing, setRouting] = useState(false);
@@ -99,9 +101,15 @@ export function ControlPanelScreen({
   // The key only rotates once the draft materially changes or the route
   // succeeds.
   const draftIdempotency = useRef<{ key: string; fingerprint: string } | null>(null);
+  const hydratedDraftSource = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!initialDraft) return;
+    if (!initialDraft) {
+      hydratedDraftSource.current = null;
+      return;
+    }
+    if (hydratedDraftSource.current === initialDraft.sourcePath) return;
+    hydratedDraftSource.current = initialDraft.sourcePath;
     setTask(initialDraft.task);
     setChip(initialDraft.chipId);
     setRepository(initialDraft.repository);
@@ -110,8 +118,28 @@ export function ControlPanelScreen({
     setRouteError(null);
     setLastRoute(null);
     draftIdempotency.current = null;
-    onDraftConsumed?.();
-  }, [initialDraft, onDraftConsumed]);
+  }, [initialDraft]);
+
+  useEffect(() => {
+    if (!draftSource || !onDraftChange) return;
+    const nextDraft: OutcomeDraft = {
+      sourcePath: draftSource,
+      task,
+      repository,
+      requiredEvidence,
+      chipId: chip,
+    };
+    if (
+      initialDraft?.sourcePath === nextDraft.sourcePath &&
+      initialDraft.task === nextDraft.task &&
+      initialDraft.repository === nextDraft.repository &&
+      initialDraft.requiredEvidence === nextDraft.requiredEvidence &&
+      initialDraft.chipId === nextDraft.chipId
+    ) {
+      return;
+    }
+    onDraftChange(nextDraft);
+  }, [chip, draftSource, initialDraft, onDraftChange, repository, requiredEvidence, task]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -240,6 +268,9 @@ export function ControlPanelScreen({
       draftIdempotency.current = null;
       setTask('');
       setChip(null);
+      setDraftSource(null);
+      hydratedDraftSource.current = null;
+      onDraftConsumed?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to route task';
       setRouteError(message);
@@ -412,6 +443,7 @@ export function ControlPanelScreen({
                   <button
                     key={c.id}
                     type="button"
+                    aria-pressed={chip === c.id}
                     onClick={() => setChip(chip === c.id ? null : c.id)}
                     className={`codex-press codex-focus-ring px-3 py-2.5 sm:py-2 rounded-2xl sm:rounded-full text-sm border text-left sm:text-center ${
                       chip === c.id ? chipActive : chipIdle

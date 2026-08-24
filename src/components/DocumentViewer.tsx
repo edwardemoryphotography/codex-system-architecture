@@ -49,6 +49,7 @@ interface DocumentViewerProps {
   onOpenControlPanel?: () => void;
   onStartOutcome?: (draft: OutcomeDraft) => void;
   controlPanelDraft?: OutcomeDraft | null;
+  onControlPanelDraftChange?: (draft: OutcomeDraft) => void;
   onControlPanelDraftConsumed?: () => void;
 }
 
@@ -155,6 +156,7 @@ export function DocumentViewer({
   onOpenControlPanel,
   onStartOutcome,
   controlPanelDraft,
+  onControlPanelDraftChange,
   onControlPanelDraftConsumed,
 }: DocumentViewerProps) {
   const toast = useToast();
@@ -329,6 +331,7 @@ export function DocumentViewer({
         onSelectDocument={onSelectDocument}
         onOpenGraph={onOpenGraph}
         initialDraft={controlPanelDraft}
+        onDraftChange={onControlPanelDraftChange}
         onDraftConsumed={onControlPanelDraftConsumed}
       />
     );
