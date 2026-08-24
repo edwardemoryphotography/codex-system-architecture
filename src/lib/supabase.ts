@@ -497,13 +497,23 @@ export async function getDocumentLinks() {
   }));
 }
 
-export async function addDocumentLink(sourceId: string, targetId: string, linkType = 'reference') {
+export async function addDocumentLink(
+  sourceId: string,
+  targetId: string,
+  linkType: 'related' | 'bridges' = 'related',
+  rationale = 'Owner-reviewed relationship.',
+) {
   if (!supabase || !isPersistableDocumentId(sourceId) || !isPersistableDocumentId(targetId)) {
     return null;
   }
   const { data, error } = await client()
     .from('document_links')
-    .insert({ source_document_id: sourceId, target_document_id: targetId, link_type: linkType })
+    .insert({
+      source_document_id: sourceId,
+      target_document_id: targetId,
+      link_type: linkType,
+      rationale,
+    })
     .select()
     .maybeSingle();
 

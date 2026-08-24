@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CORPUS_DOCUMENTS } from '../content/codexCorpus';
+import { CORPUS_DOCUMENTS, corpusToDocuments } from '../content/codexCorpus';
 import { buildKnowledgeGraph, resolveGraphDocuments } from './knowledgeGraph';
 import type { CodexDocument } from '../types';
 
@@ -59,5 +59,31 @@ describe('knowledgeGraph', () => {
 
     const root = graph.nodes.find((node) => node.path === '/codex');
     expect(root?.isHub).toBe(true);
+    expect(root?.outcome).toMatch(/trustworthy map/i);
+    expect(root?.nextAction).toMatch(/territory/i);
+    expect(root?.reviewState).toBe('current');
+    expect(graph.edges.every((edge) => edge.rationale.length > 0)).toBe(true);
+  });
+
+  it('preserves canonical cross-domain intelligence in live database mode', () => {
+    const corpus = corpusToDocuments();
+    const liveIdByCorpusId = new Map(
+      corpus.map((document, index) => [document.id, `live-document-${index}`]),
+    );
+    const liveDocuments = corpus.map((document) => ({
+      ...document,
+      id: liveIdByCorpusId.get(document.id)!,
+      parent_id: document.parent_id
+        ? liveIdByCorpusId.get(document.parent_id) ?? null
+        : null,
+      is_read_only: false,
+    }));
+    const graph = buildKnowledgeGraph(liveDocuments);
+
+    expect(graph.source).toBe('live');
+    expect(graph.edges.filter((edge) => edge.kind === 'bridges').length).toBeGreaterThan(15);
+    expect(
+      graph.edges.some((edge) => edge.rationale.includes('authors') || edge.rationale.includes('authorship')),
+    ).toBe(true);
   });
 });

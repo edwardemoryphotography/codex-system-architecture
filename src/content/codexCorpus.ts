@@ -1,5 +1,6 @@
 import type { CodexDocument } from '../types';
 import { getCodexDocumentBody, getCodexDocumentProvenance } from './codexDocumentBodies';
+import { DOCUMENT_RELATIONSHIPS } from './documentIntelligence';
 
 /** Seeded Codex corpus used when the live DB is lean/incomplete. */
 export interface CorpusDocument {
@@ -88,30 +89,11 @@ export const CORPUS_DOCUMENTS: CorpusDocument[] = [
 ];
 
 /** Explicit cross-domain bridges that make the graph feel like a real knowledge map. */
-export const CORPUS_BRIDGES: CorpusLink[] = [
-  { sourcePath: '/codex/root/identity.md', targetPath: '/codex/personal_os/personality_manual.md', linkType: 'bridges' },
-  { sourcePath: '/codex/root/territory_mode.md', targetPath: '/codex/territory/territory_ledger.md', linkType: 'bridges' },
-  { sourcePath: '/codex/root/reality_filter.md', targetPath: '/codex/personal_os/neurodivergent_os.md', linkType: 'bridges' },
-  { sourcePath: '/codex/council/roles/architect.md', targetPath: '/codex/automation/multi_agent_orchestration.md', linkType: 'bridges' },
-  { sourcePath: '/codex/council/roles/systems_architect.md', targetPath: '/codex/territory/version_schema.md', linkType: 'bridges' },
-  { sourcePath: '/codex/council/roles/creative_agent.md', targetPath: '/codex/artistic_systems/artful_intelligence/ai_overview.md', linkType: 'bridges' },
-  { sourcePath: '/codex/council/roles/cdaao.md', targetPath: '/codex/neuro/adaptive_ml_models.md', linkType: 'bridges' },
-  { sourcePath: '/codex/council/protocols/swarm_layer.md', targetPath: '/codex/automation/multi_agent_orchestration.md', linkType: 'bridges' },
-  { sourcePath: '/codex/council/protocols/7_phase_protocol.md', targetPath: '/codex/territory/boot_sequence.md', linkType: 'bridges' },
-  { sourcePath: '/codex/artistic_systems/photography_ops/astro_ops.md', targetPath: '/codex/neuro/muse2_eeg_pipeline.md', linkType: 'related' },
-  { sourcePath: '/codex/artistic_systems/artful_intelligence/photo_coach_mvp.md', targetPath: '/codex/automation/rag_photography.md', linkType: 'bridges' },
-  { sourcePath: '/codex/artistic_systems/artful_intelligence/edition_manager.md', targetPath: '/codex/business/drop_model.md', linkType: 'bridges' },
-  { sourcePath: '/codex/artistic_systems/artful_intelligence/6_figure_print_engine.md', targetPath: '/codex/business/money_os.md', linkType: 'bridges' },
-  { sourcePath: '/codex/artistic_systems/artful_intelligence/creative_automations.md', targetPath: '/codex/automation/automation_pipelines.md', linkType: 'bridges' },
-  { sourcePath: '/codex/artistic_systems/artful_intelligence/pwa_iphone16.md', targetPath: '/codex/personal_os/neurodivergent_os.md', linkType: 'related' },
-  { sourcePath: '/codex/neuro/whoop_integration.md', targetPath: '/codex/personal_os/neurodivergent_os.md', linkType: 'bridges' },
-  { sourcePath: '/codex/neuro/websocket_servers.md', targetPath: '/codex/automation/automation_pipelines.md', linkType: 'related' },
-  { sourcePath: '/codex/neuro/bio_geometry_engine.md', targetPath: '/codex/artistic_systems/photography_ops/landscapes.md', linkType: 'related' },
-  { sourcePath: '/codex/business/workshop_engines.md', targetPath: '/codex/artistic_systems/photography_ops', linkType: 'bridges' },
-  { sourcePath: '/codex/convergence/system_reflexivity.md', targetPath: '/codex/council/protocols/transparent_reasoning.md', linkType: 'bridges' },
-  { sourcePath: '/codex/convergence/convergence_log_v16.md', targetPath: '/codex/territory/update_protocol.md', linkType: 'related' },
-  { sourcePath: '/codex/personal_os/reflections_between_worlds.md', targetPath: '/codex/convergence/system_reflexivity.md', linkType: 'bridges' },
-];
+export const CORPUS_BRIDGES: CorpusLink[] = DOCUMENT_RELATIONSHIPS.map((relationship) => ({
+  sourcePath: relationship.sourcePath,
+  targetPath: relationship.targetPath,
+  linkType: relationship.kind,
+}));
 
 /**
  * Cached result of buildCorpusDocuments(). The corpus is derived entirely from

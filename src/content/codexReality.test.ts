@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CORPUS_DOCUMENTS, corpusToDocuments } from './codexCorpus';
 import { CODEX_DOCUMENT_BODIES } from './codexDocumentBodies';
+import {
+  CANONICAL_REVIEW_DATE,
+  DOCUMENT_INTELLIGENCE,
+  DOCUMENT_RELATIONSHIPS,
+} from './documentIntelligence';
 
 const forbiddenClaims = [
   'Sony A7R IV',
@@ -32,10 +37,12 @@ describe('Codex reality contract', () => {
   it('labels every document with evidence status and review date', () => {
     for (const document of corpusToDocuments()) {
       expect(document.content, document.path).toContain('**Evidence status:**');
-      expect(document.content, document.path).toContain('**Last reviewed:** 2026-07-14');
+      expect(document.content, document.path).toContain(
+        `**Last reviewed:** ${CANONICAL_REVIEW_DATE}`,
+      );
       expect(document.provenance_status.length, document.path).toBeGreaterThan(0);
       expect(document.evidence_basis.trim().length, document.path).toBeGreaterThan(0);
-      expect(document.last_reviewed, document.path).toBe('2026-07-14');
+      expect(document.last_reviewed, document.path).toBe(CANONICAL_REVIEW_DATE);
       expect(document.is_read_only, document.path).toBe(true);
       for (const status of document.provenance_status) {
         expect(
@@ -43,6 +50,42 @@ describe('Codex reality contract', () => {
           document.path,
         ).toContain(status);
       }
+    }
+  });
+
+  it('gives every canonical document an outcome-producing operational brief', () => {
+    expect(Object.keys(DOCUMENT_INTELLIGENCE).sort()).toEqual(
+      CORPUS_DOCUMENTS.map((document) => document.path).sort(),
+    );
+
+    for (const document of corpusToDocuments()) {
+      const intelligence = DOCUMENT_INTELLIGENCE[document.path];
+      const wordCount = document.content.split(/\s+/).filter(Boolean).length;
+
+      expect(intelligence.outcome.length, document.path).toBeGreaterThan(60);
+      expect(intelligence.nextAction.length, document.path).toBeGreaterThan(50);
+      expect(intelligence.proof.length, document.path).toBeGreaterThan(50);
+      expect(document.content, document.path).toContain('## Outcome contract');
+      expect(document.content, document.path).toContain('**Next move:**');
+      expect(document.content, document.path).toContain('**Done when:**');
+      expect(document.content, document.path).toContain('## Operating decisions');
+      expect(document.content, document.path).toContain('## Evidence and refresh protocol');
+      expect(document.content, document.path).toContain('## Connected systems');
+      expect(wordCount, document.path).toBeGreaterThan(180);
+    }
+  });
+
+  it('keeps every explicit relationship inside the canonical corpus', () => {
+    const paths = new Set(CORPUS_DOCUMENTS.map((document) => document.path));
+    const relationshipKeys = new Set<string>();
+
+    for (const relationship of DOCUMENT_RELATIONSHIPS) {
+      expect(paths.has(relationship.sourcePath), relationship.sourcePath).toBe(true);
+      expect(paths.has(relationship.targetPath), relationship.targetPath).toBe(true);
+      expect(relationship.rationale.length).toBeGreaterThan(40);
+      const key = [relationship.sourcePath, relationship.targetPath].sort().join('::');
+      expect(relationshipKeys.has(key), key).toBe(false);
+      relationshipKeys.add(key);
     }
   });
 

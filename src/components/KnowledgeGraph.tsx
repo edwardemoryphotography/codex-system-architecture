@@ -404,7 +404,9 @@ export function KnowledgeGraph({
         (node) =>
           node.title.toLowerCase().includes(query) ||
           node.path.toLowerCase().includes(query) ||
-          node.category.toLowerCase().includes(query),
+          node.category.toLowerCase().includes(query) ||
+          node.outcome.toLowerCase().includes(query) ||
+          node.nextAction.toLowerCase().includes(query),
       )
       .slice(0, 8);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1359,12 +1361,21 @@ export function KnowledgeGraph({
         .map((edge) => {
           const otherId = edge.source === detailNode.id ? edge.target : edge.source;
           const other = nodeByIdRef.current.get(otherId);
-          return other ? { node: other, kind: edge.kind } : null;
+          return other ? { node: other, kind: edge.kind, rationale: edge.rationale } : null;
         })
-        .filter((entry): entry is { node: SimNode; kind: GraphEdgeData['kind'] } => Boolean(entry))
+        .filter(
+          (entry): entry is {
+            node: SimNode;
+            kind: GraphEdgeData['kind'];
+            rationale: string;
+          } => Boolean(entry),
+        )
     : [];
 
   const visitedCount = nodesRef.current.filter((node) => visitedRef.current.has(node.path)).length;
+  const reviewDueCount = nodesRef.current.filter(
+    (node) => node.reviewState === 'due' || node.reviewState === 'stale' || node.reviewState === 'unknown',
+  ).length;
   void visitedVersion;
 
   /* ------------------------------------------------------------ */
@@ -1430,6 +1441,8 @@ export function KnowledgeGraph({
                 } ${reducedMotionRef.current ? '' : 'animate-pulse'}`}
               />
               {graphMeta.source === 'corpus' ? 'CORPUS MAP' : 'LIVE DB'}
+              <span aria-hidden>·</span>
+              {reviewDueCount === 0 ? 'REVIEWS CURRENT' : `${reviewDueCount} REVIEWS DUE`}
             </p>
           </div>
 
@@ -1469,7 +1482,7 @@ export function KnowledgeGraph({
               aria-label="Zoom out"
               title="Zoom out"
               onClick={handleZoomOut}
-              className={`hidden xs:inline-flex sm:inline-flex kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
+              className={`hidden sm:inline-flex kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
             >
               <ZoomOut className="w-4 h-4" />
             </button>
@@ -1478,7 +1491,7 @@ export function KnowledgeGraph({
               aria-label="Fit graph to view"
               title="Fit to view"
               onClick={fitToView}
-              className={`hidden xs:inline-flex sm:inline-flex kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
+              className={`hidden sm:inline-flex kg-btn border backdrop-blur-md rounded-md ${chrome.btn}`}
             >
               <Scan className="w-4 h-4" />
             </button>
@@ -1617,7 +1630,7 @@ export function KnowledgeGraph({
       {detailNode && (
         <section
           aria-label="Node details"
-          className={`absolute z-20 left-3 right-3 sm:left-[21.5rem] sm:right-auto sm:w-[22rem] bottom-[max(1rem,env(safe-area-inset-bottom))] border backdrop-blur-md rounded-md overflow-hidden ${chrome.panelStrong}`}
+          className={`absolute z-20 left-3 right-3 sm:left-[21.5rem] sm:right-auto sm:w-[22rem] bottom-[max(1rem,env(safe-area-inset-bottom))] max-h-[calc(100%-8rem)] overflow-y-auto kg-scroll border backdrop-blur-md rounded-md ${chrome.panelStrong}`}
         >
           <div
             className="h-[3px] w-full"
@@ -1638,6 +1651,23 @@ export function KnowledgeGraph({
                   HUB
                 </span>
               )}
+              <span
+                className={`${monoClass} text-[8px] tracking-[0.16em] px-1.5 py-0.5 border rounded-sm ${
+                  detailNode.reviewState === 'current'
+                    ? dark
+                      ? 'border-emerald-400/40 text-emerald-300'
+                      : 'border-emerald-600/30 text-emerald-700'
+                    : detailNode.reviewState === 'due'
+                      ? dark
+                        ? 'border-amber-400/40 text-amber-300'
+                        : 'border-amber-600/30 text-amber-700'
+                      : dark
+                        ? 'border-rose-400/40 text-rose-300'
+                        : 'border-rose-600/30 text-rose-700'
+                }`}
+              >
+                {detailNode.reviewState.toUpperCase()}
+              </span>
               <span className={`ml-auto ${monoClass} text-[9px] tabular-nums ${chrome.faint}`}>
                 {String(detailNode.degree).padStart(2, '0')} LINKS
               </span>
@@ -1649,27 +1679,44 @@ export function KnowledgeGraph({
             <p className={`mt-1 ${monoClass} text-[10px] tracking-[0.04em] truncate ${chrome.faint}`}>
               {detailNode.path}
             </p>
-            <p className={`mt-2.5 text-[13px] leading-relaxed ${chrome.sub}`}>{detailNode.excerpt}</p>
+            <div className="mt-3">
+              <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>OUTCOME</p>
+              <p className={`mt-1.5 text-[13px] leading-relaxed ${chrome.sub}`}>{detailNode.outcome}</p>
+            </div>
+
+            <div className={`mt-3 pt-3 border-t ${chrome.rule}`}>
+              <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>NEXT MOVE</p>
+              <p className={`mt-1.5 text-[12px] leading-relaxed ${chrome.text}`}>{detailNode.nextAction}</p>
+              <p className={`mt-2 ${monoClass} text-[8.5px] tracking-[0.2em] ${chrome.faint}`}>
+                PROOF
+              </p>
+              <p className={`mt-1 text-[10.5px] leading-snug ${chrome.sub}`}>{detailNode.proof}</p>
+            </div>
 
             {detailConnections.length > 0 && (
               <div className={`mt-3 pt-3 border-t ${chrome.rule}`}>
                 <p className={`${monoClass} text-[8.5px] tracking-[0.24em] ${chrome.faint}`}>CONNECTIONS</p>
                 <ul className="mt-1.5">
-                  {detailConnections.map(({ node, kind }) => (
+                  {detailConnections.map(({ node, kind, rationale }) => (
                     <li key={node.id}>
                       <button
                         type="button"
                         onClick={() => selectNode(node, true)}
-                        className={`group w-full flex items-center gap-2 px-1.5 py-1.5 -mx-1.5 rounded text-left ${chrome.rowHover}`}
+                        className={`group w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 gap-y-0.5 px-1.5 py-1.5 -mx-1.5 rounded text-left ${chrome.rowHover}`}
                       >
                         <GlyphSwatch category={node.category} dark={dark} small />
                         <span className={`min-w-0 flex-1 truncate text-[12px] ${chrome.text} ${visitedRef.current.has(node.path) ? 'line-through opacity-50' : ''}`}>
                           {node.title}
                         </span>
-                        <span className={`${monoClass} text-[8px] tracking-[0.12em] uppercase shrink-0 ${chrome.faint}`}>
-                          {kind}
+                        <span className="flex items-center gap-1">
+                          <span className={`${monoClass} text-[8px] tracking-[0.12em] uppercase shrink-0 ${chrome.faint}`}>
+                            {kind}
+                          </span>
+                          <ArrowUpRight className={`w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${chrome.faint}`} />
                         </span>
-                        <ArrowUpRight className={`w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${chrome.faint}`} />
+                        <span className={`col-start-2 col-span-2 line-clamp-2 text-[10px] leading-snug ${chrome.faint}`}>
+                          {rationale}
+                        </span>
                       </button>
                     </li>
                   ))}
