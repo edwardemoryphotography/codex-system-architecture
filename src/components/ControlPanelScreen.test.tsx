@@ -125,6 +125,11 @@ describe('ControlPanelScreen', () => {
     const task = await screen.findByPlaceholderText(/what needs to move forward/i);
     fireEvent.change(task, { target: { value: 'Review the edited public description.' } });
     await waitFor(() => expect(onDraftChange).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: /check status/i }));
+    await waitFor(() => {
+      const latest = onDraftChange.mock.calls[onDraftChange.mock.calls.length - 1]?.[0];
+      expect(latest?.chipId).toBeNull();
+    });
     const persistedDraft = onDraftChange.mock.calls[onDraftChange.mock.calls.length - 1]?.[0];
 
     fireEvent.click(screen.getByRole('button', { name: /review source/i }));
@@ -137,6 +142,10 @@ describe('ControlPanelScreen', () => {
       </ToastProvider>,
     );
     expect(await screen.findByDisplayValue('Review the edited public description.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /check status/i })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('does not show the owner sign-in prompt when Supabase is not configured', () => {
@@ -163,6 +172,49 @@ describe('ControlPanelScreen', () => {
     await waitFor(() => expect(mocks.persistRouteOwner).toHaveBeenCalledTimes(1));
 
     // Retry after the ambiguous failure without editing the draft.
+    fireEvent.click(screen.getByRole('button', { name: /route task/i }));
+    await waitFor(() => expect(mocks.persistRouteOwner).toHaveBeenCalledTimes(2));
+
+    const [firstCall, secondCall] = mocks.persistRouteOwner.mock.calls;
+    expect(secondCall[0].idempotency_key).toBe(firstCall[0].idempotency_key);
+  });
+
+  it('keeps the retry idempotency key when a sourced draft echoes back from its parent', async () => {
+    mocks.isSupabaseConfigured = true;
+    mocks.session = { user: { email: 'freddyv@duck.com' } };
+    mocks.workspaces = [{ id: 'ws-1', name: 'Test workspace' }];
+    mocks.persistRouteOwner
+      .mockRejectedValueOnce(new Error('network error'))
+      .mockResolvedValueOnce({
+        replayed: false,
+        routedRequest: {
+          execution_lane: 'execution',
+          repository: 'codex-system-architecture',
+          status: 'queued',
+        },
+      });
+    const initialDraft = {
+      sourcePath: '/codex/root/identity.md',
+      task: 'Ship the sourced outcome.',
+      repository: 'codex-system-architecture',
+      requiredEvidence: 'A verified production result.',
+      chipId: 'execute' as const,
+    };
+    const view = render(
+      <ToastProvider isDarkMode>
+        <ControlPanelScreen isDarkMode initialDraft={initialDraft} />
+      </ToastProvider>,
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /route task/i })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: /route task/i }));
+    await waitFor(() => expect(mocks.persistRouteOwner).toHaveBeenCalledTimes(1));
+
+    view.rerender(
+      <ToastProvider isDarkMode>
+        <ControlPanelScreen isDarkMode initialDraft={{ ...initialDraft }} />
+      </ToastProvider>,
+    );
     fireEvent.click(screen.getByRole('button', { name: /route task/i }));
     await waitFor(() => expect(mocks.persistRouteOwner).toHaveBeenCalledTimes(2));
 

@@ -996,12 +996,35 @@ const provenanceOrder: ProvenanceStatus[] = [
   'unknown',
 ];
 
+/** Documents with a reviewed, explicit unresolved-current-state boundary. */
+const CANONICAL_UNKNOWN_PATHS = new Set([
+  '/codex/artistic_systems/photography_ops/gear_specs.md',
+  '/codex/artistic_systems/photography_ops/firefall_2026.md',
+  '/codex/artistic_systems/photography_ops/namibia_2026.md',
+  '/codex/artistic_systems/artful_intelligence',
+  '/codex/artistic_systems/artful_intelligence/ai_overview.md',
+  '/codex/artistic_systems/artful_intelligence/photo_coach_mvp.md',
+  '/codex/artistic_systems/artful_intelligence/edition_manager.md',
+  '/codex/artistic_systems/artful_intelligence/6_figure_print_engine.md',
+  '/codex/artistic_systems/artful_intelligence/creative_automations.md',
+  '/codex/artistic_systems/artful_intelligence/pwa_iphone16.md',
+  '/codex/neuro',
+  '/codex/neuro/muse2_eeg_pipeline.md',
+  '/codex/neuro/websocket_servers.md',
+  '/codex/neuro/adaptive_ml_models.md',
+  '/codex/neuro/whoop_integration.md',
+  '/codex/neuro/bio_geometry_engine.md',
+  '/codex/automation/rag_photography.md',
+  '/codex/automation/automation_pipelines.md',
+  '/codex/business/drop_model.md',
+  '/codex/business/workshop_engines.md',
+  '/codex/convergence/convergence_log_v16.md',
+]);
+
 /** Parse the required evidence header into machine-readable provenance. */
 export function getCodexDocumentProvenance(path: string): CodexDocumentProvenance {
   const content = CODEX_DOCUMENT_BODIES[path];
-  const baseContent = BASE_CODEX_DOCUMENT_BODIES[path];
   if (!content) throw new Error(`Missing canonical Codex body for ${path}`);
-  if (!baseContent) throw new Error(`Missing base canonical Codex body for ${path}`);
 
   const evidenceStatus = content.match(/^\*\*Evidence status:\*\* ([^\r\n]+)$/m)?.[1];
   const evidenceBasis = content.match(/^\*\*Evidence basis:\*\* ([^\r\n]+)$/m)?.[1];
@@ -1021,17 +1044,10 @@ export function getCodexDocumentProvenance(path: string): CodexDocumentProvenanc
   if (/DESIGN|CONCEPT|UNIMPLEMENTED/.test(evidenceStatus)) {
     statuses.add('concept');
   }
-  const unresolvedClaims = baseContent
-    .split('\n')
-    .filter((line) => !/^\s*- \*\*Unknown:\*\* not yet verified\.?\s*$/i.test(line))
-    .join('\n');
   if (
     /UNVERIFIED|Unknown|not verified|not freshly verified/i.test(
       `${evidenceStatus}\n${evidenceBasis}`,
-    ) ||
-    /\*\*Unknown\b|\bUnknown\s+—|\bnot (?:yet |freshly )?verified\b|\bnot confirmed\b|\bnot measured\b/i.test(
-      unresolvedClaims,
-    )
+    ) || CANONICAL_UNKNOWN_PATHS.has(path)
   ) {
     statuses.add('unknown');
   }

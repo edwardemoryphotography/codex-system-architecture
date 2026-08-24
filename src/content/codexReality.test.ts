@@ -82,11 +82,20 @@ describe('Codex reality contract', () => {
       (document) => document.path === '/codex/artistic_systems/photography_ops/gear_specs.md',
     );
     const identity = documents.find((document) => document.path === '/codex/root/identity.md');
+    const personality = documents.find(
+      (document) => document.path === '/codex/personal_os/personality_manual.md',
+    );
+    const dropModel = documents.find(
+      (document) => document.path === '/codex/business/drop_model.md',
+    );
 
     expect(gear?.provenance_status).toContain('verified');
     expect(gear?.provenance_status).toContain('unknown');
     expect(identity?.provenance_status).toContain('verified');
     expect(identity?.provenance_status).not.toContain('unknown');
+    expect(personality?.provenance_status).toContain('verified');
+    expect(personality?.provenance_status).not.toContain('unknown');
+    expect(dropModel?.provenance_status).toContain('unknown');
   });
 
   it('uses category cadence when a document has no explicit override', () => {

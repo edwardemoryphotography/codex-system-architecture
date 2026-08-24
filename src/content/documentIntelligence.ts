@@ -22,8 +22,16 @@ export interface OutcomeDraft {
   task: string;
   repository: string;
   requiredEvidence: string;
-  chipId: 'execute' | 'research' | 'architect' | 'ship' | 'document' | 'status';
+  chipId: OutcomeChipId | null;
 }
+
+export type OutcomeChipId =
+  | 'execute'
+  | 'research'
+  | 'architect'
+  | 'ship'
+  | 'document'
+  | 'status';
 
 export const CANONICAL_REVIEW_DATE = '2026-08-24';
 

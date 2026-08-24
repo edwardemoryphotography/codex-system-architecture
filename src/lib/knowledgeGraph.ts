@@ -257,7 +257,7 @@ export function buildKnowledgeGraph(
     const nodeDegree = degree.get(doc.id) ?? 0;
     const intelligence = getDocumentIntelligence(doc.path);
     const excerpt = excerptFor(doc);
-    const cadence = intelligence ? getReviewCadenceDays(doc.path) : 90;
+    const cadence = getReviewCadenceDays(doc.path);
     return {
       id: doc.id,
       title: doc.title,
