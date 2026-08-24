@@ -379,7 +379,7 @@ export function DocumentViewer({
   }
 
   const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-US', {
+    new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateString) ? `${dateString}T12:00:00` : dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -588,7 +588,10 @@ export function DocumentViewer({
               className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}
             >
               <Calendar className="w-4 h-4" />
-              <span>Last updated {formatDate(document.updated_at)}</span>
+              <span>
+                {document.last_reviewed ? 'Last reviewed' : 'Last updated'}{' '}
+                {formatDate(document.last_reviewed ?? document.updated_at)}
+              </span>
             </div>
           </div>
         </div>
