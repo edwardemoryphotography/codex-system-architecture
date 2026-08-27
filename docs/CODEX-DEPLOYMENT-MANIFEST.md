@@ -71,9 +71,11 @@ Before changing anything, record a side-by-side comparison of:
 1. Root directory and framework preset.
 2. Install, build, development, and output-directory overrides.
 3. Node.js version and package-manager behavior.
-4. Environment-variable names, scopes, and values for Production, Preview, and Development.
+4. Environment-variable names and scopes for Production, Preview, and Development, plus a redacted per-variable result: `MATCH`, `MISMATCH`, or `MISSING`.
 5. Function configuration, regions, deployment protection, and domain settings.
 6. Same-SHA behavior at both production aliases, including authentication, `/api/analyze`, Foundry/operator routes, routing/control paths, and Supabase-backed reads/writes.
+
+Compare actual environment-variable values only inside Vercel's secret-management surface. In repositories, issues, pull requests, chat, or logs, record only variable names, scopes, and the redacted result; never copy or persist secret values.
 
 Proceed only if that evidence shows behavioral parity:
 
