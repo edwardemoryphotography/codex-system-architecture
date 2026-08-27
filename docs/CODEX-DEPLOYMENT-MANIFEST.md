@@ -2,6 +2,7 @@
 
 **Status:** Proposed canonical deployment contract  
 **Audit date:** 2026-08-26  
+**Configuration metadata rechecked:** 2026-08-27  
 **Tracking issue:** #40  
 
 > This document distinguishes verified current state from target architecture. It must not be used to imply that a component has been absorbed, retired, or redirected until that change has been directly verified.
@@ -18,16 +19,20 @@ The target is one obvious private operational product. Foundry and routing/contr
 
 ## 2. Verified current state
 
-### Duplicate Legacy Codex production deployments
+### Overlapping Legacy Codex production deployments — parity unverified
 
-Vercel currently has two Next.js projects deploying the same GitHub repository and the same production commit:
+Vercel currently has two Next.js projects linked to the same GitHub repository, branch, and verified production commit:
 
 | Vercel project | Human-facing alias | GitHub repo | Branch | Verified production SHA | Current role |
 |---|---|---|---|---|---|
-| `frontend` | `legacy-codex.vercel.app` | `edwardemoryphotography/legacy-codex` | `main` | `bd79ce88cbe2f7f4fd3d112f6089428c63165ed5` | Holds the canonical URL today |
-| `legacy-codex` | `legacy-codex-kappa.vercel.app` | `edwardemoryphotography/legacy-codex` | `main` | `bd79ce88cbe2f7f4fd3d112f6089428c63165ed5` | Duplicate production project |
+| `frontend` | `legacy-codex.vercel.app` | `edwardemoryphotography/legacy-codex` | `main` | `bd79ce88cbe2f7f4fd3d112f6089428c63165ed5` | Current canonical-alias owner; keep active pending parity checks |
+| `legacy-codex` | `legacy-codex-kappa.vercel.app` | `edwardemoryphotography/legacy-codex` | `main` | `bd79ce88cbe2f7f4fd3d112f6089428c63165ed5` | Provisional consolidation target; keep active pending parity checks |
 
-**Conclusion:** these are currently redundant production deployments of the same root app at the same commit.
+**Verified overlap:** both projects report Next.js, Node.js 24.x, the same repository/branch/SHA, Turbopack, and the same deployment region (`iad1`).
+
+**Not yet verified:** root directory; install, build, development, or output-directory overrides; environment-variable parity; function settings; deployment protection; and behavior at the two production aliases.
+
+**Current conclusion:** the projects are potential duplicates, not verified redundant deployments. Treat both as active until the configuration comparison and same-SHA behavior checks establish parity.
 
 ### Foundry Console
 
@@ -57,18 +62,26 @@ Vercel currently has two Next.js projects deploying the same GitHub repository a
 | codex-system-architecture | **DOCUMENTATION** | Keep as architecture / knowledge / explainer surface, not the production runtime |
 | Artful Intelligence | **SEPARATE PRODUCT** | May consume Codex infrastructure; do not merge product identity into Legacy Codex |
 
-## 4. Recommended surviving Vercel project
+## 4. Provisional consolidation target and parity gate
 
-**Recommendation:** keep the Vercel project named `legacy-codex` as the surviving root production project because its project identity matches the canonical GitHub repository and product name.
+**Provisional target:** prefer the Vercel project named `legacy-codex` only because its identity matches the canonical repository and product name. This naming preference is not evidence of deployment parity and does not authorize an alias move or project retirement.
 
-Before changing anything:
+Before changing anything, record a side-by-side comparison of:
 
-1. Compare environment variables between `frontend` and `legacy-codex`.
-2. Compare project root directory, framework settings, Node version, build settings, functions, and protection settings.
-3. Confirm both produce equivalent behavior at the same Git SHA.
-4. Move `legacy-codex.vercel.app` from `frontend` to `legacy-codex` only after parity is proven.
-5. Verify the canonical URL after the alias move.
-6. Only then retire the duplicate `frontend` Vercel project and remove the `legacy-codex-kappa.vercel.app` alias if no longer needed.
+1. Root directory and framework preset.
+2. Install, build, development, and output-directory overrides.
+3. Node.js version and package-manager behavior.
+4. Environment-variable names, scopes, and values for Production, Preview, and Development.
+5. Function configuration, regions, deployment protection, and domain settings.
+6. Same-SHA behavior at both production aliases, including authentication, `/api/analyze`, Foundry/operator routes, routing/control paths, and Supabase-backed reads/writes.
+
+Proceed only if that evidence shows behavioral parity:
+
+1. Move `legacy-codex.vercel.app` from `frontend` to `legacy-codex`.
+2. Verify the canonical URL and critical paths after the alias move.
+3. Retire `frontend` and remove `legacy-codex-kappa.vercel.app` only if no unique configuration, environment, domain, or behavior remains.
+
+If parity is not established, keep both projects active and document the concrete difference before choosing a survivor.
 
 ## 5. Codex-linked Vercel classification queue
 
@@ -76,8 +89,8 @@ The following projects were visible in the Vercel account during the audit and a
 
 | Vercel project | Current evidence | Provisional classification | Retirement gate |
 |---|---|---|---|
-| `legacy-codex` | Root repo deployment | **CANONICAL TARGET** | Keep |
-| `frontend` | Same repo + same production SHA as `legacy-codex`; owns canonical alias | **RETIRE AFTER MIGRATION** | Alias/env/config parity verified |
+| `legacy-codex` | Same repo/branch/SHA as `frontend`; root/build/env/behavior parity not yet established | **PROVISIONAL CANONICAL TARGET** | Keep active until parity is proven |
+| `frontend` | Same repo/branch/SHA as `legacy-codex`; owns canonical alias; root/build/env/behavior parity not yet established | **CURRENT ALIAS OWNER / RETIREMENT CANDIDATE** | Retire only after documented parity and successful alias migration |
 | `foundry-console` | Standalone operator console | **COMPONENT / ABSORB** | Foundry feature parity inside canonical product |
 | `codex-control-panel` | Standalone Legacy Codex dispatcher | **COMPONENT / ABSORB** | Router/dispatcher parity inside canonical product |
 | `codex-system-architecture` | Architecture/document viewer | **KEEP — DOCUMENTATION** | Not a runtime retirement target |
