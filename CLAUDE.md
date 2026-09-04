@@ -90,7 +90,7 @@ All data access goes through `src/lib/supabase.ts` — never write inline Supaba
 | Table | Key Columns | Notes |
 |-------|-------------|-------|
 | `codex_documents` | `id`, `title`, `path` (unique), `content`, `category`, `parent_id`, `order`, provenance fields | Public, reviewed, read-only content |
-| `actions` | `action_title`, `status`, `context_complexity`, `portfolio_segment`, `priority_weight`, `is_next_action` | Control Panel task queue |
+| `actions` | `action_title`, `status`, `context_complexity`, `portfolio_segment`, `priority_weight`, `is_next_action` | Control Panel / Foundry task queue — **not** Mission. Product Mission lives in `legacy-codex` (`missions` / `mission_events`, `MissionTab`, `missionLoop`; merged as legacy-codex#37) |
 | `initialize_session_start(session_mode)` | RPC — `'high'` \| `'low'` | Returns prioritized TODO actions; sets one `is_next_action` |
 
 **Configured production Supabase project:** `foundry-console` (`pkydkbuodikttfeawqsw`) — see `supabase/project.json` and `supabase/SCHEMA.md`. This was verified from the deployed Vercel bundle and live schema on 2026-07-15.
@@ -174,6 +174,6 @@ Do not claim success without running the checks that apply to your diff.
 
 | Repo | Role |
 |------|------|
-| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Separate Legacy Codex and Foundry Console project; inspect current deployment state before making production claims |
+| [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) | Production product: Mission screen / Mission Loop (`MissionTab`, `missionLoop`, `missions` / `mission_events`). Inspect current deployment state before making production claims. This architecture repo is documentation, not Mission owner |
 | `neurocreative-platform` | EEG + WHOOP biometric backend |
 | `mem-layer` | AI memory/conversation aggregation |

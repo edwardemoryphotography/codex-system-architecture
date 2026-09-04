@@ -48,45 +48,56 @@ The public `SELECT` policy on `codex_documents` is intentional. Anonymous bookma
 
 Until the owner-scoped migration is applied to the live project, personal overlays remain unavailable at the database layer; the UI stays disabled while signed out and degrades gracefully if tables are missing.
 
-## Routing control plane — canonical ownership (recorded 2026-08-04, updated 2026-08-07)
+## Routing control plane — canonical ownership (recorded 2026-08-04, updated 2026-09-03)
 
-Provenance: `repository_evidence` for every row below — `routed_requests` and
-`evidence_items` were confirmed live against the `foundry-console`
-(`pkydkbuodikttfeawqsw`) Supabase project on 2026-08-07 (RLS, anon-zero-
-privilege, delete guards, correction-chain integrity, idempotency-key
-uniqueness, and `persist_route_atomic` grants all checked directly).
+Provenance: `repository_evidence` for every row below unless marked `unknown`.
+`routed_requests` and `evidence_items` were confirmed live against the
+`foundry-console` (`pkydkbuodikttfeawqsw`) Supabase project on 2026-08-07
+(RLS, anon-zero-privilege, delete guards, correction-chain integrity,
+idempotency-key uniqueness, and `persist_route_atomic` grants all checked
+directly). Merged != deployed != runtime verified != live.
+
+This architecture repo documents reviewed doctrine. It is not proof of deploy
+or live runtime, and it is not the product Mission loop. Do not add a Mission
+screen, product outcome chips, or a replacement loop here. Artful Intelligence
+is a separate product; do not fold it in.
 
 The Legacy Codex Autonomous Project Hygiene work (Lane A) fixed one
 authoritative owner per operational record type. Do not introduce parallel
-stores for any of these:
+stores in *this* repo for any of these:
 
 | Record type | Canonical owner | Status |
 |---|---|---|
 | Project/workspace registry | `workspaces` (Foundry, `foundry-console/SCHEMA.sql` in legacy-codex) | deployed per project.json |
-| Mission / work item | `actions` (this repo's migration `20260520120000`) | deployed per project.json |
+| Control Panel / Foundry work item | `actions` (this repo's migration `20260520120000`) | deployed per project.json. Viewer/routing task queue only — **not** Mission |
+| Mission (human outcome loop) | legacy-codex: `missions` + append-only `mission_events`; UI `src/components/tabs/MissionTab.tsx`; lifecycle `src/lib/missionLoop.ts` | **Merged** 2026-08-09 as [legacy-codex#37](https://github.com/edwardemoryphotography/legacy-codex/pull/37) (“Mission Loop: data model, lifecycle logic, evidence bridge”). Mission Screen UI later merged as legacy-codex#59. Live table apply and runtime verification from *this* repo: `unknown` |
 | Append-only event history | `events` (Foundry) | deployed per project.json |
 | Routed request | `routed_requests` — legacy-codex migrations `20260804010000_routing_control_plane.sql` + `20260804020000_routing_control_plane_hardening.sql` (merged via legacy-codex#47) | deployed and verified live 2026-08-07 |
 | Evidence | `evidence_items` — same migrations | deployed and verified live 2026-08-07 |
 | Agent run | recorded as `events` rows; dedicated table deferred | decision recorded |
 | Generated status summary | derived only (`foundry-console/src/lib/derived-state.ts` in legacy-codex); never stored | decision recorded |
 
-Known contradictions awaiting owner decision (still open as of 2026-08-11):
+This repo's knowledge-graph document intelligence (PR #35) and Control Panel
+six route chips are viewer/routing aids. They prefill or classify a routed
+request; they are not the product Mission loop.
+
+Known leftovers (updated 2026-09-03):
 
 - `actions` carries public RLS (`USING (true)`, full CRUD) while every
   Foundry table is owner-only with anon revoked. Tightening it would break
   the deployed Control Panel read path — flagged, deliberately not changed.
   **Close-out decision (2026-08-11):** keep public RLS until Control Panel
-  authenticates every actions read/write; do not invent a parallel table.
-- legacy-codex `CLAUDE.md` historically claimed a separate Supabase project /
-  `supabase-indigo-paddle`; both production paths use `pkydkbuodikttfeawqsw`.
-  Correction prepared in a local `legacy-codex` close-out branch (push blocked
-  from this architecture-only agent — 403). Treat indigo-paddle references as
-  stale until that sibling docs PR lands.
-- legacy-codex draft PR #37 proposes `missions` / `mission_events` /
-  `evidence_snapshots`, which would parallel `actions` / `events` /
-  `evidence_items`. Still open and draft; reconciliation here chose the
-  deployed tables, so PR #37 needs rework or an explicit owner override
-  before merge.
+  authenticates every actions read/write; do not invent a parallel Mission
+  table in this repo.
+- legacy-codex `CLAUDE.md` still (fetched 2026-09-03) claims this architecture
+  repo's canonical project is `supabase-indigo-paddle`. This repo's verified
+  project is `foundry-console` (`pkydkbuodikttfeawqsw`). Treat indigo-paddle
+  references as stale. Sibling-doc correction is outside this repo.
+- **Corrected 2026-09-03:** the 2026-08-11 close-out treated this repo's
+  `actions` table as canonical “Mission / work item” and described
+  legacy-codex#37 as still open/draft. That was wrong. #37 merged 2026-08-09.
+  Mission lives in legacy-codex. This repo's `actions` table remains the
+  Control Panel / Foundry task queue.
 
 ## Migration apply gate (owner-scoped overlays)
 

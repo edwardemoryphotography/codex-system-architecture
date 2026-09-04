@@ -11,7 +11,7 @@ Visual documentation and architecture SPA for Eddie's **Codex ecosystem** — ca
 | Layer | Role |
 |-------|------|
 | **This app** | React + Vite + Supabase: browse the reviewed Codex corpus, graph, search, bookmarks, and reading progress |
-| **Control Panel** | Home screen when no doc is selected — task input, six route chips, Route Task / Fast Execute (alerts only; routing in Screen 2) |
+| **Control Panel** | Home screen when no doc is selected — task input, six route chips (viewer/routing aids, **not** the product Mission loop), Route Task (persists `routed_requests` when signed in), Fast Execute (local reminder only) |
 | [`notion-wiki/`](./notion-wiki/README.md) | Agent skills + config for your Notion Second Brain |
 | [`personal-wiki/`](./personal-wiki/README.md) | Copyable Obsidian vault pattern (raw → skills → wiki) |
 
@@ -79,7 +79,7 @@ Standalone Control Panel prototype (earlier ship): [codex-control-panel on Verce
 - Document tree + markdown viewer, TOC, tags, full-text search
 - Command palette (`Cmd/Ctrl+K`), knowledge graph (`Cmd/Ctrl+G`), split view, focus mode
 - Bookmarks, inline notes, reading progress (Supabase)
-- **Control Panel Screen 1:** task textarea, six chips, Route Task / Fast Execute
+- **Control Panel Screen 1:** task textarea, six route chips (routing aids, not Mission), Route Task / Fast Execute
 
 ## Keyboard shortcuts
 
@@ -99,7 +99,7 @@ Personal claims must follow the Reality Filter: verified facts, repository evide
 
 ## Related repos
 
-- [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) — separate Legacy Codex and Foundry Console work
+- [`legacy-codex`](https://github.com/edwardemoryphotography/legacy-codex) — production product (Mission screen / Mission Loop). This repo documents the ecosystem; it is not Mission owner and is not proof of deploy or live runtime
 - [`mem-layer`](https://github.com/edwardemoryphotography/mem-layer) — memory-layer project; current runtime status must be inspected before use
 - [`neurocreative-platform`](https://github.com/edwardemoryphotography/neurocreative-platform) — neurotechnology project; current runtime status must be inspected before use
 
