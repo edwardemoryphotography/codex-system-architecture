@@ -1,11 +1,12 @@
 # STATE.md — codex-system-architecture
 
-_Last updated: 2026-09-03_  
-_Refreshed against `main` HEAD `60c841a` (2026-08-27, PR #41)._  
+_Last updated: 2026-09-06_  
+_Refreshed against `main` HEAD `d33fa3b` (PR #42, then #34, then #31)._  
 _This file records repository truth. Merged != deployed != runtime verified != live._
 
 ## ✅ SHIPPED (on `main` — merge evidence only)
 
+- **Tooling / hygiene (2026-09-06)** → PR #34 sets `NODE_OPTIONS=--no-experimental-webstorage` on `test` / `test:watch` (CI `npm test`); PR #31 resolves TD-005 (drop redundant `client()` re-check in `src/lib/supabase.ts`). Merge evidence only; not a deploy claim.
 - **Proposed production contract (2026-08-27, PR #41)** → added [`docs/CODEX-DEPLOYMENT-MANIFEST.md`](./docs/CODEX-DEPLOYMENT-MANIFEST.md) as a **proposed** canonical-surface contract. Tracking issue **#40 remains open**. Definition-of-done boxes are unchecked. Vercel `frontend` vs `legacy-codex` parity is **not** established. Do not treat the manifest as accepted live consolidation.
 - **Knowledge graph / corpus (2026-08-24)** → PR #35 document intelligence + “Start this outcome” Control Panel prefill; #36 canonical review date in headers; #37 graph review gaps; #38 drop legacy task stubs from the atlas; #39 mobile graph. These are **viewer/routing aids**, not the product Mission loop (Mission lives in `legacy-codex`).
 - **Tooling (2026-08-24, PR #33)** → cross-version npm clean installs; CI + vendor-chunk split.
