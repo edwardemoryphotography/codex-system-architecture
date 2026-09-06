@@ -164,7 +164,7 @@ function client(): SupabaseClient {
 
 async function fetchLiveDocuments(): Promise<CodexDocument[]> {
   if (!supabase) return [];
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('codex_documents')
     .select('*')
     .order('category', { ascending: true })
@@ -198,7 +198,7 @@ export async function getDocumentByPath(path: string) {
     return corpusMatch;
   }
 
-  const byPath = await client()
+  const byPath = await supabase
     .from('codex_documents')
     .select(`
       *,
@@ -221,7 +221,7 @@ export async function getDocumentByPath(path: string) {
   const candidateId = idMatch?.[0] ?? (path.includes('/') ? null : path);
 
   if (candidateId) {
-    const byId = await client()
+    const byId = await supabase
       .from('codex_documents')
       .select('*')
       .eq('id', candidateId)
@@ -268,7 +268,7 @@ export async function getDocumentsByCategory(category: string) {
 
 export async function getTags() {
   if (!supabase) return [];
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('codex_tags')
     .select('*')
     .order('name', { ascending: true });
@@ -281,7 +281,7 @@ export async function getTags() {
 /** Resolve the authenticated user id, or null when signed out. */
 async function getAuthenticatedUserId(): Promise<string | null> {
   if (!supabase) return null;
-  const { data, error } = await client().auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
   return data.user.id;
 }
@@ -291,7 +291,7 @@ export async function getRecentDocuments(limit = 10) {
   const userId = await getAuthenticatedUserId();
   if (!userId) return [];
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('reading_progress')
     .select(`
       *,
@@ -316,7 +316,7 @@ export async function updateReadingProgress(documentId: string, scrollPosition: 
   const userId = await getAuthenticatedUserId();
   if (!userId) return null;
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('reading_progress')
     .upsert(
       {
@@ -342,7 +342,7 @@ export async function getReadingProgress(documentId: string) {
   const userId = await getAuthenticatedUserId();
   if (!userId) return null;
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('reading_progress')
     .select('*')
     .eq('user_id', userId)
@@ -359,7 +359,7 @@ export async function getBookmarks() {
   const userId = await getAuthenticatedUserId();
   if (!userId) return [];
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('bookmarks')
     .select(`
       *,
@@ -383,7 +383,7 @@ export async function addBookmark(documentId: string) {
   const userId = await getAuthenticatedUserId();
   if (!userId) throw new Error('Not authenticated');
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('bookmarks')
     .insert({ user_id: userId, document_id: documentId })
     .select()
@@ -399,7 +399,7 @@ export async function removeBookmark(documentId: string) {
   const userId = await getAuthenticatedUserId();
   if (!userId) throw new Error('Not authenticated');
 
-  const { error } = await client()
+  const { error } = await supabase
     .from('bookmarks')
     .delete()
     .eq('user_id', userId)
@@ -414,7 +414,7 @@ export async function isBookmarked(documentId: string) {
   const userId = await getAuthenticatedUserId();
   if (!userId) return false;
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('bookmarks')
     .select('id')
     .eq('user_id', userId)
@@ -431,7 +431,7 @@ export async function getDocumentNotes(documentId: string) {
   const userId = await getAuthenticatedUserId();
   if (!userId) return [];
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('document_notes')
     .select('*')
     .eq('user_id', userId)
@@ -448,7 +448,7 @@ export async function addDocumentNote(documentId: string, content: string, posit
   const userId = await getAuthenticatedUserId();
   if (!userId) throw new Error('Not authenticated');
 
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('document_notes')
     .insert({ user_id: userId, document_id: documentId, content, position })
     .select()
@@ -464,7 +464,7 @@ export async function deleteDocumentNote(noteId: string) {
   const userId = await getAuthenticatedUserId();
   if (!userId) throw new Error('Not authenticated');
 
-  const { error } = await client()
+  const { error } = await supabase
     .from('document_notes')
     .delete()
     .eq('id', noteId)
@@ -476,7 +476,7 @@ export async function deleteDocumentNote(noteId: string) {
 
 export async function getDocumentLinks() {
   if (!supabase) return [];
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('document_links')
     .select(`
       *,
@@ -506,7 +506,7 @@ export async function addDocumentLink(
   if (!supabase || !isPersistableDocumentId(sourceId) || !isPersistableDocumentId(targetId)) {
     return null;
   }
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('document_links')
     .insert({
       source_document_id: sourceId,
@@ -524,7 +524,7 @@ export async function addDocumentLink(
 
 export async function getActions() {
   if (!supabase) return [];
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('actions')
     .select('*')
     .order('priority_weight', { ascending: false });
@@ -535,7 +535,7 @@ export async function getActions() {
 
 export async function initializeSessionStart(sessionMode: SessionMode = 'high') {
   if (!supabase) return [];
-  const { data, error } = await client().rpc('initialize_session_start', {
+  const { data, error } = await supabase.rpc('initialize_session_start', {
     session_mode: sessionMode,
   });
 
@@ -552,14 +552,14 @@ export async function initializeSessionStart(sessionMode: SessionMode = 'high') 
 
 export async function getSession(): Promise<Session | null> {
   if (!supabase) return null;
-  const { data, error } = await client().auth.getSession();
+  const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
   return data.session;
 }
 
 export function onAuthStateChange(callback: (session: Session | null) => void) {
   if (!supabase) return { unsubscribe: () => {} };
-  const { data } = client().auth.onAuthStateChange((_event, session) => callback(session));
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
   return data.subscription;
 }
 
@@ -573,13 +573,13 @@ export async function signInOwnerWithMagicLink(): Promise<void> {
 
 export async function signOutOwner(): Promise<void> {
   if (!supabase) return;
-  const { error } = await client().auth.signOut();
+  const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
 
 export async function getWorkspaces(): Promise<Workspace[]> {
   if (!supabase) return [];
-  const { data, error } = await client()
+  const { data, error } = await supabase
     .from('workspaces')
     .select('id, name')
     .order('created_at', { ascending: true });
