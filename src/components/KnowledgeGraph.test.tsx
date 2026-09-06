@@ -15,6 +15,15 @@ vi.mock('../hooks/useMediaQuery', () => ({
   useIsMobileLayout: () => true,
 }));
 
+/** Graph-loaded signal. The review badge is `Current` or `N due` depending on
+ *  last_reviewed vs cadence vs today — do not wait on `/current/i`. */
+const GRAPH_NODE_COUNT = new RegExp(`${CORPUS_DOCUMENTS.length} nodes`, 'i');
+const REVIEW_BADGE = /^(Current|\d+ due)$/i;
+
+async function waitForLoadedGraph() {
+  return screen.findByText(GRAPH_NODE_COUNT);
+}
+
 function createCanvasContextMock() {
   return new Proxy(
     {},
@@ -71,10 +80,8 @@ describe('KnowledgeGraph', () => {
     );
 
     expect(await screen.findByRole('heading', { name: /knowledge graph/i })).toBeInTheDocument();
-    expect(
-      await screen.findByText(new RegExp(`${CORPUS_DOCUMENTS.length} nodes`, 'i')),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/current/i)).toBeInTheDocument();
+    expect(await waitForLoadedGraph()).toBeInTheDocument();
+    expect(screen.getByText(REVIEW_BADGE)).toBeInTheDocument();
     const closeGraph = screen.getByRole('button', { name: /close knowledge graph/i });
     expect(closeGraph).toHaveClass('pointer-events-auto');
     expect(closeGraph.parentElement).toHaveClass('pointer-events-none');
@@ -94,7 +101,7 @@ describe('KnowledgeGraph', () => {
       />,
     );
 
-    await screen.findByText(/current/i);
+    await waitForLoadedGraph();
     await user.click(screen.getByRole('button', { name: /territories/i }));
 
     expect(screen.getByPlaceholderText(/search the codex/i)).toBeInTheDocument();
@@ -115,7 +122,7 @@ describe('KnowledgeGraph', () => {
       />,
     );
 
-    await screen.findByText(/current/i);
+    await waitForLoadedGraph();
     await user.click(screen.getByRole('button', { name: /search/i }));
     await user.type(screen.getByPlaceholderText(/search the codex/i), 'authorship');
 
@@ -136,7 +143,7 @@ describe('KnowledgeGraph', () => {
     };
     const { rerender } = render(<KnowledgeGraph isOpen {...props} />);
 
-    await screen.findByText(/current/i);
+    await waitForLoadedGraph();
     await user.click(screen.getByRole('button', { name: /search/i }));
     await user.type(screen.getByPlaceholderText(/search the codex/i), 'authorship');
     await user.click(await screen.findByRole('option', { name: /identity.*root/i }));
@@ -169,7 +176,7 @@ describe('KnowledgeGraph', () => {
       />,
     );
 
-    await screen.findByText(/current/i);
+    await waitForLoadedGraph();
     await user.click(screen.getByRole('button', { name: /search/i }));
     await user.type(screen.getByPlaceholderText(/search the codex/i), 'authorship');
     await user.click(await screen.findByRole('option', { name: /identity.*root/i }));
