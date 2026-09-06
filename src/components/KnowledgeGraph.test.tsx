@@ -5,6 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { CORPUS_DOCUMENTS } from '../content/codexCorpus';
 import { getDocuments } from '../lib/supabase';
 import { KnowledgeGraph } from './KnowledgeGraph';
+import { ToastProvider } from './Toast';
 
 vi.mock('../lib/supabase', () => ({
   getDocuments: vi.fn().mockResolvedValue([]),
@@ -22,6 +23,10 @@ const REVIEW_BADGE = /^(Current|\d+ due)$/i;
 
 async function waitForLoadedGraph() {
   return screen.findByText(GRAPH_NODE_COUNT);
+}
+
+function renderGraph(ui: React.ReactElement) {
+  return render(<ToastProvider isDarkMode>{ui}</ToastProvider>);
 }
 
 function createCanvasContextMock() {
@@ -70,7 +75,7 @@ describe('KnowledgeGraph', () => {
   });
 
   it('renders the atlas header with graph metadata', async () => {
-    render(
+    renderGraph(
       <KnowledgeGraph
         isOpen
         onClose={() => {}}
@@ -92,7 +97,7 @@ describe('KnowledgeGraph', () => {
   it('opens the territory index with search and territory rows', async () => {
     const user = userEvent.setup();
 
-    render(
+    renderGraph(
       <KnowledgeGraph
         isOpen
         onClose={() => {}}
@@ -113,7 +118,7 @@ describe('KnowledgeGraph', () => {
   it('filters search results as you type', async () => {
     const user = userEvent.setup();
 
-    render(
+    renderGraph(
       <KnowledgeGraph
         isOpen
         onClose={() => {}}
@@ -141,7 +146,7 @@ describe('KnowledgeGraph', () => {
       onSelectDocument: () => {},
       isDarkMode: true,
     };
-    const { rerender } = render(<KnowledgeGraph isOpen {...props} />);
+    const { rerender } = renderGraph(<KnowledgeGraph isOpen {...props} />);
 
     await waitForLoadedGraph();
     await user.click(screen.getByRole('button', { name: /search/i }));
@@ -149,12 +154,20 @@ describe('KnowledgeGraph', () => {
     await user.click(await screen.findByRole('option', { name: /identity.*root/i }));
     expect(screen.getByRole('dialog', { name: /node details/i })).toBeInTheDocument();
 
-    rerender(<KnowledgeGraph isOpen={false} {...props} />);
+    rerender(
+      <ToastProvider isDarkMode>
+        <KnowledgeGraph isOpen={false} {...props} />
+      </ToastProvider>,
+    );
     let resolveDocuments: (value: []) => void = () => {};
     vi.mocked(getDocuments).mockImplementationOnce(
       () => new Promise<[]>((resolve) => { resolveDocuments = resolve; }),
     );
-    rerender(<KnowledgeGraph isOpen {...props} />);
+    rerender(
+      <ToastProvider isDarkMode>
+        <KnowledgeGraph isOpen {...props} />
+      </ToastProvider>,
+    );
 
     expect(await screen.findByText(/charting the codex/i)).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: /node details/i })).not.toBeInTheDocument();
@@ -167,7 +180,7 @@ describe('KnowledgeGraph', () => {
   it('opens a dismissible mobile detail sheet with collapsed connections', async () => {
     const user = userEvent.setup();
 
-    render(
+    renderGraph(
       <KnowledgeGraph
         isOpen
         onClose={() => {}}

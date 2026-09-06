@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Search, X } from 'lucide-react';
 import { searchDocuments } from '../lib/supabase';
+import { useToast } from '../hooks/useToast';
 import { CodexDocument } from '../types';
 
 interface SearchBarProps {
@@ -10,6 +11,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ onSelectDocument, onSearchResults, isDarkMode = false }: SearchBarProps) {
+  const { error: toastError } = useToast();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CodexDocument[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -30,12 +32,12 @@ export function SearchBar({ onSelectDocument, onSearchResults, isDarkMode = fals
       setResults(docs);
       onSearchResults(docs, q);
       setShowResults(true);
-    } catch (error) {
-      console.error('Search failed:', error);
+    } catch {
+      toastError('Search failed', 'Could not search documents. Try again.');
     } finally {
       setLoading(false);
     }
-  }, [onSearchResults]);
+  }, [onSearchResults, toastError]);
 
   const handleClear = () => {
     setQuery('');

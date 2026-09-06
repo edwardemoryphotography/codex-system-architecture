@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Download, FileText, File, Loader2, Check } from 'lucide-react';
+import { useToast } from '../hooks/useToast';
 import { CodexDocument } from '../types';
 
 interface ExportMenuProps {
@@ -9,6 +10,7 @@ interface ExportMenuProps {
 }
 
 export function ExportMenu({ document, isDarkMode }: ExportMenuProps) {
+  const toast = useToast();
   const [exporting, setExporting] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
 
@@ -27,8 +29,8 @@ export function ExportMenu({ document, isDarkMode }: ExportMenuProps) {
       URL.revokeObjectURL(url);
       setExported('md');
       setTimeout(() => setExported(null), 2000);
-    } catch (error) {
-      console.error('Export failed:', error);
+    } catch {
+      toast.error('Export failed', 'Could not download Markdown.');
     } finally {
       setExporting(null);
     }
@@ -54,8 +56,8 @@ export function ExportMenu({ document, isDarkMode }: ExportMenuProps) {
       URL.revokeObjectURL(url);
       setExported('txt');
       setTimeout(() => setExported(null), 2000);
-    } catch (error) {
-      console.error('Export failed:', error);
+    } catch {
+      toast.error('Export failed', 'Could not download text.');
     } finally {
       setExporting(null);
     }
@@ -67,8 +69,8 @@ export function ExportMenu({ document, isDarkMode }: ExportMenuProps) {
       await navigator.clipboard.writeText(`# ${document.title}\n\n${document.content}`);
       setExported('copy');
       setTimeout(() => setExported(null), 2000);
-    } catch (error) {
-      console.error('Copy failed:', error);
+    } catch {
+      toast.error('Copy failed', 'Could not copy to clipboard.');
     } finally {
       setExporting(null);
     }

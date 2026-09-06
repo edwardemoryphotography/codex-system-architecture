@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, FileText, Clock, Command, ArrowRight, Star, Moon, Sun, Maximize2, Network } from 'lucide-react';
 import { searchDocuments, getBookmarks, getRecentDocuments } from '../lib/supabase';
+import { useToast } from '../hooks/useToast';
 import { CodexDocument } from '../types';
 
 interface CommandPaletteProps {
@@ -34,6 +35,7 @@ export function CommandPalette({
   onOpenKnowledgeGraph,
   isDarkMode
 }: CommandPaletteProps) {
+  const { error: toastError } = useToast();
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<CommandItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -99,13 +101,13 @@ export function CommandPalette({
         }));
 
       setItems([...defaultActions, ...bookmarkItems, ...recentItems]);
-    } catch (error) {
-      console.error('Failed to load items:', error);
+    } catch {
+      toastError('Could not load command palette', 'Showing actions only.');
       setItems(defaultActions);
     } finally {
       setIsLoading(false);
     }
-  }, [onSelectDocument, onClose, defaultActions]);
+  }, [onSelectDocument, onClose, defaultActions, toastError]);
 
   const searchItems = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -131,12 +133,12 @@ export function CommandPalette({
       );
 
       setItems([...filteredActions, ...searchResults]);
-    } catch (error) {
-      console.error('Search failed:', error);
+    } catch {
+      toastError('Search failed', 'Could not search documents. Try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [onSelectDocument, onClose, loadInitialItems, defaultActions]);
+  }, [onSelectDocument, onClose, loadInitialItems, defaultActions, toastError]);
 
   useEffect(() => {
     if (isOpen) {

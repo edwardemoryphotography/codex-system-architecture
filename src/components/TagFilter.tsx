@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Filter, ChevronDown } from 'lucide-react';
 import { getTags } from '../lib/supabase';
+import { useToast } from '../hooks/useToast';
 
 interface TagData {
   id: string;
@@ -15,6 +16,7 @@ interface TagFilterProps {
 }
 
 export function TagFilter({ selectedTags, onTagsChange, isDarkMode }: TagFilterProps) {
+  const { error: toastError } = useToast();
   const [tags, setTags] = useState<TagData[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -23,11 +25,11 @@ export function TagFilter({ selectedTags, onTagsChange, isDarkMode }: TagFilterP
       try {
         const data = await getTags();
         setTags(data || []);
-      } catch (error) {
-        console.error('Failed to load tags:', error);
+      } catch {
+        toastError('Could not load tags');
       }
     })();
-  }, []);
+  }, [toastError]);
 
   const toggleTag = (tagId: string) => {
     if (selectedTags.includes(tagId)) {

@@ -12,6 +12,7 @@ import { ToastProvider } from './Toast';
 import { FeedbackFormExample } from './FeedbackFormExample';
 import { SupabaseSetupBanner } from './SupabaseSetupBanner';
 import { useIsMobileLayout } from '../hooks/useMediaQuery';
+import { useToast } from '../hooks/useToast';
 import { getRecentDocuments, isSupabaseConfigured } from '../lib/supabase';
 import type { CodexDocument } from '../types';
 import type { OutcomeDraft } from '../content/documentIntelligence';
@@ -19,6 +20,34 @@ import type { OutcomeDraft } from '../content/documentIntelligence';
 interface RecentDoc {
   codex_documents: CodexDocument;
   last_read_at: string;
+}
+
+/** Loads recent docs inside ToastProvider so failures can surface via toast. */
+function RecentDocumentsSync({
+  selectedPath,
+  onLoaded,
+}: {
+  selectedPath: string | null;
+  onLoaded: (docs: RecentDoc[]) => void;
+}) {
+  const { error: toastError } = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const docs = await getRecentDocuments(5);
+        if (!cancelled) onLoaded(docs || []);
+      } catch {
+        if (!cancelled) toastError('Could not load recent documents');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPath, onLoaded, toastError]);
+
+  return null;
 }
 
 export function CodexAppShell() {
@@ -47,6 +76,10 @@ export function CodexAppShell() {
   const showDesktopSidebar = !isFocusMode && !isSplitView && !isMobileLayout;
   const showMobileSidebar = isMobileLayout && isMobileNavOpen && !isFocusMode && !isSplitView;
 
+  const handleRecentDocsLoaded = useCallback((docs: RecentDoc[]) => {
+    setRecentDocs(docs);
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('codex-dark-mode', JSON.stringify(isDarkMode));
     if (isDarkMode) {
@@ -55,17 +88,6 @@ export function CodexAppShell() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const docs = await getRecentDocuments(5);
-        setRecentDocs(docs || []);
-      } catch (error) {
-        console.error('Failed to load recent docs:', error);
-      }
-    })();
-  }, [selectedPath]);
 
   useEffect(() => {
     if (!isMobileLayout) {
@@ -185,6 +207,7 @@ export function CodexAppShell() {
 
   return (
     <ToastProvider isDarkMode={isDarkMode}>
+      <RecentDocumentsSync selectedPath={selectedPath} onLoaded={handleRecentDocsLoaded} />
       <div
         className={`min-h-screen flex flex-col transition-colors duration-500 ${
           isDarkMode ? 'bg-gray-950' : 'bg-gray-50'

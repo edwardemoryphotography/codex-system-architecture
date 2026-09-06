@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, BookOpen, Folder } from 'lucide-react';
 import { getDocuments } from '../lib/supabase';
+import { useToast } from '../hooks/useToast';
 import { CodexDocument } from '../types';
 
 interface NavigationProps {
@@ -27,6 +28,7 @@ const categoryIcons: Record<string, string> = {
 };
 
 export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false }: NavigationProps) {
+  const { error: toastError } = useToast();
   const [documents, setDocuments] = useState<CodexDocument[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set([
@@ -49,13 +51,13 @@ export function Navigation({ onSelectDocument, selectedPath, isDarkMode = false 
       try {
         const docs = await getDocuments();
         setDocuments(docs);
-      } catch (error) {
-        console.error('Failed to load documents:', error);
+      } catch {
+        toastError('Could not load documents', 'Navigation may be incomplete.');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [toastError]);
 
   const buildTree = (): TreeNode[] => {
     const docsMap = new Map<string | null, CodexDocument[]>();

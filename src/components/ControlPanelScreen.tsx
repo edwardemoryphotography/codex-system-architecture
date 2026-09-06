@@ -80,6 +80,7 @@ export function ControlPanelScreen({
   onDraftConsumed,
 }: ControlPanelScreenProps) {
   const toast = useToast();
+  const { error: toastError } = toast;
   const [task, setTask] = useState('');
   const [chip, setChip] = useState<OutcomeChipId | null>(null);
   const [repository, setRepository] = useState('');
@@ -150,8 +151,8 @@ export function ControlPanelScreen({
         if (next) {
           try {
             await storeUser(next);
-          } catch (error) {
-            console.error('Failed to store user profile:', error);
+          } catch {
+            toastError('Could not save profile', 'Signed in, but profile sync failed.');
           }
         }
       })
@@ -164,13 +165,13 @@ export function ControlPanelScreen({
       setSession(nextSession);
       if (nextSession) {
         setMagicLinkSent(false);
-        storeUser(nextSession).catch((error) => {
-          console.error('Failed to store user profile:', error);
+        storeUser(nextSession).catch(() => {
+          toastError('Could not save profile', 'Signed in, but profile sync failed.');
         });
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toastError]);
 
   const shell = isDarkMode
     ? 'bg-neutral-950 text-neutral-100'

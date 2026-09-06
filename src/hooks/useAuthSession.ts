@@ -3,11 +3,13 @@ import type { Session } from '@supabase/supabase-js';
 
 import { storeUser } from '../lib/auth';
 import { isSupabaseConfigured, onAuthStateChange, getSession } from '../lib/supabase';
+import { useToast } from './useToast';
 
 /**
  * Subscribe to Supabase auth session and upsert `profiles` on sign-in.
  */
 export function useAuthSession() {
+  const { error: toastError } = useToast();
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!isSupabaseConfigured);
 
@@ -23,8 +25,10 @@ export function useAuthSession() {
         if (next) {
           try {
             await storeUser(next);
-          } catch (error) {
-            console.error('Failed to store user profile:', error);
+          } catch {
+            if (!cancelled) {
+              toastError('Could not save profile', 'Signed in, but profile sync failed.');
+            }
           }
         }
       })
@@ -38,8 +42,8 @@ export function useAuthSession() {
     const subscription = onAuthStateChange((nextSession) => {
       setSession(nextSession);
       if (nextSession) {
-        storeUser(nextSession).catch((error) => {
-          console.error('Failed to store user profile:', error);
+        storeUser(nextSession).catch(() => {
+          toastError('Could not save profile', 'Signed in, but profile sync failed.');
         });
       }
     });
@@ -48,7 +52,7 @@ export function useAuthSession() {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [toastError]);
 
   return { session, ready, isAuthenticated: Boolean(session) };
 }
