@@ -1,11 +1,11 @@
 # Technical Debt Register
 
 Last updated: 2026-09-06
-Provenance: `repository_evidence` against branch `td-004-toast-user-errors` (TD-004 toast wiring) on top of `main` HEAD `f116126`. Prior register baseline referenced `d33fa3b` (PR #42, then #34, then #31).
+Provenance: `repository_evidence` against branch `td-006-split-knowledge-graph` (TD-006 KnowledgeGraph layer split) on top of `main` HEAD `c3d922c`. Prior register baseline referenced TD-004 toast wiring / `f116126` / `d33fa3b` (PR #42, then #34, then #31).
 Scope of scan: `codex-system-architecture` (this on-disk architecture repo). The
 `legacy-codex` production front-end is a separate repository and is not covered here.
 
-Total items: 7 (6 resolved or obsolete; 1 still open)
+Total items: 7 (7 resolved or obsolete; 0 still open)
 
 ## Priority scoring
 
@@ -21,7 +21,7 @@ Higher score = fix sooner. Resolved / obsolete rows keep historical scores.
 | ID | Category | Description | Files | Effort | Impact | Freq | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|------|----------|-------|--------|
 | TD-004 | Code Quality | Originally: user-facing failures mostly swallowed to `console.error` despite an existing `Toast` / `useToast` stack. **Fixed (2026-09-06).** Remaining user-visible failure paths now call `toast.error(title, message?)` (SearchBar, CommandPalette, ExportMenu, Navigation, TagFilter, KnowledgeGraph, CodexAppShell recent docs, DocumentViewer load / delete-note, useAuthSession + ControlPanelScreen profile sync). Bookmark / add-note / ControlPanel route-auth toasts were already present. Left intentional: `ErrorBoundary` `console.error` (logging) and DocumentViewer background `updateReadingProgress(...).catch(console.error)` (non-user-facing). | Former sites in SearchBar, CommandPalette, ExportMenu, Navigation, TagFilter, KnowledgeGraph, CodexAppShell, DocumentViewer, useAuthSession, ControlPanelScreen | M | Medium | 3 | 3.0 | 2026-06-14 | Fixed (2026-09-06) |
-| TD-006 | Code Quality | `KnowledgeGraph.tsx` is **2031 lines** (~78KB), far past the 500-line god-object threshold recorded as 529 lines on 2026-06-14. Graph *model* construction now lives in `src/lib/knowledgeGraph.ts` (316 lines) with unit tests, but the component still combines data fetch, force-simulation physics, canvas rendering, and pointer / mobile interaction. Hard to test or modify in isolation. | `src/components/KnowledgeGraph.tsx` | L | Low | 1 | 0.3 | 2026-06-14 | Backlog |
+| TD-006 | Code Quality | Originally: `KnowledgeGraph.tsx` was a ~2031-line god-object past the 500-line threshold (529 lines recorded 2026-06-14). **Fixed (2026-09-06).** Model construction already lived in `src/lib/knowledgeGraph.ts`. Simulation / canvas / pointer / atlas theme now live in focused modules: `knowledgeGraphSimulation.ts`, `knowledgeGraphCanvas.ts`, `knowledgeGraphPointer.ts`, `knowledgeGraphAtlas.ts`, with layer unit tests in `knowledgeGraphLayers.test.ts`. The React component remains orchestration + chrome (~1341 lines) and is no longer the single owner of physics / paint / hit-testing. | `src/components/KnowledgeGraph.tsx`, `src/lib/knowledgeGraph*.ts` | L | Low | 1 | 0.3 | 2026-06-14 | Fixed (2026-09-06) |
 | TD-007 | Dependency | `package.json` declared `pg` (added for the Edition Manager API in `487b450`) but the lockfile was never updated, so `npm ci` failed on clean installs. | `package.json`, `package-lock.json`, `api/apply-edition-migration.js` | S | High | 5 | 12.5 | 2026-06-14 | Fixed (2026-06-14) |
 | TD-001 | Test | Originally: no automated tests and no `test` script. **Obsolete.** `package.json` now has `test` / `test:watch` (Vitest; #34 sets `NODE_OPTIONS=--no-experimental-webstorage`). 14 `*.test.ts` / `*.test.tsx` files cover corpus, supabase helpers, knowledge-graph model, cognition, auth, and several components. Coverage is not 100% (markdown parser / TOC / validators still thin) — that is ordinary follow-on work, not the original "no tests" debt. After #34 unblocked execution, `KnowledgeGraph.test.tsx` still waited on `/current/i` (the review badge is `Current` *or* `N due` once the corpus loads). That wait is now the node-count signal. | `package.json`, `src/**/*.test.ts(x)`, `scripts/codex-content-migration.test.ts` | L | High | 5 | 6.3 | 2026-06-14 | Obsolete (tests exist; #34) |
 | TD-002 | Code Quality / Security | Originally: `searchDocuments` interpolated raw input into a PostgREST `.or(title.ilike.%${query}%,…)` filter without escaping LIKE / filter metacharacters. **Fixed.** `searchDocuments` is now an in-memory filter over `getDocuments()` (`src/lib/supabase.ts` ~250–259). No PostgREST `ilike` / `.or()` interpolation remains in that function. | `src/lib/supabase.ts:250` | S | Medium | 3 | 4.5 | 2026-06-14 | Fixed |
@@ -38,5 +38,5 @@ Higher score = fix sooner. Resolved / obsolete rows keep historical scores.
 
 ## Recommended next steps
 
-1. **TD-006 (split KnowledgeGraph)** — still the largest file and the only open register item; extract simulation / canvas / pointer layers when someone is already in that component. Do not treat the 2026-06-14 "529 lines" figure as current.
-2. **TD-003 residual** — optional: expand collapsed ancestors in `navigateToHeading`. Not a stub anymore; do not prioritize as a broken TOC.
+1. **TD-003 residual** — optional: expand collapsed ancestors in `navigateToHeading`. Not a stub anymore; do not prioritize as a broken TOC.
+2. **KnowledgeGraph chrome** — optional follow-on only: the React shell is still large because of atlas UI chrome; further JSX splits are polish, not the original god-object debt (physics / paint / pointer are already extracted).

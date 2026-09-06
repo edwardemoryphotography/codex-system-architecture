@@ -16,275 +16,37 @@ import {
 import { useIsMobileLayout } from '../hooks/useMediaQuery';
 import {
   buildKnowledgeGraph,
-  getConnectedNodeIds,
   matchesGraphNodeQuery,
   type GraphEdgeData,
-  type GraphNodeData,
   type KnowledgeGraphData,
 } from '../lib/knowledgeGraph';
+import {
+  categoryColor,
+  categoryShape,
+  createAtlasSpecks,
+  formatCategory,
+  loadVisited,
+  persistVisited,
+  TAU,
+  type AtlasSpeck,
+  type CameraAnim,
+  type PointerState,
+  type SimNode,
+} from '../lib/knowledgeGraphAtlas';
+import { drawAtlasFrame } from '../lib/knowledgeGraphCanvas';
+import {
+  ATLAS_MAX_ZOOM,
+  ATLAS_MIN_ZOOM,
+  clientToWorld,
+  hitTestNode,
+  offsetForWorldPoint,
+  pinchZoomScale,
+  pointerDistance,
+  zoomTowardCursor,
+} from '../lib/knowledgeGraphPointer';
+import { placeSimNodes, stepSimulation } from '../lib/knowledgeGraphSimulation';
 import { getDocumentLinks, getDocuments } from '../lib/supabase';
 import { useToast } from '../hooks/useToast';
-
-/* ------------------------------------------------------------------ */
-/* Design system — "System Atlas"                                      */
-/* ------------------------------------------------------------------ */
-
-type NodeShape =
-  | 'starburst'
-  | 'hexagon'
-  | 'diamond'
-  | 'triangle'
-  | 'pentagon'
-  | 'square'
-  | 'plus'
-  | 'circle'
-  | 'ring'
-  | 'lens';
-
-/** Every territory gets a glyph *and* a color — shape carries meaning even
- *  for color-blind users and at tiny radii. */
-const CATEGORY_SHAPES: Record<string, NodeShape> = {
-  root: 'starburst',
-  council: 'hexagon',
-  territory: 'diamond',
-  artistic_systems: 'triangle',
-  neuro: 'pentagon',
-  automation: 'square',
-  business: 'plus',
-  personal_os: 'circle',
-  convergence: 'ring',
-  onboarding: 'lens',
-};
-
-const CATEGORY_ORDER = [
-  'root',
-  'council',
-  'territory',
-  'artistic_systems',
-  'neuro',
-  'automation',
-  'business',
-  'personal_os',
-  'convergence',
-  'onboarding',
-];
-
-interface CategoryPalette {
-  dark: string;
-  light: string;
-}
-
-const CATEGORY_COLORS: Record<string, CategoryPalette> = {
-  root: { dark: '#34d399', light: '#047857' },
-  council: { dark: '#fbbf24', light: '#b45309' },
-  territory: { dark: '#60a5fa', light: '#1d4ed8' },
-  artistic_systems: { dark: '#fb7185', light: '#be123c' },
-  neuro: { dark: '#a78bfa', light: '#6d28d9' },
-  automation: { dark: '#22d3ee', light: '#0e7490' },
-  business: { dark: '#fb923c', light: '#c2410c' },
-  personal_os: { dark: '#2dd4bf', light: '#0f766e' },
-  convergence: { dark: '#94a3b8', light: '#475569' },
-  onboarding: { dark: '#c084fc', light: '#7e22ce' },
-};
-
-function categoryColor(category: string, dark: boolean): string {
-  const entry = CATEGORY_COLORS[category];
-  if (entry) return dark ? entry.dark : entry.light;
-  return dark ? '#94a3b8' : '#475569';
-}
-
-function categoryShape(category: string): NodeShape {
-  return CATEGORY_SHAPES[category] ?? 'circle';
-}
-
-interface ModePalette {
-  bgInner: string;
-  bgOuter: string;
-  speck: string;
-  speckAlpha: number;
-  grid: boolean;
-  ink: string;
-  inkSoft: string;
-  edgeHierarchy: string;
-  edgeBridges: string;
-  edgeRelated: string;
-  edgeSibling: string;
-  edgeDim: string;
-  clusterLabel: string;
-  haloAlpha: number;
-  crosshair: string;
-  labelHalo: string;
-}
-
-const DARK_PALETTE: ModePalette = {
-  bgInner: '#0c1220',
-  bgOuter: '#050810',
-  speck: '#cdd9ee',
-  speckAlpha: 0.5,
-  grid: false,
-  ink: '#e6edf7',
-  inkSoft: 'rgba(148, 163, 184, 0.85)',
-  edgeHierarchy: 'rgba(148, 163, 184, 0.42)',
-  edgeBridges: 'rgba(96, 165, 250, 0.6)',
-  edgeRelated: 'rgba(167, 139, 250, 0.45)',
-  edgeSibling: 'rgba(100, 116, 139, 0.16)',
-  edgeDim: 'rgba(55, 65, 81, 0.08)',
-  clusterLabel: 'rgba(230, 237, 247, 0.34)',
-  haloAlpha: 0.055,
-  crosshair: 'rgba(230, 237, 247, 0.9)',
-  labelHalo: 'rgba(5, 8, 16, 0.85)',
-};
-
-const LIGHT_PALETTE: ModePalette = {
-  bgInner: '#f5f6f2',
-  bgOuter: '#eceee6',
-  speck: '#9aa092',
-  speckAlpha: 0.35,
-  grid: true,
-  ink: '#111111',
-  inkSoft: 'rgba(17, 17, 17, 0.55)',
-  edgeHierarchy: 'rgba(17, 17, 17, 0.28)',
-  edgeBridges: 'rgba(29, 78, 216, 0.45)',
-  edgeRelated: 'rgba(109, 40, 217, 0.35)',
-  edgeSibling: 'rgba(17, 17, 17, 0.08)',
-  edgeDim: 'rgba(17, 17, 17, 0.04)',
-  clusterLabel: 'rgba(17, 17, 17, 0.3)',
-  haloAlpha: 0.06,
-  crosshair: 'rgba(17, 17, 17, 0.8)',
-  labelHalo: 'rgba(245, 246, 242, 0.9)',
-};
-
-const MONO_STACK = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS_STACK = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
-
-const TAU = Math.PI * 2;
-const VISITED_STORAGE_KEY = 'codex-atlas-visited-v1';
-
-/* ------------------------------------------------------------------ */
-/* Small deterministic helpers                                         */
-/* ------------------------------------------------------------------ */
-
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function hashString(input: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < input.length; i += 1) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function easeOutExpo(t: number): number {
-  return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
-}
-
-function loadVisited(): Set<string> {
-  try {
-    const raw = window.localStorage.getItem(VISITED_STORAGE_KEY);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? new Set(parsed.filter((v) => typeof v === 'string')) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function persistVisited(visited: Set<string>) {
-  try {
-    window.localStorage.setItem(VISITED_STORAGE_KEY, JSON.stringify([...visited]));
-  } catch {
-    /* storage unavailable — visited state simply won't persist */
-  }
-}
-
-function formatCategory(category: string): string {
-  return category.replace(/_/g, ' ');
-}
-
-/* ------------------------------------------------------------------ */
-/* Canvas glyph drawing                                                */
-/* ------------------------------------------------------------------ */
-
-function tracePolygon(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, sides: number, rotation: number) {
-  for (let i = 0; i < sides; i += 1) {
-    const angle = rotation + (i / sides) * TAU;
-    const px = x + Math.cos(angle) * r;
-    const py = y + Math.sin(angle) * r;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-}
-
-function traceGlyph(
-  ctx: CanvasRenderingContext2D,
-  shape: NodeShape,
-  x: number,
-  y: number,
-  r: number,
-  rotation: number,
-) {
-  ctx.beginPath();
-  switch (shape) {
-    case 'circle':
-      ctx.arc(x, y, r, 0, TAU);
-      break;
-    case 'ring':
-      ctx.arc(x, y, r * 0.7, 0, TAU);
-      break;
-    case 'square':
-      ctx.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6);
-      break;
-    case 'diamond':
-      tracePolygon(ctx, x, y, r * 1.05, 4, rotation - Math.PI / 2);
-      break;
-    case 'triangle':
-      tracePolygon(ctx, x, y, r * 1.12, 3, rotation - Math.PI / 2);
-      break;
-    case 'pentagon':
-      tracePolygon(ctx, x, y, r * 1.05, 5, rotation - Math.PI / 2);
-      break;
-    case 'hexagon':
-      tracePolygon(ctx, x, y, r, 6, rotation);
-      break;
-    case 'plus':
-      ctx.rect(x - r * 0.28, y - r * 0.95, r * 0.56, r * 1.9);
-      ctx.rect(x - r * 0.95, y - r * 0.28, r * 1.9, r * 0.56);
-      break;
-    case 'lens':
-      ctx.arc(x, y, r, rotation + Math.PI * 0.15, rotation + Math.PI * 1.85);
-      break;
-    case 'starburst': {
-      const spikes = 8;
-      for (let i = 0; i < spikes * 2; i += 1) {
-        const radius = i % 2 === 0 ? r * 1.35 : r * 0.5;
-        const angle = rotation + (i / (spikes * 2)) * TAU;
-        const px = x + Math.cos(angle) * radius;
-        const py = y + Math.sin(angle) * radius;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      break;
-    }
-    default:
-      ctx.arc(x, y, r, 0, TAU);
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Types                                                               */
-/* ------------------------------------------------------------------ */
 
 interface KnowledgeGraphProps {
   isOpen: boolean;
@@ -292,44 +54,6 @@ interface KnowledgeGraphProps {
   onSelectDocument: (path: string) => void;
   isDarkMode: boolean;
 }
-
-interface SimNode extends GraphNodeData {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-  scale: number;
-  phase: number;
-}
-
-interface PointerState {
-  id: number;
-  x: number;
-  y: number;
-}
-
-interface CameraAnim {
-  start: number;
-  duration: number;
-  fromZoom: number;
-  toZoom: number;
-  fromX: number;
-  fromY: number;
-  toX: number;
-  toY: number;
-}
-
-function nodeRadius(node: GraphNodeData, isMobile: boolean): number {
-  const base = isMobile ? 6.5 : 7.5;
-  if (node.path === '/codex') return base + 7;
-  if (node.isHub) return base + 3.5 + Math.min(node.childCount, 5) * 0.8;
-  return base + Math.min(node.degree, 4) * 0.4;
-}
-
-/* ------------------------------------------------------------------ */
-/* Component                                                           */
-/* ------------------------------------------------------------------ */
 
 export function KnowledgeGraph({
   isOpen,
@@ -367,7 +91,7 @@ export function KnowledgeGraph({
   const spotlightCategoryRef = useRef<string | null>(null);
   const visitedRef = useRef<Set<string>>(new Set());
   const reducedMotionRef = useRef(false);
-  const specksRef = useRef<Array<{ x: number; y: number; r: number; tw: number }>>([]);
+  const specksRef = useRef<AtlasSpeck[]>([]);
   const startTimeRef = useRef(0);
 
   const isMobile = useIsMobileLayout();
@@ -451,10 +175,7 @@ export function KnowledgeGraph({
 
   const offsetFor = useCallback((worldX: number, worldY: number, zoom: number, screenX: number, screenY: number) => {
     const { width, height } = dimensionsRef.current;
-    return {
-      x: screenX - (worldX - width / 2) * zoom - width / 2,
-      y: screenY - (worldY - height / 2) * zoom - height / 2,
-    };
+    return offsetForWorldPoint(worldX, worldY, zoom, screenX, screenY, width, height);
   }, []);
 
   const focusNodeCamera = useCallback(
@@ -488,7 +209,7 @@ export function KnowledgeGraph({
     const spanX = Math.max(maxX - minX, 1);
     const spanY = Math.max(maxY - minY, 1);
     const zoom = Math.max(
-      0.3,
+      ATLAS_MIN_ZOOM,
       Math.min(1.5, Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanY)),
     );
     const offset = offsetFor((minX + maxX) / 2, (minY + maxY) / 2, zoom, width / 2, height / 2);
@@ -513,13 +234,7 @@ export function KnowledgeGraph({
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     startTimeRef.current = performance.now();
 
-    const rand = mulberry32(20260807);
-    specksRef.current = Array.from({ length: 110 }, () => ({
-      x: rand(),
-      y: rand(),
-      r: 0.4 + rand() * 1.1,
-      tw: rand() * TAU,
-    }));
+    specksRef.current = createAtlasSpecks();
 
     const initCanvas = () => {
       const rect = container.getBoundingClientRect();
@@ -529,34 +244,6 @@ export function KnowledgeGraph({
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
       dimensionsRef.current = { width: rect.width, height: rect.height };
-    };
-
-    const placeNodes = (nodes: GraphNodeData[], width: number, height: number): SimNode[] => {
-      const categories = CATEGORY_ORDER.filter((c) => nodes.some((n) => n.category === c));
-      const extra = [...new Set(nodes.map((n) => n.category))].filter((c) => !categories.includes(c));
-      const ordered = [...categories, ...extra];
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const orbit = Math.min(width, height) * (isMobileRef.current ? 0.38 : 0.46);
-
-      return nodes.map((node) => {
-        const categoryIndex = Math.max(0, ordered.indexOf(node.category));
-        const categoryAngle = (categoryIndex / Math.max(ordered.length, 1)) * TAU - Math.PI / 2;
-        const depthFactor = Math.max(0.15, Math.min(1, node.depth / 4));
-        const jitterSeed = mulberry32(hashString(node.id));
-        const jitter = (jitterSeed() - 0.5) * 40;
-        const radius = orbit * (0.18 + depthFactor) + jitter;
-        return {
-          ...node,
-          x: centerX + Math.cos(categoryAngle) * radius + (jitterSeed() - 0.5) * 28,
-          y: centerY + Math.sin(categoryAngle) * radius + (jitterSeed() - 0.5) * 28,
-          vx: 0,
-          vy: 0,
-          radius: nodeRadius(node, isMobileRef.current),
-          scale: 1,
-          phase: jitterSeed() * TAU,
-        };
-      });
     };
 
     const rebuildAdjacency = () => {
@@ -574,7 +261,7 @@ export function KnowledgeGraph({
 
     const applyGraph = (graph: KnowledgeGraphData) => {
       const { width, height } = dimensionsRef.current;
-      const simNodes = placeNodes(graph.nodes, width, height);
+      const simNodes = placeSimNodes(graph.nodes, width, height, isMobileRef.current);
       nodesRef.current = simNodes;
       nodeByIdRef.current = new Map(simNodes.map((node) => [node.id, node]));
       edgesRef.current = graph.edges;
@@ -611,426 +298,58 @@ export function KnowledgeGraph({
       startAnimation();
     };
 
-    /* ---------------- visibility model ---------------- */
-
-    const categoryDimmed = (node: SimNode) => {
-      const categories = activeCategoriesRef.current;
-      return Boolean(categories && categories.size > 0 && !categories.has(node.category));
-    };
-
-    const matchesQuery = (node: SimNode) => {
-      return matchesGraphNodeQuery(node, searchQueryRef.current);
-    };
-
-    /* ---------------- simulation ---------------- */
+    /* ---------------- simulation + drawing ---------------- */
 
     const simulate = () => {
-      const nodes = nodesRef.current;
-      const edges = edgesRef.current;
-      const byId = nodeByIdRef.current;
-      if (nodes.length === 0) return;
-
       const { width, height } = dimensionsRef.current;
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      // category centroids for gentle cluster cohesion
-      const centroid = new Map<string, { x: number; y: number; n: number }>();
-      nodes.forEach((node) => {
-        const entry = centroid.get(node.category) ?? { x: 0, y: 0, n: 0 };
-        entry.x += node.x;
-        entry.y += node.y;
-        entry.n += 1;
-        centroid.set(node.category, entry);
-      });
-
-      nodes.forEach((node) => {
-        const dx = centerX - node.x;
-        const dy = centerY - node.y;
-        node.vx += dx * 0.00025;
-        node.vy += dy * 0.00025;
-        const c = centroid.get(node.category);
-        if (c && c.n > 2) {
-          node.vx += (c.x / c.n - node.x) * 0.0016;
-          node.vy += (c.y / c.n - node.y) * 0.0016;
-        }
-      });
-
-      for (let i = 0; i < nodes.length; i += 1) {
-        for (let j = i + 1; j < nodes.length; j += 1) {
-          const a = nodes[i];
-          const b = nodes[j];
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const minDist = a.radius + b.radius + (a.isHub || b.isHub ? 72 : 42);
-          if (dist < minDist) {
-            const force = ((minDist - dist) / dist) * 0.12;
-            a.vx -= dx * force;
-            a.vy -= dy * force;
-            b.vx += dx * force;
-            b.vy += dy * force;
-          } else if (dist < 260) {
-            const force = 0.014 / dist;
-            a.vx -= dx * force;
-            a.vy -= dy * force;
-            b.vx += dx * force;
-            b.vy += dy * force;
-          }
-        }
-      }
-
-      edges.forEach((edge) => {
-        const source = byId.get(edge.source);
-        const target = byId.get(edge.target);
-        if (!source || !target) return;
-        const dx = target.x - source.x;
-        const dy = target.y - source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const ideal =
-          edge.kind === 'hierarchy' ? 100 : edge.kind === 'bridges' ? 165 : edge.kind === 'related' ? 148 : 85;
-        const force = ((dist - ideal) / dist) * 0.012 * edge.weight;
-        source.vx += dx * force;
-        source.vy += dy * force;
-        target.vx -= dx * force;
-        target.vy -= dy * force;
-      });
-
-      const dragging = draggingNodeRef.current;
-      nodes.forEach((node) => {
-        if (node === dragging) return;
-        node.vx *= 0.86;
-        node.vy *= 0.86;
-        node.x += node.vx;
-        node.y += node.vy;
-        node.x = Math.max(24, Math.min(width - 24, node.x));
-        node.y = Math.max(24, Math.min(height - 24, node.y));
-
-        const hovered = hoveredNodeRef.current?.id === node.id || focusedNodeRef.current?.id === node.id;
-        const targetScale = hovered ? 1.18 : 1;
-        node.scale += (targetScale - node.scale) * 0.22;
+      stepSimulation({
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+        byId: nodeByIdRef.current,
+        width,
+        height,
+        dragging: draggingNodeRef.current,
+        hoveredId: hoveredNodeRef.current?.id ?? null,
+        focusedId: focusedNodeRef.current?.id ?? null,
       });
     };
-
-    /* ---------------- drawing ---------------- */
 
     const draw = (now: number) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // camera animation
-      const anim = cameraAnimRef.current;
-      if (anim) {
-        const p = Math.min(1, (now - anim.start) / anim.duration);
-        const eased = easeOutExpo(p);
-        zoomRef.current = anim.fromZoom + (anim.toZoom - anim.fromZoom) * eased;
-        offsetRef.current = {
-          x: anim.fromX + (anim.toX - anim.fromX) * eased,
-          y: anim.fromY + (anim.toY - anim.fromY) * eased,
-        };
-        if (p >= 1) cameraAnimRef.current = null;
-      }
-
-      const nodes = nodesRef.current;
-      const edges = edgesRef.current;
-      const byId = nodeByIdRef.current;
       const { width, height } = dimensionsRef.current;
-      const zoom = zoomRef.current;
-      const offset = offsetRef.current;
-      const dark = isDarkModeRef.current;
-      const palette = dark ? DARK_PALETTE : LIGHT_PALETTE;
-      const dpr = window.devicePixelRatio || 1;
-      const t = reducedMotionRef.current ? 0 : (now - startTimeRef.current) / 1000;
-      const hovered = hoveredNodeRef.current;
-      const focused = focusedNodeRef.current;
-      const spotlight = spotlightCategoryRef.current;
-      const query = searchQueryRef.current.trim();
-      const connected = focused ? getConnectedNodeIds(focused.id, edges) : hovered ? getConnectedNodeIds(hovered.id, edges) : null;
-
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      // background wash
-      const gradient = ctx.createRadialGradient(
-        width * 0.5,
-        height * 0.4,
-        24,
-        width * 0.5,
-        height * 0.5,
-        Math.max(width, height) * 0.75,
-      );
-      gradient.addColorStop(0, palette.bgInner);
-      gradient.addColorStop(1, palette.bgOuter);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // star specks (dark) / graph-paper dots (light), with slight parallax
-      ctx.save();
-      specksRef.current.forEach((speck) => {
-        const px = (((speck.x * width + offset.x * 0.06) % width) + width) % width;
-        const py = (((speck.y * height + offset.y * 0.06) % height) + height) % height;
-        const twinkle = reducedMotionRef.current ? 0.7 : 0.45 + 0.3 * Math.sin(t * 1.3 + speck.tw);
-        ctx.globalAlpha = palette.speckAlpha * twinkle * (palette.grid ? 0.55 : 1);
-        ctx.fillStyle = palette.speck;
-        ctx.beginPath();
-        ctx.arc(px, py, palette.grid ? 0.7 : speck.r, 0, TAU);
-        ctx.fill();
+      const camera = drawAtlasFrame({
+        ctx,
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        width,
+        height,
+        now,
+        startTime: startTimeRef.current,
+        dark: isDarkModeRef.current,
+        isMobile: isMobileRef.current,
+        reducedMotion: reducedMotionRef.current,
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+        byId: nodeByIdRef.current,
+        camera: {
+          zoom: zoomRef.current,
+          offset: offsetRef.current,
+          anim: cameraAnimRef.current,
+        },
+        hovered: hoveredNodeRef.current,
+        focused: focusedNodeRef.current,
+        spotlightCategory: spotlightCategoryRef.current,
+        searchQuery: searchQueryRef.current,
+        activeCategories: activeCategoriesRef.current,
+        visited: visitedRef.current,
+        specks: specksRef.current,
+        devicePixelRatio: window.devicePixelRatio || 1,
       });
-      ctx.restore();
-
-      ctx.translate(offset.x + width / 2, offset.y + height / 2);
-      ctx.scale(zoom, zoom);
-      ctx.translate(-width / 2, -height / 2);
-
-      const nodeState = (node: SimNode) => {
-        let alpha = 1;
-        if (categoryDimmed(node)) alpha = 0.07;
-        else if (query && !matchesQuery(node)) alpha = 0.1;
-        else if (spotlight && node.category !== spotlight) alpha = 0.12;
-        else if (connected && !connected.has(node.id)) alpha = 0.16;
-        const interactive = alpha > 0.08;
-        return { alpha, interactive };
-      };
-
-      // cluster halos + territory labels at bird's-eye zoom
-      const clusters = new Map<string, { x: number; y: number; n: number; spread: number }>();
-      nodes.forEach((node) => {
-        const entry = clusters.get(node.category) ?? { x: 0, y: 0, n: 0, spread: 0 };
-        entry.x += node.x;
-        entry.y += node.y;
-        entry.n += 1;
-        clusters.set(node.category, entry);
-      });
-      clusters.forEach((entry) => {
-        entry.x /= entry.n;
-        entry.y /= entry.n;
-      });
-      nodes.forEach((node) => {
-        const entry = clusters.get(node.category);
-        if (!entry) return;
-        const d = Math.hypot(node.x - entry.x, node.y - entry.y);
-        entry.spread = Math.max(entry.spread, d);
-      });
-
-      clusters.forEach((entry, category) => {
-        if (entry.n < 2) return;
-        const color = categoryColor(category, dark);
-        const haloRadius = entry.spread + 90;
-        const halo = ctx.createRadialGradient(entry.x, entry.y, 0, entry.x, entry.y, haloRadius);
-        halo.addColorStop(0, `${color}${Math.round(palette.haloAlpha * 255).toString(16).padStart(2, '0')}`);
-        halo.addColorStop(1, 'transparent');
-        ctx.fillStyle = halo;
-        ctx.beginPath();
-        ctx.arc(entry.x, entry.y, haloRadius, 0, TAU);
-        ctx.fill();
-
-        // territory name, only readable at low zoom — the map's legend in place
-        const labelAlpha = Math.max(0, Math.min(1, (1.12 - zoom) / 0.5));
-        if (!isMobileRef.current && labelAlpha > 0.03 && entry.n >= 2) {
-          const fontSize = 12 / zoom;
-          ctx.font = `600 ${fontSize}px ${MONO_STACK}`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.globalAlpha = labelAlpha * (spotlight && spotlight !== category ? 0.25 : 1);
-          ctx.fillStyle = color;
-          const labelY = entry.y - entry.spread - 34 / zoom;
-          ctx.fillText(formatCategory(category).toUpperCase().split('').join(' '), entry.x, labelY);
-          ctx.globalAlpha = 1;
-        }
-      });
-
-      // edges
-      edges.forEach((edge) => {
-        const source = byId.get(edge.source);
-        const target = byId.get(edge.target);
-        if (!source || !target) return;
-        const sa = nodeState(source).alpha;
-        const ta = nodeState(target).alpha;
-        const edgeAlpha = Math.min(sa, ta);
-        if (edgeAlpha < 0.05) return;
-
-        const isHot = !connected || (connected.has(edge.source) && connected.has(edge.target));
-        let color: string;
-        let widthPx: number;
-        let dash: number[] = [];
-        let flow = 0;
-
-        if (edge.kind === 'hierarchy') {
-          color = palette.edgeHierarchy;
-          widthPx = 1.4;
-        } else if (edge.kind === 'bridges') {
-          color = palette.edgeBridges;
-          widthPx = 1.4;
-          dash = [9, 7];
-          flow = 26;
-        } else if (edge.kind === 'related') {
-          color = palette.edgeRelated;
-          widthPx = 1.1;
-          dash = [2.5, 5.5];
-          flow = 12;
-        } else {
-          color = palette.edgeSibling;
-          widthPx = 1;
-        }
-
-        const hotBoost = connected && isHot ? 1.9 : 1;
-        ctx.beginPath();
-        ctx.moveTo(source.x, source.y);
-        ctx.lineTo(target.x, target.y);
-        ctx.strokeStyle = isHot ? color : palette.edgeDim;
-        ctx.globalAlpha = edgeAlpha * (connected && isHot ? 1 : 0.9);
-        ctx.lineWidth = widthPx * hotBoost;
-        ctx.setLineDash(dash);
-        if (dash.length > 0 && flow > 0) {
-          ctx.lineDashOffset = -((t * flow) % (dash[0] + dash[1]));
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-      });
-
-      // nodes
-      nodes.forEach((node) => {
-        const { alpha } = nodeState(node);
-        if (alpha < 0.04) return;
-        const color = categoryColor(node.category, dark);
-        const shape = categoryShape(node.category);
-        const isHovered = hovered?.id === node.id;
-        const isFocused = focused?.id === node.id;
-        const isVisited = visitedRef.current.has(node.path);
-        const radius = node.radius * node.scale;
-        const isNeighborOfActive = Boolean(connected && connected.has(node.id) && node.id !== focused?.id && node.id !== hovered?.id);
-
-        ctx.globalAlpha = alpha * (isVisited && !isHovered && !isFocused ? 0.5 : 1);
-
-        // halo glow
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, radius * 3, 0, TAU);
-        const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, radius * 3);
-        glow.addColorStop(0, `${color}3d`);
-        glow.addColorStop(1, 'transparent');
-        ctx.fillStyle = glow;
-        ctx.fill();
-
-        // hub pulse ring
-        if (node.isHub && !reducedMotionRef.current && alpha > 0.5) {
-          const pulse = (Math.sin(t * (TAU / 1.5) + node.phase) + 1) / 2;
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, radius * (1.5 + pulse * 0.9), 0, TAU);
-          ctx.strokeStyle = color;
-          ctx.globalAlpha = alpha * (0.34 - pulse * 0.3);
-          ctx.lineWidth = 1.1 / zoom;
-          ctx.stroke();
-          ctx.globalAlpha = alpha * (isVisited && !isHovered && !isFocused ? 0.5 : 1);
-        }
-
-        // glyph
-        const rotation =
-          shape === 'starburst'
-            ? node.phase + (reducedMotionRef.current ? 0 : t * 0.25)
-            : node.phase * 0.3;
-        traceGlyph(ctx, shape, node.x, node.y, radius, rotation);
-        if (shape === 'ring') {
-          ctx.strokeStyle = color;
-          ctx.lineWidth = radius * 0.5;
-          ctx.stroke();
-        } else {
-          ctx.fillStyle = color;
-          ctx.fill();
-        }
-
-        // ink rim on hover / focus / hub
-        if (isHovered || isFocused || node.isHub) {
-          traceGlyph(ctx, shape, node.x, node.y, radius, rotation);
-          ctx.strokeStyle = dark ? '#f8fafc' : '#111111';
-          ctx.lineWidth = (isFocused ? 2 : 1.3) / Math.sqrt(zoom);
-          ctx.stroke();
-        }
-
-        // crosshair reticle on hover / focus
-        if (isHovered || isFocused) {
-          const rr = radius * 2.15;
-          const tick = radius * 0.55;
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, rr, 0, TAU);
-          [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach((angle) => {
-            ctx.moveTo(node.x + Math.cos(angle) * rr, node.y + Math.sin(angle) * rr);
-            ctx.lineTo(node.x + Math.cos(angle) * (rr + tick), node.y + Math.sin(angle) * (rr + tick));
-          });
-          ctx.strokeStyle = palette.crosshair;
-          ctx.lineWidth = 1 / zoom;
-          ctx.globalAlpha = alpha * 0.85;
-          ctx.stroke();
-          ctx.globalAlpha = alpha;
-        }
-
-        // labels — title always for hubs and at close zoom; category only on hover
-        const showLabel =
-          alpha > 0.4 &&
-          (isMobileRef.current
-            ? isHovered ||
-              isFocused ||
-              Boolean(query && matchesQuery(node)) ||
-              (!focused && node.depth <= 2)
-            : isHovered ||
-              isFocused ||
-              isNeighborOfActive ||
-              node.isHub ||
-              zoom > 1.5 ||
-              Boolean(query && matchesQuery(node)));
-
-        if (showLabel) {
-          const fontSize = Math.max(9, 11.5 / zoom);
-          const label =
-            node.title.length > 30 && !isHovered && !isFocused
-              ? `${node.title.slice(0, 28)}…`
-              : node.title;
-          const labelY = node.y + radius + 7 / zoom;
-
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.font = `${node.isHub ? 600 : 500} ${fontSize}px ${SANS_STACK}`;
-
-          // text halo for legibility over edges
-          const metrics = typeof ctx.measureText === 'function' ? ctx.measureText(label) : { width: label.length * fontSize * 0.6 };
-          const padX = 4 / zoom;
-          const padY = 2.5 / zoom;
-          ctx.fillStyle = palette.labelHalo;
-          ctx.globalAlpha = alpha * 0.82;
-          ctx.fillRect(
-            node.x - metrics.width / 2 - padX,
-            labelY - padY,
-            metrics.width + padX * 2,
-            fontSize * 1.25 + padY * 2,
-          );
-
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = palette.ink;
-          ctx.fillText(label, node.x, labelY);
-
-          // visited strikethrough
-          if (isVisited && !isHovered && !isFocused) {
-            ctx.beginPath();
-            ctx.moveTo(node.x - metrics.width / 2, labelY + fontSize * 0.55);
-            ctx.lineTo(node.x + metrics.width / 2, labelY + fontSize * 0.55);
-            ctx.strokeStyle = palette.inkSoft;
-            ctx.lineWidth = 1 / zoom;
-            ctx.stroke();
-          }
-
-          // category subtitle only on hover / focus (progressive disclosure)
-          if (isHovered || isFocused) {
-            ctx.font = `500 ${Math.max(8, 9 / zoom)}px ${MONO_STACK}`;
-            ctx.fillStyle = color;
-            ctx.globalAlpha = alpha * 0.95;
-            ctx.fillText(formatCategory(node.category).toUpperCase(), node.x, labelY + fontSize * 1.45);
-          }
-          ctx.globalAlpha = 1;
-        } else {
-          ctx.globalAlpha = 1;
-        }
-      });
+      zoomRef.current = camera.zoom;
+      offsetRef.current = camera.offset;
+      cameraAnimRef.current = camera.anim;
 
       simulate();
       animationRef.current = requestAnimationFrame(draw);
@@ -1069,39 +388,24 @@ export function KnowledgeGraph({
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     const { width, height } = dimensionsRef.current;
-    const zoom = zoomRef.current;
-    const offset = offsetRef.current;
-    return {
-      x: (clientX - rect.left - offset.x - width / 2) / zoom + width / 2,
-      y: (clientY - rect.top - offset.y - height / 2) / zoom + height / 2,
-    };
+    return clientToWorld(clientX, clientY, rect, width, height, zoomRef.current, offsetRef.current);
   }, []);
 
   const getNodeAtPosition = useCallback((clientX: number, clientY: number): SimNode | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
-
     const rect = canvas.getBoundingClientRect();
     const { width, height } = dimensionsRef.current;
-    const zoom = zoomRef.current;
-    const offset = offsetRef.current;
-    const x = (clientX - rect.left - offset.x - width / 2) / zoom + width / 2;
-    const y = (clientY - rect.top - offset.y - height / 2) / zoom + height / 2;
-
-    let best: SimNode | null = null;
-    let bestDist = Infinity;
-
-    for (const node of nodesRef.current) {
-      const categories = activeCategoriesRef.current;
-      if (categories && categories.size > 0 && !categories.has(node.category)) continue;
-      const dist = Math.sqrt((x - node.x) ** 2 + (y - node.y) ** 2);
-      if (dist < node.radius * 3 && dist < bestDist) {
-        best = node;
-        bestDist = dist;
-      }
-    }
-
-    return best;
+    const world = clientToWorld(
+      clientX,
+      clientY,
+      rect,
+      width,
+      height,
+      zoomRef.current,
+      offsetRef.current,
+    );
+    return hitTestNode(world.x, world.y, nodesRef.current, activeCategoriesRef.current);
   }, []);
 
   const selectNode = useCallback(
@@ -1146,7 +450,7 @@ export function KnowledgeGraph({
 
       if (pointersRef.current.size === 2) {
         const points = [...pointersRef.current.values()];
-        const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+        const distance = pointerDistance(points[0], points[1]);
         pinchStartRef.current = { distance, zoom: zoomRef.current };
         isPanningRef.current = false;
         draggingNodeRef.current = null;
@@ -1177,9 +481,12 @@ export function KnowledgeGraph({
 
       if (pointersRef.current.size === 2 && pinchStartRef.current) {
         const points = [...pointersRef.current.values()];
-        const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
-        const scale = distance / Math.max(pinchStartRef.current.distance, 1);
-        zoomRef.current = Math.max(0.3, Math.min(3.4, pinchStartRef.current.zoom * scale));
+        const distance = pointerDistance(points[0], points[1]);
+        zoomRef.current = pinchZoomScale(
+          distance,
+          pinchStartRef.current.distance,
+          pinchStartRef.current.zoom,
+        );
         return;
       }
 
@@ -1236,18 +543,17 @@ export function KnowledgeGraph({
       const { width, height } = dimensionsRef.current;
       const cursorX = event.clientX - rect.left;
       const cursorY = event.clientY - rect.top;
-      const oldZoom = zoomRef.current;
-      const delta = event.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(0.3, Math.min(3.4, oldZoom * delta));
-
-      // zoom toward the cursor: keep the world point under the cursor fixed
-      const worldX = (cursorX - offsetRef.current.x - width / 2) / oldZoom + width / 2;
-      const worldY = (cursorY - offsetRef.current.y - height / 2) / oldZoom + height / 2;
-      zoomRef.current = newZoom;
-      offsetRef.current = {
-        x: cursorX - (worldX - width / 2) * newZoom - width / 2,
-        y: cursorY - (worldY - height / 2) * newZoom - height / 2,
-      };
+      const next = zoomTowardCursor(
+        cursorX,
+        cursorY,
+        width,
+        height,
+        zoomRef.current,
+        offsetRef.current,
+        event.deltaY > 0 ? 0.9 : 1.1,
+      );
+      zoomRef.current = next.zoom;
+      offsetRef.current = next.offset;
     },
     [cancelCameraAnim],
   );
@@ -1255,7 +561,7 @@ export function KnowledgeGraph({
   const handleZoomIn = useCallback(() => {
     cancelCameraAnim();
     const { width, height } = dimensionsRef.current;
-    const newZoom = Math.min(3.4, zoomRef.current * 1.25);
+    const newZoom = Math.min(ATLAS_MAX_ZOOM, zoomRef.current * 1.25);
     const offset = offsetFor(
       (width / 2 - offsetRef.current.x - width / 2) / zoomRef.current + width / 2,
       (height / 2 - offsetRef.current.y - height / 2) / zoomRef.current + height / 2,
@@ -1269,7 +575,7 @@ export function KnowledgeGraph({
   const handleZoomOut = useCallback(() => {
     cancelCameraAnim();
     const { width, height } = dimensionsRef.current;
-    const newZoom = Math.max(0.3, zoomRef.current * 0.8);
+    const newZoom = Math.max(ATLAS_MIN_ZOOM, zoomRef.current * 0.8);
     const offset = offsetFor(
       (width / 2 - offsetRef.current.x - width / 2) / zoomRef.current + width / 2,
       (height / 2 - offsetRef.current.y - height / 2) / zoomRef.current + height / 2,
