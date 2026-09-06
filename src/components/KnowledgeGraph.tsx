@@ -23,6 +23,7 @@ import {
   type KnowledgeGraphData,
 } from '../lib/knowledgeGraph';
 import { getDocumentLinks, getDocuments } from '../lib/supabase';
+import { useToast } from '../hooks/useToast';
 
 /* ------------------------------------------------------------------ */
 /* Design system — "System Atlas"                                      */
@@ -336,6 +337,9 @@ export function KnowledgeGraph({
   onSelectDocument,
   isDarkMode,
 }: KnowledgeGraphProps) {
+  const { error: toastError } = useToast();
+  const toastErrorRef = useRef(toastError);
+  toastErrorRef.current = toastError;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -598,9 +602,9 @@ export function KnowledgeGraph({
         const [docs, links] = await Promise.all([getDocuments(), getDocumentLinks()]);
         if (!mounted) return;
         applyGraph(buildKnowledgeGraph(docs, links ?? []));
-      } catch (error) {
-        console.error('Failed to load graph:', error);
+      } catch {
         if (!mounted) return;
+        toastErrorRef.current('Could not load graph', 'Showing an empty atlas.');
         applyGraph(buildKnowledgeGraph([]));
       }
       setIsLoading(false);

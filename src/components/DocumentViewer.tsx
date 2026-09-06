@@ -160,6 +160,7 @@ export function DocumentViewer({
   onControlPanelDraftConsumed,
 }: DocumentViewerProps) {
   const toast = useToast();
+  const { error: toastError } = toast;
   const { isAuthenticated } = useAuthSession();
   const [document, setDocument] = useState<CodexDocument | null>(null);
   const [childDocs, setChildDocs] = useState<CodexDocument[]>([]);
@@ -236,14 +237,14 @@ export function DocumentViewer({
           setBookmarked(false);
           setNotes([]);
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load document');
-        console.error(err);
+        toastError('Could not load document');
       } finally {
         setLoading(false);
       }
     })();
-  }, [path, isAuthenticated]);
+  }, [path, isAuthenticated, toastError]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || !document) return;
@@ -293,8 +294,7 @@ export function DocumentViewer({
         setBookmarked(true);
         toast.success('Bookmarked', document.title);
       }
-    } catch (err) {
-      console.error('Failed to toggle bookmark:', err);
+    } catch {
       toast.error('Could not update bookmark');
     }
   };
@@ -308,8 +308,7 @@ export function DocumentViewer({
         setNewNote('');
         toast.success('Note saved');
       }
-    } catch (err) {
-      console.error('Failed to add note:', err);
+    } catch {
       toast.error('Could not save note');
     }
   };
@@ -319,8 +318,8 @@ export function DocumentViewer({
     try {
       await deleteDocumentNote(noteId);
       setNotes(notes.filter((n) => n.id !== noteId));
-    } catch (err) {
-      console.error('Failed to delete note:', err);
+    } catch {
+      toast.error('Could not delete note');
     }
   };
 
