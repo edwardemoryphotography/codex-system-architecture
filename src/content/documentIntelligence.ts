@@ -33,7 +33,7 @@ export type OutcomeChipId =
   | 'document'
   | 'status';
 
-export const CANONICAL_REVIEW_DATE = '2026-08-24';
+export const CANONICAL_REVIEW_DATE = '2026-11-04';
 
 const CATEGORY_PLAYBOOKS: Record<
   string,
@@ -556,6 +556,27 @@ export const DOCUMENT_INTELLIGENCE: Record<string, DocumentIntelligence> = {
     repository: 'codex-system-architecture',
     reviewCadenceDays: 14,
   },
+  '/codex/convergence/system_inventory.md': {
+    outcome: 'Every repository, deployment, and database in the Codex ecosystem is listed with what was actually inspected, so readers can tell checked parts from unchecked ones.',
+    nextAction: 'Re-read the Vercel, Supabase, and repository status sources, then update each row and mark any part that still cannot be inspected.',
+    proof: 'Each row traces to a dated deployment, database, or repository record and names anything not inspected.',
+    repository: 'codex-system-architecture',
+    reviewCadenceDays: 14,
+  },
+  '/codex/convergence/legacy_codex_product.md': {
+    outcome: 'The main product is described by what its source, deployments, and runtime checks show, separated from candidate and unauthorized work.',
+    nextAction: 'Compare this page with the legacy-codex status files after each merged change and move any item whose verification state changed.',
+    proof: 'Each claim traces to a legacy-codex status file, commit, deployment record, or recorded runtime check.',
+    repository: 'legacy-codex',
+    reviewCadenceDays: 7,
+  },
+  '/codex/convergence/not_built_yet.md': {
+    outcome: 'Missing, blocked, and unproven work is listed in one place so plans are never mistaken for shipped product.',
+    nextAction: 'Move each item out of this page only when its deployment and runtime evidence exists, and add new gaps as they are found.',
+    proof: 'Every item names what is true today and what would change it, and items are removed only with dated evidence.',
+    repository: 'codex-system-architecture',
+    reviewCadenceDays: 7,
+  },
 };
 
 export const DOCUMENT_RELATIONSHIPS: DocumentRelationship[] = [
@@ -585,6 +606,8 @@ export const DOCUMENT_RELATIONSHIPS: DocumentRelationship[] = [
   { sourcePath: '/codex/business/workshop_engines.md', targetPath: '/codex/artistic_systems/photography_ops', kind: 'bridges', rationale: 'A credible workshop is grounded in real field practice and a teachable capture-to-finish workflow.' },
   { sourcePath: '/codex/personal_os/reflections_between_worlds.md', targetPath: '/codex/convergence/system_reflexivity.md', kind: 'bridges', rationale: 'A repeated personal insight becomes system learning only after it is translated into a durable, challengeable rule.' },
   { sourcePath: '/codex/convergence/convergence_log_v16.md', targetPath: '/codex/territory/update_protocol.md', kind: 'related', rationale: 'The convergence ledger is only current when update and supersession rules are consistently applied.' },
+  { sourcePath: '/codex/convergence/system_inventory.md', targetPath: '/codex/convergence/legacy_codex_product.md', kind: 'related', rationale: 'The inventory lists where the product runs, and the product page describes what runs there.' },
+  { sourcePath: '/codex/convergence/not_built_yet.md', targetPath: '/codex/convergence/convergence_log_v16.md', kind: 'related', rationale: 'The status page records what is verified, and this page records what is still missing or unproven.' },
 ];
 
 function categoryFor(path: string): string {

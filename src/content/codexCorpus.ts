@@ -86,6 +86,9 @@ export const CORPUS_DOCUMENTS: CorpusDocument[] = [
   { title: 'Convergence', path: '/codex/convergence', content: 'System integration and reflexivity', category: 'convergence', parentPath: '/codex', order: 8 },
   { title: 'Current Integration Status', path: '/codex/convergence/convergence_log_v16.md', content: 'Verified current integration status', category: 'convergence', parentPath: '/codex/convergence', order: 0 },
   { title: 'System Reflexivity', path: '/codex/convergence/system_reflexivity.md', content: 'Self-aware system design', category: 'convergence', parentPath: '/codex/convergence', order: 1 },
+  { title: 'System Inventory', path: '/codex/convergence/system_inventory.md', content: 'Repositories, deployments, and databases that make up the ecosystem', category: 'convergence', parentPath: '/codex/convergence', order: 2 },
+  { title: 'Legacy Codex Product', path: '/codex/convergence/legacy_codex_product.md', content: 'The main product: loop, screens, AI routes, and verification state', category: 'convergence', parentPath: '/codex/convergence', order: 3 },
+  { title: 'Not Built Yet', path: '/codex/convergence/not_built_yet.md', content: 'Missing, blocked, and unproven work', category: 'convergence', parentPath: '/codex/convergence', order: 4 },
 ];
 
 /** Explicit cross-domain bridges that make the graph feel like a real knowledge map. */

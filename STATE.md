@@ -1,10 +1,12 @@
 # STATE.md — codex-system-architecture
 
-_Last updated: 2026-09-06_  
-_Refreshed against `main` HEAD `e4c483d` (PR #45, then #44)._  
+_Last updated: 2026-11-04_  
+_Content refresh branch cut from `main` HEAD `e4c483d`; the 2026-09-06 shipped list below is unchanged._  
 _This file records repository truth. Merged != deployed != runtime verified != live._
 
 ## ✅ SHIPPED (on `main` — merge evidence only)
+
+- **Content refresh (2026-11-04, open PR — not merged, not deployed)** → rewrote all 46 reviewed documents with fuller, evidence-tagged descriptions; added System Inventory, Legacy Codex Product, and Not Built Yet pages under Convergence; bumped `CANONICAL_REVIEW_DATE` to 2026-11-04. Verified locally: typecheck, lint, 79 tests, build. The 3 new pages are corpus-only (no live UUID rows) until a forward-only migration adds them.
 
 - **Toast + KnowledgeGraph layers (2026-09-06)** → PR #44 surfaces user-facing failures via existing Toast (TD-004); PR #45 extracts KnowledgeGraph simulation, canvas, and pointer layers (TD-006). Merge evidence only; not a deploy or runtime claim.
 - **Tooling / hygiene (2026-09-06)** → PR #34 sets `NODE_OPTIONS=--no-experimental-webstorage` on `test` / `test:watch` (CI `npm test`); PR #31 resolves TD-005 (drop redundant `client()` re-check in `src/lib/supabase.ts`). Merge evidence only; not a deploy claim.
@@ -31,6 +33,10 @@ The 2026-08-11 “prepared, not pushed” triage is stale. On GitHub:
 **Mission ownership (repository_evidence, 2026-09-03):** [legacy-codex#37](https://github.com/edwardemoryphotography/legacy-codex/pull/37) merged 2026-08-09. Product Mission lives in `legacy-codex` (`src/components/tabs/MissionTab.tsx`, `src/lib/missionLoop.ts`, `missions` / `mission_events`). This architecture viewer is not Mission owner. Live apply / runtime verification of those tables from this repo: `unknown`.
 
 ## 🚧 NEXT
+
+- Merge and deploy the 2026-11-04 content refresh; the last production deploy of this viewer was 2026-09-06 (Vercel record, 2026-11-04).
+- Decide a forward-only migration to sync the 3 new pages into `codex_documents`; needs an operator.
+- This viewer's generated Vercel domains require Vercel sign-in and no custom domain is attached (2026-11-04). It also does not handle Supabase auth-error redirects such as `otp_expired`; the redirect URL that sent an emailed link here is **Needs confirmation**.
 
 - Operator-apply the owner-scoped document-interaction migration to `foundry-console` and flip `project.json` `feature_status` only after that apply is verified.
 - Leave GitHub issue **#40 open** until the proposed deployment contract is accepted and Vercel parity is actually verified. Do not check definition-of-done boxes from architecture-doc updates.
